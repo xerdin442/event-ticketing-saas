@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "target": "es6",
+    "baseUrl": ".",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "noImplicitAny": true,
+    "typeRoots": ["node_modules/@types", "types"]
+  },
+  "include": ["src/**/*", "types/session.d.ts"],
+  "files": ["./src/index.ts"]
+}
