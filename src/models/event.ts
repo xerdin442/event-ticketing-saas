@@ -1,33 +1,111 @@
 import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface IEvent extends Document {
-  organizer: Types.ObjectId
+  user: Types.ObjectId
+  organizer: string
   name: string
-  flier: string
+  category: 'Tech' | 'Health' | 'Entertainment' | 'Fashion' | 'Sports' | 'Business' | 'Conference' |'Others'
   description: string
-  venue: Types.ObjectId
   date: Date
-  time: string
-  tickets: [{ category: string, price: number }]
-  contact: { email: string, phone: number, whatsapp?: number }
+  ageRestriction?: number;
+  media: {
+    poster: string
+    photos: string[]
+    videos: string[]
+  };
+  time: {
+    start: string
+    end: string
+  };
+  status: 'Upcoming' | 'Ongoing' | 'Completed' | 'Cancelled';
+  venue: {
+    name: string
+    capacity: number
+    address: string
+    location: { type: string, coordinates: number[] }
+  };
+  tickets: [{
+    tier: string
+    price: number
+    discount?: { amount: number, expirationDate: number }
+    benefits?: string
+    number: number
+    soldOut: boolean
+  }];
+  sponsors: [{
+    name: string;
+    logo: string;
+    website: string;
+  }];  
+  contact: { email: string, phone: number, whatsapp?: number, twitter?: string };
 }
 
 const eventSchema = new Schema<IEvent>({
-  organizer: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
+  user: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
+  organizer: { type: String, required: true },
   name: { type: String, required: true },
-  flier: { type: String, required: true },
   description: { type: String, required: true },
-  venue: { type: Schema.Types.ObjectId, required: true, ref: 'Venue' },
   date: { type: Date, required: true },
-  time: { type: String, required: true },
+  ageRestriction: { type: Number },
+
+  category: {
+    type: String,
+    enum: ['Tech', 'Health', 'Entertainment', 'Fashion', 'Sports', 'Business', 'Conference', 'Others'],
+    required: true,
+    default: 'Others'
+  },
+  
+  media: {
+    poster: { type: String, required: true },
+    photos: [{ type: String, required: true }],
+    videos: [{ type: String, required: true }]
+  },
+  
+  time: {
+    start: { type: String, required: true },
+    end: { type: String, required: true }
+  },
+
+  status: {
+    type: String,
+    enum: ['Upcoming', 'Ongoing', 'Completed', 'Cancelled'],
+    required: true,
+    default: 'Upcoming'
+  },
+
+  venue: {
+    name: { type: String, required: true },
+    capacity: { type: Number, required: true },
+    address: { type: String, required: true },
+    location: {
+      type: { type: String, enum: ['Point'], required: true },
+      coordinates: { type: [Number], required: true },
+    }
+  },
+
   tickets: [{
-    category: { type: String, required: true },
+    tier: { type: String, required: true },
     price: { type: Number, required: true },
+    discount: {
+      amount: { type: Number, required: true },
+      expirationDate: { type: Number, required: true },  
+    },
+    benefits: { type: String },
+    number: { type: Number, required: true },
+    soldOut: { type: Boolean, required: true, default: false }
   }],
+
+  sponsors: [{
+    name: { type: String, required: true },
+    logo: { type: String, required: true },
+    website: { type: String, required: true },
+  }],
+
   contact: {
     email: { type: String, required: true },
     phone: { type: Number, required: true },
     whatsapp: { type: Number },
+    twitter: { type: String }
   }
 })
 

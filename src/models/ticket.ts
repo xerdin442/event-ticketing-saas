@@ -5,7 +5,7 @@ export interface ITicket extends Document {
   event: Types.ObjectId
   category: string
   price: number
-  virtualId?: string
+  accessKey: string
 }
 
 const ticketSchema = new Schema<ITicket>({
@@ -13,7 +13,9 @@ const ticketSchema = new Schema<ITicket>({
   event: { type: Schema.Types.ObjectId, required: true, ref: 'Event' },
   category: { type: String, required: true },
   price: { type: Number, required: true },
-  virtualId: { type: String },
+  accessKey: { type: String, required: true },
+}, {
+  timestamps: { createdAt: 'orderDate', updatedAt: false }
 })
 
 export const Ticket = mongoose.model<ITicket>('Ticket', ticketSchema);
