@@ -8,7 +8,7 @@ import { sendEmail } from '../util/mail'
 export const register = async (req: Request, res: Response) => {
   try {
     // Extract required fields from request body
-    let { username, email, password, profileImage } = req.body
+    let { age, username, email, password, profileImage, role } = req.body
 
     /* Use a default image if user does not upload file
     Or set profileImage to path of stored image if user uploads file */
@@ -25,15 +25,17 @@ export const register = async (req: Request, res: Response) => {
     }
 
     const user = await User.createUser({
+      age,
       email,
       username,
       password: hashedPassword,
-      profileImage
+      profileImage,
+      role
     })
     
     // Create and assign a JWT to expire in 3hrs
     const token = jwt.sign(
-      { id: user._id.toString() },
+      { id: user._id.toString(), role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '3h' }
     )
@@ -59,7 +61,7 @@ export const login = async (req: Request, res: Response) => {
 
     // Create and assign a JWT to expire in 3hrs
     const token = jwt.sign(
-      { id: user._id.toString() },
+      { id: user._id.toString(), role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '3h' }
     )

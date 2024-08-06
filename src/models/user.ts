@@ -1,21 +1,27 @@
-import mongoose, { Schema, Document, Types } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface IUser extends Document {
+  age: string
   username: string
-  googleId?: string
   email: string
   profileImage: string
   password: string
+  role: string
   resetToken?: number,
   resetTokenExpiration?: number
 }
 
 const userSchema = new Schema<IUser>({
+  age: { type: String, required: true },
   username: { type: String, required: true },
-  googleId: { type: String },
   email: { type: String, required: true },
   profileImage: { type: String, required: true },
   password: { type: String, required: true, select: false },
+  role: {
+    type: String,
+    enum: ['Customer', 'Organizer', 'Rental'],
+    required: true,
+  },
   resetToken: { type: Number },
   resetTokenExpiration: { type: Number }
 })

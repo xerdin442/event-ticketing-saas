@@ -7,8 +7,7 @@ import { deleteUpload } from "../config/storage";
 
 export const validateSignUp: ValidationChain[] = [
   check('username').trim()
-    .isLength({ min: 5 }).withMessage('Username must be at least 5 characters')
-    .isLength({ max: 30 }).withMessage('Username cannot be more than 30 characters'),
+    .isLength({ min: 5, max: 30 }).withMessage('Username must be between 5 to 30 characters long'),
 
   check('email').normalizeEmail()
     .isEmail().withMessage('Please enter a valid email')
@@ -22,15 +21,14 @@ export const validateSignUp: ValidationChain[] = [
     }),
 
   check('password').trim()
-    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
-    .custom((value: string) => {
-      const passwordStrengthCheck: RegExp = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[$@$!%*?&_])[A-Za-z\d$@$!%*?&_]{8,}$/
-      if (!passwordStrengthCheck.test(value)) {
-        throw new Error(`Password must contain at least one uppercase letter, one lowercase letter, one digit and one of the following symbols: $@$!%*?&_`)
-      }
-
-      return true;
-    }),
+    .isStrongPassword({
+      minLength: 8,
+      minLowercase: 1,
+      minUppercase: 1,
+      minNumbers: 1,
+      minSymbols: 1
+    })
+    .withMessage('Password must be at least 8 characters long and contain one uppercase letter, one lowercase letter, one digit and one symbol'),
 
   check('confirmPassword').trim()
     .custom(async (value: string, { req }) => {
@@ -64,15 +62,14 @@ export const validateLogin: ValidationChain[] = [
 
 export const validatePasswordReset: ValidationChain[] = [
   check('password').trim()
-    .isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
-    .custom(async (value: string, { req }) => {
-      const passwordStrengthCheck: RegExp = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[$@$!%*?&_])[A-Za-z\d$@$!%*?&_]{8,}$/
-      if (!passwordStrengthCheck.test(value)) {
-        throw new Error(`Password must contain at least one uppercase letter, one lowercase letter, one digit and one of the following symbols: $@$!%*?&_`)
-      }
-
-      return true;
-    }),
+    .isStrongPassword({
+      minLength: 8,
+      minLowercase: 1,
+      minUppercase: 1,
+      minNumbers: 1,
+      minSymbols: 1
+    })
+    .withMessage('Password must be at least 8 characters long and contain one uppercase letter, one lowercase letter, one digit and one symbol'),
 
   check('confirmPassword').trim()
     .custom(async (value: string, { req }) => {
@@ -86,8 +83,7 @@ export const validatePasswordReset: ValidationChain[] = [
 
 export const validateUpdateProfile: ValidationChain[] = [
   check('username').trim()
-    .isLength({ min: 5 }).withMessage('Username must be at least 5 characters')
-    .isLength({ max: 30 }).withMessage('Username cannot be more than 30 characters'),
+  .isLength({ min: 5, max: 30 }).withMessage('Username must be between 5 to 30 characters long'),
 
   check('email').normalizeEmail()
     .isEmail().withMessage('Please enter a valid email')

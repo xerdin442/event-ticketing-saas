@@ -32,3 +32,13 @@ export const isLoggedIn = (req: Request, res: Response, next: NextFunction) => {
     }
   }
 }
+
+export const validateRole = (role: string) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (req.session.user.role !== role) {
+      return res.status(400).json({ error: "Not authorized to perfrom this operation" })
+    }
+
+    next()
+  }
+}

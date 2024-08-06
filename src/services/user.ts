@@ -29,3 +29,8 @@ export const updateProfile = (id: string, values: Record<string, any>) => {
 export const deleteUser = (id: string) => {
   return User.deleteOne({ _id: id });
 }
+
+export const checkResetToken = async (resetToken: string) => {
+  const token = Number(resetToken)
+  return User.findOne({ resetToken: token }).select('+password')
+}

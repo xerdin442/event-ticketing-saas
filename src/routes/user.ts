@@ -1,7 +1,7 @@
 import express from 'express';
 
 import * as User from '../controllers/user';
-import { isLoggedIn, isProjectMember } from '../middlewares/authorization';
+import { isLoggedIn } from '../middlewares/authorization';
 import { upload } from '../config/storage';
 import { handleValidationErrors, validateUpdateProfile } from '../middlewares/validator';
 
