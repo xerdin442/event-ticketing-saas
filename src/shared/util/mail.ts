@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { IUser } from '../models/user';
+import { IUser } from '../../users/user.model';
 
 export const sendEmail = async (receiver: IUser) => {
   const url = 'https://api.brevo.com/v3/smtp/email';

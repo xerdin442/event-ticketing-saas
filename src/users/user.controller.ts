@@ -1,9 +1,10 @@
-import { Request, Response } from 'express'
+import { Request, Response } from 'express';
+import { Types } from 'mongoose';
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 
-import * as User from '../services/user'
-import { sendEmail } from '../util/mail'
+import * as User from './user.service';
+import { sendEmail } from '../shared/util/mail'
 
 export const register = async (req: Request, res: Response) => {
   try {
@@ -210,6 +211,67 @@ export const changePassword = async (req: Request, res: Response) => {
     return res.status(200).send({ message: 'Password has been reset' })
   } catch (error) {
     // Log and send an error message if any server errors are encountered
+    console.log(error)
+    return res.sendStatus(500)
+  }
+}
+
+export const getProfile = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params
+    if (!Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: "Invalid user ID" })
+    }
+    
+    const user = await User.getUserById(userId)
+    if (!user) {
+      return res.status(400).json({ error: "An error occured while fetching user details" })
+    }
+
+    return res.status(200).json({ user }).end()
+  } catch (error) {
+    console.log(error)
+    return res.sendStatus(500)
+  }
+}
+
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params
+    if (!Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: "Invalid user ID" })
+    }
+
+    const { username, email } = req.body
+    let profileImage;
+
+    if (req.file) {
+      profileImage = req.file.path
+    }
+
+    const user = await User.updateProfile(userId, { username, email, profileImage })
+    if (!user) {
+      return res.status(400).json({ error: "An error occured while updating user profile" })
+    }
+  
+    return res.status(200).json({ user }).end()
+  } catch (error) {
+    console.log(error)
+    return res.sendStatus(500) 
+  }
+}
+
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params
+    if (!Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: "Invalid user ID" })
+    }
+
+    await User.deleteUser(userId)
+
+    return res.status(200).json({ message: 'User successfully deleted' })
+  } catch (error) {
     console.log(error)
     return res.sendStatus(500)
   }

@@ -1,8 +1,4 @@
-import { User } from '../models/user';
-
-export const getAll = () => {
-  return User.find()
-}
+import { User } from './user.model';
 
 export const getUserById = (id: string) => {
   return User.findById(id)

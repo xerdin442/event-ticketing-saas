@@ -9,7 +9,7 @@ import session from 'express-session';
 import dotenv from 'dotenv';
 import helmet from 'helmet';
 
-import router from './routes/index';
+import router from './shared/index-router';
 import sessionDts from '../types/session';
 
 const app = express()

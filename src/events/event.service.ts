@@ -1,4 +1,4 @@
-import { Event } from "../models/event";
+import { Event } from "./event.model";
 
 export const getEventById = (id: string) => {
   return Event.findById(id)

@@ -27,9 +27,9 @@ export interface IEvent extends Document {
   tickets: [{
     tier: string
     price: number
-    discount?: { amount: number, expirationDate: number }
+    discount?: { price: number, expirationDate: number, numberOfTickets: number }
     benefits?: string
-    number: number
+    totalNumber: number
     soldOut: boolean
   }];
   sponsors: [{
@@ -87,11 +87,12 @@ const eventSchema = new Schema<IEvent>({
     tier: { type: String, required: true },
     price: { type: Number, required: true },
     discount: {
-      amount: { type: Number, required: true },
-      expirationDate: { type: Number, required: true },  
+      price: { type: Number, required: true },
+      expirationDate: { type: Number, required: true },
+      numberOfTickets: { type: Number, required: true }
     },
     benefits: { type: String },
-    number: { type: Number, required: true },
+    totalNumber: { type: Number, required: true },
     soldOut: { type: Boolean, required: true, default: false }
   }],
 
@@ -108,5 +109,10 @@ const eventSchema = new Schema<IEvent>({
     twitter: { type: String }
   }
 })
+
+// Add a 2dsphere index on location property for geospatial queires
+eventSchema.index({ location: '2dsphere' });
+// Add text index on 'name' and 'description' properties for full-text search capabilities
+eventSchema.index({ name: 'text', description: 'text' });
 
 export const Event = mongoose.model<IEvent>('Event', eventSchema);

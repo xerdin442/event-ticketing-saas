@@ -2,7 +2,7 @@ import { check, ValidationChain, validationResult } from "express-validator";
 import bcrypt from 'bcryptjs'
 import { NextFunction, Request, Response } from "express";
 
-import * as User from '../services/user'
+import * as User from '../../users/user.service'
 import { deleteUpload } from "../config/storage";
 
 export const validateSignUp: ValidationChain[] = [
