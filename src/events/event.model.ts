@@ -2,21 +2,14 @@ import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface IEvent extends Document {
   user: Types.ObjectId
-  organizer: string
+  organizer: { name: string, accountName: string, accountNumber: string, bank: string }
   name: string
   category: 'Tech' | 'Health' | 'Entertainment' | 'Fashion' | 'Sports' | 'Business' | 'Conference' |'Others'
   description: string
   date: Date
-  ageRestriction?: number;
-  media: {
-    poster: string
-    photos: string[]
-    videos: string[]
-  };
-  time: {
-    start: string
-    end: string
-  };
+  ageRestriction?: string;
+  media: { poster: string, photos: string[], videos: string[] };
+  time: { start: string, end: string };
   status: 'Upcoming' | 'Ongoing' | 'Completed' | 'Cancelled';
   venue: {
     name: string
@@ -32,21 +25,21 @@ export interface IEvent extends Document {
     totalNumber: number
     soldOut: boolean
   }];
-  sponsors: [{
-    name: string;
-    logo: string;
-    website: string;
-  }];  
-  contact: { email: string, phone: number, whatsapp?: number, twitter?: string };
+  contact: { email: string, phone: string, whatsapp?: string, twitter?: string };
 }
 
 const eventSchema = new Schema<IEvent>({
   user: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
-  organizer: { type: String, required: true },
+  organizer: {
+    name: { type: String, required: true },
+    accountName: { type: String, required: true },
+    accountNumber: { type: String, required: true },
+    bank: { type: String, required: true },  
+  },
   name: { type: String, required: true },
   description: { type: String, required: true },
   date: { type: Date, required: true },
-  ageRestriction: { type: Number },
+  ageRestriction: { type: String },
 
   category: {
     type: String,
@@ -96,16 +89,10 @@ const eventSchema = new Schema<IEvent>({
     soldOut: { type: Boolean, required: true, default: false }
   }],
 
-  sponsors: [{
-    name: { type: String, required: true },
-    logo: { type: String, required: true },
-    website: { type: String, required: true },
-  }],
-
   contact: {
     email: { type: String, required: true },
-    phone: { type: Number, required: true },
-    whatsapp: { type: Number },
+    phone: { type: String, required: true },
+    whatsapp: { type: String },
     twitter: { type: String }
   }
 })
