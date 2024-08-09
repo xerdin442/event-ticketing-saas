@@ -1,9 +1,5 @@
 import { User } from './user.model';
 
-export const getUserById = (id: string) => {
-  return User.findById(id)
-}
-
 export const getUserByEmail = (email: string) => {
   return User.findOne({ email });
 }
