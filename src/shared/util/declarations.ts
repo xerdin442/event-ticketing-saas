@@ -25,3 +25,8 @@ export type paystackBankDetails = {
   createdAt: string
   updatedAt: string
 }
+
+export type emailAttachment = {
+  content: string
+  name: string
+}

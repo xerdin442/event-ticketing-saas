@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Types } from "mongoose";
 export interface IEvent extends Document {
   user: Types.ObjectId
   organizer: { name: string, accountName: string, accountNumber: string, bank: string }
-  name: string
+  title: string
   category: 'Tech' | 'Health' | 'Entertainment' | 'Fashion' | 'Sports' | 'Business' | 'Conference' |'Others'
   description: string
   date: Date
@@ -17,6 +17,7 @@ export interface IEvent extends Document {
     address: string
     location: { type: string, coordinates: number[] }
   };
+  attendees: Types.ObjectId[]
   tickets: [{
     tier: string
     price: number
@@ -25,7 +26,8 @@ export interface IEvent extends Document {
     totalNumber: number
     soldOut: boolean
   }];
-  contact: { email: string, phone: string, whatsapp?: string, twitter?: string };
+  shares: number
+  contact: { email: string, phone: string, whatsapp?: string, twitter?: string, instagram?: string, website?: string };
 }
 
 const eventSchema = new Schema<IEvent>({
@@ -36,7 +38,7 @@ const eventSchema = new Schema<IEvent>({
     accountNumber: { type: String, required: true },
     bank: { type: String, required: true },  
   },
-  name: { type: String, required: true },
+  title: { type: String, required: true },
   description: { type: String, required: true },
   date: { type: Date, required: true },
   ageRestriction: { type: String },
@@ -45,7 +47,6 @@ const eventSchema = new Schema<IEvent>({
     type: String,
     enum: ['Tech', 'Health', 'Entertainment', 'Fashion', 'Sports', 'Business', 'Conference', 'Others'],
     required: true,
-    default: 'Others'
   },
   
   media: {
@@ -76,6 +77,8 @@ const eventSchema = new Schema<IEvent>({
     }
   },
 
+  attendees: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+
   tickets: [{
     tier: { type: String, required: true },
     price: { type: Number, required: true },
@@ -89,11 +92,15 @@ const eventSchema = new Schema<IEvent>({
     soldOut: { type: Boolean, required: true, default: false }
   }],
 
+  shares: { type: Number, required: true, default: 0 },
+
   contact: {
     email: { type: String, required: true },
     phone: { type: String, required: true },
     whatsapp: { type: String },
-    twitter: { type: String }
+    twitter: { type: String },
+    instagram: { type: String },
+    website: { type: String }
   }
 })
 

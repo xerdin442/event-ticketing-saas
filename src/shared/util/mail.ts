@@ -1,31 +1,33 @@
 import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 import { IUser } from '../../users/user.model';
+import { emailAttachment } from './declarations';
 
-export const sendEmail = async (receiver: IUser) => {
-  const url = 'https://api.brevo.com/v3/smtp/email';
+export const sendEmail = async (receiver: IUser, subject: string, content: string, attachment: emailAttachment[] | null) => {  
+  // Generate html content
+  const $ = cheerio.load(content)
+  const htmlContent = $.html()
 
   const data = {
     sender: {
-      name: 'Project Manager',
+      name: 'Event Ticketing App',
       email: 'mudianthonio27@gmail.com',
     },
     to: [
       {
         email: `${receiver.email}`,
-        name: `${receiver.username}`,
+        name: `${receiver.fullname}`,
       },
     ],
-    subject: 'Password Reset',
-    htmlContent: `
-    <p>Hello ${receiver.username},</p>
-    <h1>${receiver.resetToken}</h1>
-    <p>You requested for a password reset. This code expires in <b>3 hours.</b></p>
-    <p>If this wasn't you, please ignore this email.</p>
-    `
+    subject,
+    htmlContent,
+    attachment
   };
 
   try {
+    const url = 'https://api.brevo.com/v3/smtp/email';
+
     const response = await axios.post(url, data, {
       headers: {
         'accept': 'application/json',
@@ -33,6 +35,7 @@ export const sendEmail = async (receiver: IUser) => {
         'content-type': 'application/json',
       },
     });
+
     console.log('Email sent successfully:', response.data);
   } catch (error) {
     console.error('Error sending email:', error);

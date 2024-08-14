@@ -11,6 +11,7 @@ import helmet from 'helmet';
 
 import router from './shared/index.router';
 import sessionDts from '../types/session';
+import { updateEventStatus } from './events/event.service';
 
 const app = express()
 
@@ -44,5 +45,8 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     app.listen(process.env.PORT)
     console.log('Server is running on port 3000')
+
+    // Check database regularly and update status of events
+    setInterval(async () => await updateEventStatus(), 15 * 60 * 1000);
   })
   .catch(err => console.log(err))

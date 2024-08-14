@@ -3,6 +3,8 @@ import { Response } from "express";
 
 import { Event } from "./event.model";
 import { paystackBankDetails } from "../shared/util/declarations";
+import { User } from "../users/user.model";
+import { sendEmail } from "../shared/util/mail";
 
 // Load the environment variables as strings
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY as string
@@ -16,6 +18,56 @@ export const createEvent = async (values: Record<string, any>) => {
   await event.save();
 
   return event.toObject();
+}
+
+export const updateEventDetails = async (id: string, details: Record<string, any>) => {
+  const updatedEvent = await Event.findByIdAndUpdate(id, details, { new: true })
+  await updatedEvent.save()
+  
+  const { title, organizer, date, time, venue } = updatedEvent
+
+  for (let attendee of updatedEvent.attendees) {
+    const receiver = await User.findById(attendee)
+    const subject = 'Event Update'
+    const emailContent = `
+    <p>Dear ${receiver.fullname.split(' ')[0]}, We trust you're doing well.</p>
+    <p>We would like to inform you of some updates regarding the event: <span><b>${title}</b></span>;</p>
+
+    <div>
+      <ul>
+        <li>Date: ${date}</li>
+        <li>Time: ${time.start} - ${time.end}</li>
+        <li>Venue: ${venue.name}, ${venue.address}</li>
+      </ul>
+    </div>
+    
+    <p>We sincerely apologize for any inconveniences these changes may cause.
+    We appreciate your understanding and look forward to your presence at the event.</p>
+    <br/>
+    
+    <p>Best Regards,</p>
+    <p><b>${organizer.name}</b></p>`
+
+    await sendEmail(receiver, subject, emailContent, null)
+  }
+}
+
+export const updateEventStatus = async () => {
+  const events = await Event.find()
+
+  for (let event of events) {
+    const currentTime = new Date().getTime()
+    const startTime = new Date(event.time.start).getTime()
+    const endTime = new Date(event.time.end).getTime()
+
+    if (currentTime > startTime && currentTime < endTime) {
+      event.status = 'Ongoing'
+    } else if (currentTime > endTime) {
+      event.status = 'Completed'
+    }
+
+    await event.save()
+  }
 }
 
 export const deleteEvent = (id: string) => {
@@ -50,9 +102,7 @@ export const createTransferRecipient = async (accountDetails: Record<string, any
   const bankDetails = await axios.get(bankURL)
   if (bankDetails.status === 200) {
     const banks = bankDetails.data.data
-    recipientBank = banks.find((bank: paystackBankDetails) => {
-      if (bank.name === bankName) { return bank }
-    })
+    recipientBank = banks.find((bank: paystackBankDetails) => bank.name === bankName)
   } else {
     throw new Error('An error occured while fetching bank information')
   }
@@ -65,7 +115,7 @@ export const createTransferRecipient = async (accountDetails: Record<string, any
 
   if (verification.status === 200) {
     if (verification.data.data.account_name !== accountName) {
-      return res.status(400).json({ error: "Failed to verify account details. Kindly input the correct details" }).end()
+      return res.status(400).json({ error: "Failed to verify account details. Kindly input the correct account information" }).end()
     }
   } else {
     throw new Error('An error occured while verifiying account details')
@@ -88,7 +138,7 @@ export const createTransferRecipient = async (accountDetails: Record<string, any
   )
 
   if (transferRecipient.status !== 200) {
-    throw new Error('Error occured while creating transfer recipient')
+    throw new Error('An error occured while creating transfer recipient')
   }
 }
 
@@ -100,11 +150,11 @@ export const getCoordinates = async (address: string, res: Response) => {
   let latitude: string;
   let longitude: string;
 
-  // Get the latitude and longitude from the given address
+  // Get the latitude and longitude from the address information returned by the Geocoding API
   const response = await axios.get(url)
   if (response.status === 200) {
     if (response.data[0] === undefined) { 
-      return res.status(400).json({ error: 'Failed to find address and generate coordinates' }).end()
+      return res.status(400).json({ error: 'Failed to find address on the map and generate coordinates' }).end()
     }
 
     latitude = response.data[0].lat
@@ -113,4 +163,18 @@ export const getCoordinates = async (address: string, res: Response) => {
 
   // Convert both values to numbers and return in an array
   return [+latitude, +longitude];
+}
+
+export const addDiscount = async (id: string, tier: string, dicountDetails: Record<string, any>) => {
+  const { price, expirationDate, numberOfTickets } = dicountDetails
+  
+  const event = await Event.findById(id)
+  const expirationTimestamp = new Date(expirationDate).getTime()
+
+  event.tickets.forEach(ticket => {
+    if (ticket.tier === tier) {
+      ticket.discount = { price, expirationDate: expirationTimestamp, numberOfTickets }
+    }
+  })
+  await event.save()
 }

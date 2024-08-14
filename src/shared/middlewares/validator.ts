@@ -6,8 +6,8 @@ import * as User from '../../users/user.service'
 import { deleteUpload } from "../config/storage";
 
 export const validateSignUp: ValidationChain[] = [
-  check('username').trim()
-    .isLength({ min: 5, max: 30 }).withMessage('Username must be between 5 to 30 characters long'),
+  check('fullname').trim()
+    .isLength({ min: 5, max: 50 }).withMessage('Username must be between 5 to 50 characters long'),
 
   check('email').normalizeEmail()
     .isEmail().withMessage('Please enter a valid email')
@@ -82,8 +82,8 @@ export const validatePasswordReset: ValidationChain[] = [
 ]
 
 export const validateUpdateProfile: ValidationChain[] = [
-  check('username').trim()
-  .isLength({ min: 5, max: 30 }).withMessage('Username must be between 5 to 30 characters long'),
+  check('fullname').trim()
+  .isLength({ min: 5, max: 50 }).withMessage('Username must be between 5 to 50 characters long'),
 
   check('email').normalizeEmail()
     .isEmail().withMessage('Please enter a valid email')

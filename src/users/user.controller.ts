@@ -9,7 +9,7 @@ import { sendEmail } from '../shared/util/mail'
 export const register = async (req: Request, res: Response) => {
   try {
     // Extract required fields from request body
-    let { age, username, email, password, profileImage, role } = req.body
+    let { age, fullname, email, password, profileImage, role } = req.body
 
     /* Use a default image if user does not upload file
     Or set profileImage to path of stored image if user uploads file */
@@ -28,7 +28,7 @@ export const register = async (req: Request, res: Response) => {
     const user = await User.createUser({
       age,
       email,
-      username,
+      fullname,
       password: hashedPassword,
       profileImage,
       role
@@ -105,7 +105,15 @@ export const resetPassword = async (req: Request, res: Response) => {
     user.resetTokenExpiration = Date.now() + (3 * 60 * 60 * 1000)
     await user.save()
   
-    await sendEmail(user) // Send reset token to the user's email address
+    const subject: string = 'Password Reset'
+    const emailContent: string = `
+    <p>Hello ${user.fullname.split(' ')[0]},</p>
+    <h1>${user.resetToken}</h1>
+    <p>You requested for a password reset. This code expires in <b>3 hours.</b></p>
+    <p>If this wasn't you, please ignore this email.</p>
+    `
+    await sendEmail(user, subject, emailContent, null) // Send reset token to the user's email address
+    
     req.session.email = user.email // Save user's email address in a session incase the user requests for the token to be re-sent
   
     console.log(token)
@@ -164,10 +172,17 @@ export const resendToken = async (req: Request, res: Response) => {
     // Generate new reset token, reset the expiration time and save changes
     const token = Math.ceil(Math.random() * 10 ** 6)
     user.resetToken = token
-    user.resetTokenExpiration = Date.now() + 120000
+    user.resetTokenExpiration = Date.now() + (3 * 60 * 60 * 1000)
     await user.save()
 
-    await sendEmail(user) // Send email with new reset token to user
+    const subject: string = 'Password Reset'
+    const emailContent: string = `
+    <p>Hello ${user.fullname.split(' ')[0]},</p>
+    <h1>${user.resetToken}</h1>
+    <p>You requested for a password reset. This code expires in <b>3 hours.</b></p>
+    <p>If this wasn't you, please ignore this email.</p>
+    `
+    await sendEmail(user, subject, emailContent, null) // Send email with new reset token to user
 
     console.log(token)
     // Notify user that password reset token has been re-sent
@@ -242,14 +257,14 @@ export const updateProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid user ID" })
     }
 
-    const { username, email } = req.body
+    const { fullname, email } = req.body
     let profileImage;
 
     if (req.file) {
       profileImage = req.file.path
     }
 
-    const user = await User.updateProfile(userId, { username, email, profileImage })
+    const user = await User.updateProfile(userId, { fullname, email, profileImage })
     if (!user) {
       return res.status(400).json({ error: "An error occured while updating user profile" })
     }

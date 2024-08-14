@@ -8,6 +8,8 @@ export interface ITicket extends Document {
   status: 'active' | 'used' | 'cancelled'
   accessKey: string
   barcode: string
+  pdfDocument: string
+  transactionReference: string
 }
 
 const ticketSchema = new Schema<ITicket>({
@@ -22,7 +24,9 @@ const ticketSchema = new Schema<ITicket>({
     default: 'active'
   },
   accessKey: { type: String, required: true },
-  barcode: { type: String, required: true }
+  barcode: { type: String, required: true },
+  pdfDocument: { type: String, required: true },
+  transactionReference: { type: String, required: true }
 }, {
   timestamps: { createdAt: 'orderDate', updatedAt: false }
 })
