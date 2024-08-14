@@ -14,4 +14,6 @@ export default (router: express.Router) => {
   router.post('/events/create', multipleUpload, isLoggedIn, Event.createEvent)
   router.post('/events/:eventId/discount', isLoggedIn, validateRole('Organizer'), Event.addDiscount)
   router.put('/events/:eventId/update', isLoggedIn, validateRole('Organizer'), Event.updateEventDetails)
+  router.post('/events/:eventId/cancel', isLoggedIn, validateRole('Organizer'), Event.cancelEvent)
+  router.get('/events/nearby', isLoggedIn, Event.nearbyEvents)
 };

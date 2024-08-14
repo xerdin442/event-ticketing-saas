@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { Types } from 'mongoose';
 
 import * as Event from './event.service'
 import { MulterRequest } from "../shared/util/declarations";
@@ -57,12 +58,20 @@ export const createEvent = async (req: MulterRequest, res: Response) => {
 export const addDiscount = async (req: Request, res: Response) => {
   try {
     const { eventId } = req.params
+    if (!Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ error: "Invalid event id parameter" }).end()
+    }
+
     const { tier } = req.query
+    if (!tier) {
+      return res.status(400).json({ error: 'Invalid ticket tier provided' }).end()
+    }
+
     const { price, expirationDate, numberOfTickets } = req.body
 
     await Event.addDiscount(eventId, tier as string, { price, expirationDate, numberOfTickets })
 
-    return res.status(200).json({ message: `Discount offer added for ${tier} tickets.` })
+    return res.status(200).json({ message: `Discount offer added for ${tier} tickets.` }).end()
   } catch (error) {
     console.log(error)
     return res.sendStatus(500)
@@ -72,8 +81,11 @@ export const addDiscount = async (req: Request, res: Response) => {
 export const updateEventDetails = async (req: Request, res: Response) => {
   try {
     const { eventId } = req.params
-    const { date, startTime, endTime, venueName, capacity, address } = req.body
+    if (!Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ error: "Invalid event id parameter" })
+    }
 
+    const { date, startTime, endTime, venueName, capacity, address } = req.body
     // Generate coordinates from the updated address
     const coordinates = await Event.getCoordinates(address, res)
 
@@ -88,7 +100,42 @@ export const updateEventDetails = async (req: Request, res: Response) => {
       }
     })
 
-    return res.status(200).json({ message: 'EVent details updated successfully', event })
+    return res.status(200).json({ message: 'Event details updated successfully', event }).end()
+  } catch (error) {
+    console.log(error)
+    return res.sendStatus(500)
+  }
+}
+
+export const cancelEvent = async (req: Request, res: Response) => {
+  try {
+    const { eventId } = req.params
+    if (!Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ error: "Invalid project ID" })
+    }
+
+    await Event.cancelEvent(eventId)
+
+    return res.status(200).json({ message: 'Event cancellation successful' }).end()
+  } catch (error) {
+    console.log(error)
+    return res.sendStatus(500)
+  }
+}
+
+export const nearbyEvents = async (req: Request, res: Response) => {
+  try {
+    const { latitude, longitude } = req.body
+    if (!latitude || !longitude) {
+      return res.status(400).json({ error: 'Latitude and longitude of the user is required to find nearby events' }).end()
+    }
+    if (!(+latitude) || !(+longitude)) {
+      return res.status(400).json({ error: 'Invalid longitude and latitude values' }).end()
+    }
+
+    const events = await Event.findNearbyEvents(+longitude, +latitude)
+
+    return res.status(200).json({ message: 'Nearby events found', events }).end()
   } catch (error) {
     console.log(error)
     return res.sendStatus(500)

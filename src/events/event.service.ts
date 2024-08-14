@@ -21,12 +21,12 @@ export const createEvent = async (values: Record<string, any>) => {
 }
 
 export const updateEventDetails = async (id: string, details: Record<string, any>) => {
-  const updatedEvent = await Event.findByIdAndUpdate(id, details, { new: true })
-  await updatedEvent.save()
-  
-  const { title, organizer, date, time, venue } = updatedEvent
+  const event = await Event.findByIdAndUpdate(id, details, { new: true })
+  await event.save()
 
-  for (let attendee of updatedEvent.attendees) {
+  const { title, organizer, date, time, venue } = event
+
+  for (let attendee of event.attendees) {
     const receiver = await User.findById(attendee)
     const subject = 'Event Update'
     const emailContent = `
@@ -41,7 +41,7 @@ export const updateEventDetails = async (id: string, details: Record<string, any
       </ul>
     </div>
     
-    <p>We sincerely apologize for any inconveniences these changes may cause.
+    <p>We sincerely apologize for any inconvenience these changes may cause.
     We appreciate your understanding and look forward to your presence at the event.</p>
     <br/>
     
@@ -50,6 +50,8 @@ export const updateEventDetails = async (id: string, details: Record<string, any
 
     await sendEmail(receiver, subject, emailContent, null)
   }
+
+  return event;
 }
 
 export const updateEventStatus = async () => {
@@ -70,8 +72,33 @@ export const updateEventStatus = async () => {
   }
 }
 
-export const deleteEvent = (id: string) => {
-  return Event.deleteOne({ _id: id });
+export const cancelEvent = async (id: string) => {
+  const event = await Event.findByIdAndUpdate(id, { status: 'Cancelled' }, { new: true })
+  await event.save()
+
+  const { title, date, organizer } = event
+
+  for (let attendee of event.attendees) {
+    const receiver = await User.findById(attendee)
+    const subject = 'Event Update'
+    const emailContent = `
+    <p>Dear ${receiver.fullname.split(' ')[0]}, We hope this message finds you well.</p>
+    <p>We regret to inform you that the event titled <span><b>${title}</b></span>,
+    scheduled to take place on ${date}, has been cancelled. We sincerely apologize for any inconvenience this may cause.</p>
+
+    <p>We understand the disappointment this may bring,
+    and we want to assure you that a refund for your ticket will be initiated shortly.
+    The refund process will be carried out through the same payment method you used during the purchase.</p>
+
+    <p>If you have any questions or require further assistance, please do not hesitate to contact us.
+    We appreciate your understanding and patience during this process.</p>
+    <br/>
+
+    <p>Best Regards,</p>
+    <p><b>${organizer.name}</b></p>`
+
+    await sendEmail(receiver, subject, emailContent, null)
+  }
 }
 
 export const getBankNames = async () => {
@@ -98,7 +125,7 @@ export const createTransferRecipient = async (accountDetails: Record<string, any
   let recipientBank: paystackBankDetails;
   const banksPerPage: number = 60
   const bankURL = `https://api.paystack.co/bank?country=nigeria&perPage=${banksPerPage}`
-  
+
   const bankDetails = await axios.get(bankURL)
   if (bankDetails.status === 200) {
     const banks = bankDetails.data.data
@@ -131,10 +158,12 @@ export const createTransferRecipient = async (accountDetails: Record<string, any
       "account_number": accountNumber,
       "currency": "NGN"
     },
-    { headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`
-    }}
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`
+      }
+    }
   )
 
   if (transferRecipient.status !== 200) {
@@ -153,7 +182,7 @@ export const getCoordinates = async (address: string, res: Response) => {
   // Get the latitude and longitude from the address information returned by the Geocoding API
   const response = await axios.get(url)
   if (response.status === 200) {
-    if (response.data[0] === undefined) { 
+    if (response.data[0] === undefined) {
       return res.status(400).json({ error: 'Failed to find address on the map and generate coordinates' }).end()
     }
 
@@ -167,7 +196,7 @@ export const getCoordinates = async (address: string, res: Response) => {
 
 export const addDiscount = async (id: string, tier: string, dicountDetails: Record<string, any>) => {
   const { price, expirationDate, numberOfTickets } = dicountDetails
-  
+
   const event = await Event.findById(id)
   const expirationTimestamp = new Date(expirationDate).getTime()
 
@@ -177,4 +206,19 @@ export const addDiscount = async (id: string, tier: string, dicountDetails: Reco
     }
   })
   await event.save()
+}
+
+export const findNearbyEvents = async (longitude: number, latitude: number) => {
+  const events = await Event.find({
+    venue: {
+      location: {
+        $near: {
+          $geometry: { type: 'Point', coordinates: [longitude, latitude] },
+          $maxDistance: 5000 // Find nearby events in venues located within 5km of the user
+        }
+      }
+    }
+  })
+
+  return events;
 }
