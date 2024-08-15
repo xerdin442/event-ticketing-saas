@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface ITicket extends Document {
-  customer: Types.ObjectId
+  attendee: Types.ObjectId
   event: Types.ObjectId
   tier: string
   price: number
@@ -9,11 +9,10 @@ export interface ITicket extends Document {
   accessKey: string
   barcode: string
   pdfDocument: string
-  transactionReference: string
 }
 
 const ticketSchema = new Schema<ITicket>({
-  customer: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
+  attendee: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
   event: { type: Schema.Types.ObjectId, required: true, ref: 'Event' },
   tier: { type: String, required: true },
   price: { type: Number, required: true },
@@ -26,7 +25,6 @@ const ticketSchema = new Schema<ITicket>({
   accessKey: { type: String, required: true },
   barcode: { type: String, required: true },
   pdfDocument: { type: String, required: true },
-  transactionReference: { type: String, required: true }
 }, {
   timestamps: { createdAt: 'orderDate', updatedAt: false }
 })
