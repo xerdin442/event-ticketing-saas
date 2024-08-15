@@ -21,6 +21,15 @@ export const createEvent = async (values: Record<string, any>) => {
   return event.toObject();
 }
 
+export const getEventById = async (id: string) => {
+  const event = await Event.findById(id)
+  if (!event) {
+    throw new Error('An error occured while fetching user by id')
+  }
+
+  return event;
+}
+
 export const updateEventDetails = async (id: string, details: Record<string, any>) => {
   const event = await Event.findByIdAndUpdate(id, details, { new: true })
   await event.save()

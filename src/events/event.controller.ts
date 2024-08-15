@@ -55,6 +55,22 @@ export const createEvent = async (req: MulterRequest, res: Response) => {
   }
 }
 
+export const getEventDetails = async (req: Request, res: Response) => {
+  try {
+    const { eventId } = req.params
+    if (!Types.ObjectId.isValid(eventId)) {
+      return res.status(400).json({ error: "Invalid event id parameter" })
+    }
+    
+    const event = await Event.getEventById(eventId)
+
+    return res.status(200).json({ event }).end()
+  } catch (error) {
+    console.log(error)
+    return res.sendStatus(500)
+  }
+}
+
 export const addDiscount = async (req: Request, res: Response) => {
   try {
     const { eventId } = req.params

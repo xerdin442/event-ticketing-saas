@@ -8,7 +8,7 @@ export interface IUser extends Document {
   password: string
   role: string
   cart: {
-    items: [{ event: Types.ObjectId, tier: string, quantity: number }]
+    items: [{ event: Types.ObjectId, tier: string, quantity: number }] | []
     total: number
   }
   resetToken?: number,
@@ -32,7 +32,7 @@ const userSchema = new Schema<IUser>({
       tier: { type: String, required: true },
       quantity: { type: Number, required: true },
     }],
-    total: { type: Number, required: true },
+    total: { type: Number, required: true, default: 0.00 },
   },
   resetToken: { type: Number },
   resetTokenExpiration: { type: Number }

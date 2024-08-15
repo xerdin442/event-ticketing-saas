@@ -21,8 +21,15 @@ export default (router: express.Router) => {
   router.post('/auth/resend-token', User.resendToken)
   router.post('/auth/change-password', validatePasswordReset, handleValidationErrors, User.changePassword)
 
-  // User actions
-  router.get('/users/:userId/profile', isLoggedIn, User.getProfile)
-  router.put('/users/:userId/update-profile', upload('event-ticketing').single('profileImage'), isLoggedIn, validateUpdateProfile, handleValidationErrors, User.updateProfile)
-  router.delete('/users/:userId/delete-account', isLoggedIn, User.deleteUser)
+  // Profile
+  router.get('/profile', isLoggedIn, User.getProfile)
+  router.put('/profile/update', upload('event-ticketing').single('profileImage'), isLoggedIn, validateUpdateProfile, handleValidationErrors, User.updateProfile)
+  router.delete('/profile/delete', isLoggedIn, User.deleteAccount)
+
+  // Cart
+  router.get('/cart', isLoggedIn, User.getCart)
+  router.get('/cart/clear', isLoggedIn, User.clearCart)
+  router.get('/cart/items/add', isLoggedIn, User.addCartItem)
+  router.get('/cart/items/delete', isLoggedIn, User.deleteCartItem)
+  router.get('/cart/items/number', isLoggedIn, User.incrementOrDecrementCartItem)
 };

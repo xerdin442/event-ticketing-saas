@@ -186,7 +186,7 @@ export const resendToken = async (req: Request, res: Response) => {
 
     console.log(token)
     // Notify user that password reset token has been re-sent
-    return res.status(200).json({ message: 'Another token has been sent to your email' })
+    return res.status(200).json({ message: 'Another token has been sent to your email' }).end()
   } catch (error) {
     // Log and send an error message if any server errors are encountered
     console.log(error)
@@ -212,18 +212,19 @@ export const changePassword = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'New password cannot be set to same value as previous password' })
     }
 
-    // If reset token is valid, change password, reset the token value and save changes
+    // Check if the reset token is valid
     const hashedPassword = await bcrypt.hash(password, 12)
     if (!hashedPassword) {
       return res.status(400).json({ error: "An error occured while hashing password" })
     }
     
+    // Change user's password, reset the token value and save changes
     user.password = hashedPassword
     user.resetToken = undefined
     await user.save()
   
     // Notify user if password reset is successful
-    return res.status(200).send({ message: 'Password has been reset' })
+    return res.status(200).send({ message: 'Password has been reset' }).end()
   } catch (error) {
     // Log and send an error message if any server errors are encountered
     console.log(error)
@@ -233,15 +234,7 @@ export const changePassword = async (req: Request, res: Response) => {
 
 export const getProfile = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.params
-    if (!Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ error: "Invalid user ID" })
-    }
-    
-    const user = await User.getUserById(userId)
-    if (!user) {
-      return res.status(400).json({ error: "An error occured while fetching user details" })
-    }
+    const user = await User.getUserById(req.session.user.id)
 
     return res.status(200).json({ user }).end()
   } catch (error) {
@@ -252,11 +245,7 @@ export const getProfile = async (req: Request, res: Response) => {
 
 export const updateProfile = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.params
-    if (!Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ error: "Invalid user ID" })
-    }
-
+    const userId = req.session.user.id
     const { fullname, email } = req.body
     let profileImage;
 
@@ -276,16 +265,88 @@ export const updateProfile = async (req: Request, res: Response) => {
   }
 }
 
-export const deleteUser = async (req: Request, res: Response) => {
+export const deleteAccount = async (req: Request, res: Response) => {
   try {
-    const { userId } = req.params
-    if (!Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({ error: "Invalid user ID" })
+    const { redirectURL } = req.query
+    await User.deleteUser(req.session.user.id)
+
+    return res.redirect(redirectURL as string)
+  } catch (error) {
+    console.log(error)
+    return res.sendStatus(500)
+  }
+}
+
+export const getCart = async (req: Request, res: Response) => {
+  try {
+    const cart = await User.getCart(req.session.user.id)
+
+    return res.status(200).json({ cart }).end()
+  } catch (error) {
+    console.log(error)
+    return res.sendStatus(500)
+  }
+}
+
+export const clearCart = async (req: Request, res: Response) => {
+  try {
+    await User.clearCart(req.session.user.id)
+
+    return res.status(200).json({ message: 'All cart items cleared!' }).end()
+  } catch (error) {
+    console.log(error)
+    return res.sendStatus(500)
+  }
+}
+
+export const addCartItem = async (req: Request, res: Response) => {
+  try {
+    const { eventId, tier } = req.query
+    if (!eventId || !tier) {
+      return res.status(400).json({ error: 'Invalid query parameters' }).end()
+    }
+    const userId = req.session.user.id
+
+    await User.addCartItem(eventId as string, userId, tier as string, res)
+
+    return res.status(200).json({ message: 'Ticket added to cart!' }).end()
+  } catch (error) {
+    console.log(error)
+    return res.sendStatus(500)
+  }
+}
+
+export const deleteCartItem = async (req: Request, res: Response) => {
+  try {
+    const { eventId, tier } = req.query
+    if (!eventId || !tier) {
+      return res.status(400).json({ error: 'Invalid query parameters' }).end()
+    }
+    const userId = req.session.user.id
+
+    await User.deleteCartItem(eventId as string, userId, tier as string)
+
+    return res.status(200).json({ message: 'Ticket removed from cart!' }).end()
+  } catch (error) {
+    console.log(error)
+    return res.sendStatus(500)
+  }
+}
+
+export const incrementOrDecrementCartItem = async (req: Request, res: Response) => {
+  try {
+    const { eventId, tier, action } = req.query
+    if (!eventId || !tier || !action) {
+      return res.status(400).json({ error: 'Invalid query parameters' }).end()
+    }
+    if (action !== 'increment' || 'decrement') {
+      return res.status(400).json({ error: 'Invalid value for "action" query parameter' }).end()
     }
 
-    await User.deleteUser(userId)
+    const userId = req.session.user.id
+    await User.incrementOrDecrementCartItem(eventId as string, userId, tier as string, action as string)
 
-    return res.status(200).json({ message: 'User successfully deleted' })
+    return res.sendStatus(200).end()
   } catch (error) {
     console.log(error)
     return res.sendStatus(500)
