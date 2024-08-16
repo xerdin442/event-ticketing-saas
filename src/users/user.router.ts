@@ -9,7 +9,7 @@ import {
   validateLogin,
   validatePasswordReset,
   validateSignUp
-} from '../shared/middlewares/validator';
+} from '../shared/middlewares/validation';
 
 export default (router: express.Router) => {
   // Local authentication
@@ -31,5 +31,5 @@ export default (router: express.Router) => {
   router.get('/cart/clear', isLoggedIn, User.clearCart)
   router.get('/cart/items/add', isLoggedIn, User.addCartItem)
   router.get('/cart/items/delete', isLoggedIn, User.deleteCartItem)
-  router.get('/cart/items/number', isLoggedIn, User.incrementOrDecrementCartItem)
+  router.get('/cart/items/quantity', isLoggedIn, User.incrementOrDecrementCartItem)
 };

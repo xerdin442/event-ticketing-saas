@@ -2,7 +2,7 @@ import mongoose, { Schema, Document, Types } from "mongoose";
 
 export interface IEvent extends Document {
   user: Types.ObjectId
-  organizer: { name: string, accountName: string, accountNumber: string, bank: string }
+  organizer: { name: string, accountName: string, accountNumber: string, bankName: string, recipient: string }
   title: string
   category: 'Tech' | 'Health' | 'Entertainment' | 'Fashion' | 'Sports' | 'Business' | 'Conference' |'Others'
   description: string
@@ -27,6 +27,7 @@ export interface IEvent extends Document {
     soldOut: boolean
   }];
   shares: number
+  revenue: number
   contact: { email: string, phone: string, whatsapp?: string, twitter?: string, instagram?: string, website?: string };
 }
 
@@ -36,7 +37,8 @@ const eventSchema = new Schema<IEvent>({
     name: { type: String, required: true },
     accountName: { type: String, required: true },
     accountNumber: { type: String, required: true },
-    bank: { type: String, required: true },  
+    bankName: { type: String, required: true },
+    recipient: { type: String } 
   },
   title: { type: String, required: true },
   description: { type: String, required: true },
@@ -93,6 +95,7 @@ const eventSchema = new Schema<IEvent>({
   }],
 
   shares: { type: Number, required: true, default: 0 },
+  revenue: { type: Number, required: true, default: 0 },
 
   contact: {
     email: { type: String, required: true },

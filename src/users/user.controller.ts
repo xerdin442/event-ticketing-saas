@@ -1,15 +1,16 @@
 import { Request, Response } from 'express';
-import { Types } from 'mongoose';
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 
 import * as User from './user.service';
 import { sendEmail } from '../shared/util/mail'
+import { verifyAccountDetails } from '../shared/util/paystack';
 
 export const register = async (req: Request, res: Response) => {
   try {
     // Extract required fields from request body
     let { age, fullname, email, password, profileImage, role } = req.body
+    const { accountName, accountNumber, bankName } = req.body
 
     /* Use a default image if user does not upload file
     Or set profileImage to path of stored image if user uploads file */
@@ -19,6 +20,8 @@ export const register = async (req: Request, res: Response) => {
       profileImage = req.file.path
     }
 
+    await verifyAccountDetails(req.body, res) // Verify the user's account details
+    
     // If all the checks are successful, create a new user
     const hashedPassword = await bcrypt.hash(password, 12)
     if (!hashedPassword) {
@@ -31,7 +34,8 @@ export const register = async (req: Request, res: Response) => {
       fullname,
       password: hashedPassword,
       profileImage,
-      role
+      role,
+      refundProfile: { accountName, accountNumber, bankName }
     })
     
     // Create and assign a JWT to expire in 3hrs
@@ -42,7 +46,7 @@ export const register = async (req: Request, res: Response) => {
     )
 
     // Send a success message and authorization token if registration is complete
-    return res.status(200).json({ message: 'Registration successful!', user: user, token }).end()
+    return res.status(200).json({ message: 'Registration successful!', user, token }).end()
   } catch (error) {
     // Log and send an error message if any server errors are encountered
     console.log(error)
@@ -151,7 +155,7 @@ export const checkResetToken = async (req: Request, res: Response) => {
     })
 
     // Return redirect URL containing user's reset token
-    const redirectURL = `https://project-manager-q6c3.onrender.com/api/auth/change-password?resetToken=${user.resetToken}`
+    const redirectURL = `https://====/api/auth/change-password?resetToken=${user.resetToken}`
     
     return res.status(200).json({ message: "Verification successful!", redirectURL })
   } catch (error) {

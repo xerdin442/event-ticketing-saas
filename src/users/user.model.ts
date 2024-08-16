@@ -13,6 +13,7 @@ export interface IUser extends Document {
   }
   resetToken?: number,
   resetTokenExpiration?: number
+  refundProfile: { accountName: string, accountNumber: string, bankName: string }
 }
 
 const userSchema = new Schema<IUser>({
@@ -35,7 +36,12 @@ const userSchema = new Schema<IUser>({
     total: { type: Number, required: true, default: 0.00 },
   },
   resetToken: { type: Number },
-  resetTokenExpiration: { type: Number }
+  resetTokenExpiration: { type: Number },
+  refundProfile: {
+    accountName: { type: String, required: true },
+    accountNumber: { type: String, required: true },
+    bankName: { type: String, required: true }
+  }
 })
 
 export const User = mongoose.model<IUser>('User', userSchema);

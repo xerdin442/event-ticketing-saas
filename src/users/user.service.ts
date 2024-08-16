@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import mongoose from 'mongoose';
 
-import { User } from './user.model';
+import { IUser, User } from './user.model';
 
 export const getUserById = async (id: string) => {
   const user = await User.findById(id)
@@ -16,6 +16,13 @@ export const getUserByEmail = (email: string) => {
   return User.findOne({ email });
 }
 
+export const populateUser = async (user: IUser) => {
+  const populatedUser = await User.findById(user._id)
+    .populate({ path: 'cart.items.event', select: 'title' }).exec()
+
+  return populatedUser;
+}
+
 export const createUser = async (values: Record<string, any>) => {
   const user = new User(values)
   if (!user) {
@@ -26,8 +33,9 @@ export const createUser = async (values: Record<string, any>) => {
   return user.toObject();
 }
 
-export const updateProfile = (id: string, values: Record<string, any>) => {
-  return User.findByIdAndUpdate(id, values, { new: true })
+export const updateProfile = async (id: string, values: Record<string, any>) => {
+  const user = await User.findByIdAndUpdate(id, values, { new: true })
+  return await populateUser(user)
 }
 
 export const deleteUser = (id: string) => {
@@ -41,7 +49,9 @@ export const checkResetToken = async (resetToken: string) => {
 
 export const getCart = async (id: string) => {
   const user = await getUserById(id)
-  return user.cart;
+  const populatedUser = await populateUser(user)
+
+  return populatedUser.cart;
 }
 
 export const clearCart = async (id: string) => {

@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 
 import * as Event from './event.service'
 import { MulterRequest } from "../shared/util/declarations";
+import { verifyAccountDetails } from '../shared/util/paystack';
 
 export const createEvent = async (req: MulterRequest, res: Response) => {
   try {
@@ -11,21 +12,19 @@ export const createEvent = async (req: MulterRequest, res: Response) => {
     const { title, description, category, date, ageRestriction } = req.body
     const { startTime, endTime, venueName, capacity, address } = req.body
     const { tickets, email, phone, whatsapp, twitter, instagram, website } = req.body
-    
-    const user = req.session.user.id // Get the id of the logged in user
-    
+        
     // Extract the path of all the uploaded files
     const poster = req.files.poster.path
     const photos = req.files.photos.map(file => file.path)
     const videos = req.files.videos.map(file => file.path)
 
-    // Generate coordinates from address
-    const coordinates = await Event.getCoordinates(address, res)
+    const user = req.session.user.id // Get the id of the logged in user
+    const coordinates = await Event.getCoordinates(address, res) // Generate the coordinates of the address
+    await verifyAccountDetails(req.body, res) // Verify the organizer's account details
 
-    // Create a new event
     const event = await Event.createEvent({
       user,
-      organizer: { name: organizerName, accountName, accountNumber, bank: bankName },
+      organizer: { name: organizerName, accountName, accountNumber, bankName },
       title,
       category,
       description,
@@ -42,11 +41,6 @@ export const createEvent = async (req: MulterRequest, res: Response) => {
       tickets,
       contact: { email, phone, whatsapp, twitter, instagram, website }
     })
-
-    // If the event is created successfully, create a new transfer recipient with the organizer's bank details
-    if (event) {      
-      Event.createTransferRecipient({ accountName, accountNumber, bankName }, res)
-    }
 
     return res.status(201).json({ message: 'Event created successfully', event }).end()
   } catch (error) {
@@ -83,9 +77,7 @@ export const addDiscount = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid ticket tier provided' }).end()
     }
 
-    const { price, expirationDate, numberOfTickets } = req.body
-
-    await Event.addDiscount(eventId, tier as string, { price, expirationDate, numberOfTickets })
+    await Event.addDiscount(eventId, tier as string, req.body)
 
     return res.status(200).json({ message: `Discount offer added for ${tier} tickets.` }).end()
   } catch (error) {
@@ -130,7 +122,7 @@ export const cancelEvent = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid project ID" })
     }
 
-    await Event.cancelEvent(eventId)
+    await Event.cancelEvent(eventId, res)
 
     return res.status(200).json({ message: 'Event cancellation successful' }).end()
   } catch (error) {

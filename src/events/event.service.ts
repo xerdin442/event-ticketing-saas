@@ -2,13 +2,12 @@ import axios from "axios";
 import { Response } from "express";
 
 import { Event } from "./event.model";
-import { paystackBankDetails } from "../shared/util/declarations";
 import { User } from "../users/user.model";
 import { Ticket } from "../tickets/ticket.model";
 import { sendEmail } from "../shared/util/mail";
+import * as Paystack from "../shared/util/paystack";
 
 // Load the environment variables as strings
-const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY as string
 const GEOCODING_API_KEY = process.env.GEOCODING_API_KEY as string
 
 export const createEvent = async (values: Record<string, any>) => {
@@ -16,6 +15,9 @@ export const createEvent = async (values: Record<string, any>) => {
   if (!event) {
     throw new Error('An error occured while creating new event')
   }
+
+  // Create a new transfer recipient with the organizer's bank details
+  event.organizer.recipient = await Paystack.createTransferRecipient(event.organizer)
   await event.save();
 
   return event.toObject();
@@ -75,6 +77,7 @@ export const updateEventStatus = async () => {
       event.status = 'Ongoing'
     } else if (currentTime > endTime) {
       event.status = 'Completed'
+      await Paystack.deleteTransferRecipient(event.organizer.recipient) // Remove the organizer as a transfer recipient
     }
 
     await event.save()
@@ -93,8 +96,9 @@ export const cancelEvent = async (id: string) => {
     <p>We regret to inform you that the event titled: <span><b>${event.title}</b></span>,
     scheduled to take place on ${event.date}, has been cancelled. We sincerely apologize for any inconvenience this may cause.</p>
 
-    <p>Kindly initiate a refund for the ticket(s) you purchased for this event using the
-    transaction reference that was sent to you in the ticket purchase confirmation email.</p>
+    <p>We regret the disappointment this may bring, and we want to assure you that a refund
+    for your ticket will be initiated shortly. The full refund amount will be deposited in the account
+    you provided during the user registration process.</p>
 
     <p>If you have any questions or require further assistance, please do not hesitate to contact us.
     We appreciate your understanding and patience during this process.</p>
@@ -103,7 +107,7 @@ export const cancelEvent = async (id: string) => {
     <p>Best regards,</p>
     <p><b>${event.organizer.name}</b></p>`
 
-    // Notify the attendee of the cancellation
+    // Notify the attendee of the event cancellation
     await sendEmail(receiver, subject, emailContent, null)
 
     // Update the status of the attendee's tickets for this event
@@ -112,76 +116,20 @@ export const cancelEvent = async (id: string) => {
       ticket.status = 'cancelled'
       await ticket.save()
     })
-  }
-}
 
-export const getBankNames = async () => {
-  const banksPerPage: number = 60
-  const bankURL = `https://api.paystack.co/bank?country=nigeria&perPage=${banksPerPage}`
+    // Create a transfer recipient for the attendee to receive the refund
+    const recipientCode = await Paystack.createTransferRecipient(receiver.refundProfile)
 
-  let bankNames: string[];
-  const response = await axios.get(bankURL)
-  if (response.status === 200) {
-    const banks = response.data.data
-    bankNames = banks.map((bank: paystackBankDetails) => bank.name)
-  } else {
-    throw new Error('An error occured while fetching bank information')
-  }
+    // Calculate the refund amount
+    let refund = 0;
+    tickets.forEach(ticket => refund += ticket.price)
 
-  return bankNames;
-}
+    // Initiate and verify transfer of ticket refund to attendee
+    const transferReference = await Paystack.initiateTransfer(recipientCode, refund, 'Ticket Refund')
+    await Paystack.verifyTransfer(transferReference)
 
-export const createTransferRecipient = async (accountDetails: Record<string, any>, res: Response) => {
-  // Extract account details from the given object
-  const { accountName, accountNumber, bankName } = accountDetails
-
-  // Get the bank code using the bank name
-  let recipientBank: paystackBankDetails;
-  const banksPerPage: number = 60
-  const bankURL = `https://api.paystack.co/bank?country=nigeria&perPage=${banksPerPage}`
-
-  const bankDetails = await axios.get(bankURL)
-  if (bankDetails.status === 200) {
-    const banks = bankDetails.data.data
-    recipientBank = banks.find((bank: paystackBankDetails) => bank.name === bankName)
-  } else {
-    throw new Error('An error occured while fetching bank information')
-  }
-
-  // Check if the account details match and return an error message if there is a mismatch
-  const verificationURL = `https://api.paystack.co/bank/resolve?account_number=${accountNumber}&bank_code=${recipientBank.code}`
-  const verification = await axios.get(verificationURL, {
-    headers: { 'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}` }
-  })
-
-  if (verification.status === 200) {
-    if (verification.data.data.account_name !== accountName) {
-      return res.status(400).json({ error: "Failed to verify account details. Kindly input the correct account information" }).end()
-    }
-  } else {
-    throw new Error('An error occured while verifiying account details')
-  }
-
-  // Create a new transfer recipient
-  const recipientURL = 'https://api.paystack.co/transferrecipient'
-  const transferRecipient = await axios.post(recipientURL,
-    {
-      "type": "nuban",
-      "bank_code": recipientBank.code,
-      "name": accountName,
-      "account_number": accountNumber,
-      "currency": "NGN"
-    },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`
-      }
-    }
-  )
-
-  if (transferRecipient.status !== 200) {
-    throw new Error('An error occured while creating transfer recipient')
+    // Remove the attendee as a transfer recipient after the refund is complete
+    await Paystack.deleteTransferRecipient(recipientCode)
   }
 }
 
