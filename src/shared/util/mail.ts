@@ -36,7 +36,7 @@ export const sendEmail = async (receiver: IUser, subject: string, content: strin
       },
     });
 
-    console.log('Email sent successfully:', response.data);
+    console.log(`${subject} email sent to ${receiver.email}:`, response.data);
   } catch (error) {
     console.error('Error sending email:', error);
   }

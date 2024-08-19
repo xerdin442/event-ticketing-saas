@@ -10,7 +10,7 @@ export interface IEvent extends Document {
   ageRestriction?: string;
   media: { poster: string, photos: string[], videos: string[] };
   time: { start: string, end: string };
-  status: 'Upcoming' | 'Ongoing' | 'Completed' | 'Cancelled';
+  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
   venue: {
     name: string
     capacity: number
@@ -64,9 +64,9 @@ const eventSchema = new Schema<IEvent>({
 
   status: {
     type: String,
-    enum: ['Upcoming', 'Ongoing', 'Completed', 'Cancelled'],
+    enum: ['upcoming', 'ongoing', 'completed', 'cancelled'],
     required: true,
-    default: 'Upcoming'
+    default: 'upcoming'
   },
 
   venue: {

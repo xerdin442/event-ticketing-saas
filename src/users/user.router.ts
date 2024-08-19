@@ -25,11 +25,4 @@ export default (router: express.Router) => {
   router.get('/profile', isLoggedIn, User.getProfile)
   router.put('/profile/update', upload('event-ticketing').single('profileImage'), isLoggedIn, validateUpdateProfile, handleValidationErrors, User.updateProfile)
   router.delete('/profile/delete', isLoggedIn, User.deleteAccount)
-
-  // Cart
-  router.get('/cart', isLoggedIn, User.getCart)
-  router.get('/cart/clear', isLoggedIn, User.clearCart)
-  router.get('/cart/items/add', isLoggedIn, User.addCartItem)
-  router.get('/cart/items/delete', isLoggedIn, User.deleteCartItem)
-  router.get('/cart/items/quantity', isLoggedIn, User.incrementOrDecrementCartItem)
 };

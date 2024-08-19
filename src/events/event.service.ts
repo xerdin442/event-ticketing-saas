@@ -74,10 +74,11 @@ export const updateEventStatus = async () => {
     const endTime = new Date(event.time.end).getTime()
 
     if (currentTime > startTime && currentTime < endTime) {
-      event.status = 'Ongoing'
+      event.status = 'ongoing'
     } else if (currentTime > endTime) {
-      event.status = 'Completed'
-      await Paystack.deleteTransferRecipient(event.organizer.recipient) // Remove the organizer as a transfer recipient
+      event.status = 'completed'
+      // Remove the organizer as a transfer recipient when event is complete
+      await Paystack.deleteTransferRecipient(event.organizer.recipient)
     }
 
     await event.save()
@@ -85,7 +86,7 @@ export const updateEventStatus = async () => {
 }
 
 export const cancelEvent = async (id: string) => {
-  const event = await Event.findByIdAndUpdate(id, { status: 'Cancelled' }, { new: true })
+  const event = await Event.findByIdAndUpdate(id, { status: 'cancelled' }, { new: true })
   await event.save()
 
   for (let attendee of event.attendees) {
@@ -98,7 +99,7 @@ export const cancelEvent = async (id: string) => {
 
     <p>We regret the disappointment this may bring, and we want to assure you that a refund
     for your ticket will be initiated shortly. The full refund amount will be deposited in the account
-    you provided during the user registration process.</p>
+    you provided during the sign up process.</p>
 
     <p>If you have any questions or require further assistance, please do not hesitate to contact us.
     We appreciate your understanding and patience during this process.</p>
@@ -120,16 +121,13 @@ export const cancelEvent = async (id: string) => {
     // Create a transfer recipient for the attendee to receive the refund
     const recipientCode = await Paystack.createTransferRecipient(receiver.refundProfile)
 
-    // Calculate the refund amount
+    // Convert the amount to kobo and calculate the refund
     let refund = 0;
-    tickets.forEach(ticket => refund += ticket.price)
+    tickets.forEach(ticket => refund += ticket.price * 100)
 
-    // Initiate and verify transfer of ticket refund to attendee
-    const transferReference = await Paystack.initiateTransfer(recipientCode, refund, 'Ticket Refund')
-    await Paystack.verifyTransfer(transferReference)
-
-    // Remove the attendee as a transfer recipient after the refund is complete
-    await Paystack.deleteTransferRecipient(recipientCode)
+    // Initiate transfer of ticket refund and listen for response on the webhook URL
+    const userId = attendee.toString()
+    await Paystack.initiateTransfer(recipientCode, refund, 'Ticket Refund', userId)
   }
 }
 

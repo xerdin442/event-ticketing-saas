@@ -87,8 +87,8 @@ export const createTransferRecipient = async (accountDetails: Record<string, any
 }
 
 export const deleteTransferRecipient = async (code: string) => {
-  const recipientURL = `https://api.paystack.co/transferrecipient/${code}`
-  const deleteRecipient = await axios.delete(recipientURL, {
+  const url = `https://api.paystack.co/transferrecipient/${code}`
+  const deleteRecipient = await axios.delete(url, {
     headers: { 'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}` }
   })
 
@@ -97,7 +97,7 @@ export const deleteTransferRecipient = async (code: string) => {
   }
 }
 
-export const initiateTransfer = async (code: string, amount: number, reason: string) => {
+export const initiateTransfer = async (code: string, amount: number, reason: string, id: string) => {
   const url = 'https://api.paystack.co/transfer'
   const transfer = await axios.post(url,
     {
@@ -105,7 +105,8 @@ export const initiateTransfer = async (code: string, amount: number, reason: str
       "reason": reason,
       "source": "balance",
       "recipient": code,
-      "currency": "NGN"
+      "currency": "NGN",
+      "metadata": { id }
     },
     {
       headers: {
@@ -120,15 +121,4 @@ export const initiateTransfer = async (code: string, amount: number, reason: str
   }
 
   return transfer.data.data.transfer_code;
-}
-
-export const verifyTransfer = async (reference: string) => {
-  const url = `https://api.paystack.co/transfer/verify/${reference}`
-  const verifyTransfer = await axios.get(url, {
-    headers: { 'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}` }
-  })
-
-  if (verifyTransfer.status !== 200) {
-    throw new Error('An error occured while creating transfer recipient')
-  }
 }
