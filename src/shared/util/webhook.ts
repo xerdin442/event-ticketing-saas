@@ -20,6 +20,8 @@ async function pasytackCallback(req: Request, res: Response) {
     const user = await User.findById(id)
 
     if (event === 'transfer.success') {
+      res.sendStatus(200) // Send a 200 OK response to Paystack server
+
       if (data.reason === 'Ticket Refund') {
         // Remove the attendee as a transfer recipient after the refund is complete
         await deleteTransferRecipient(data.recipient.recipient_code)
@@ -30,9 +32,18 @@ async function pasytackCallback(req: Request, res: Response) {
       if (data.reason === 'Revenue Split') {
         // ***Send email to organizer 
       }
+
+      return true;
     } else if (event === 'transfer.failed') {
-      // ***Repeat transfer
+      // ***Retry transfer
       console.log(`${data.reason}: Transfer to ${user.fullname} failed.`)
+
+      return res.sendStatus(200) // Send a 200 OK response to Paystack server
+    } else if (event === 'transfer.reversed') {
+      // ***Retry transfer
+      console.log(`${data.reason}: Transfer to ${user.fullname} has been reversed.`)
+
+      return res.sendStatus(200) // Send a 200 OK response to Paystack server
     }
 
     // ***Handle transactions for ticket purchases

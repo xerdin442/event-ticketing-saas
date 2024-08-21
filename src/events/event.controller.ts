@@ -122,7 +122,7 @@ export const cancelEvent = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid project ID" })
     }
 
-    await Event.cancelEvent(eventId, res)
+    await Event.cancelEvent(eventId)
 
     return res.status(200).json({ message: 'Event cancellation successful' }).end()
   } catch (error) {
