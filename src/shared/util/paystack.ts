@@ -97,7 +97,7 @@ export const deleteTransferRecipient = async (code: string) => {
   }
 }
 
-export const initiateTransfer = async (code: string, amount: number, reason: string, id: string) => {
+export const initiateTransfer = async (code: string, amount: number, reason: string, userId: string) => {
   const url = 'https://api.paystack.co/transfer'
   const transfer = await axios.post(url,
     {
@@ -106,7 +106,7 @@ export const initiateTransfer = async (code: string, amount: number, reason: str
       "source": "balance",
       "recipient": code,
       "currency": "NGN",
-      "metadata": { id }
+      "metadata": { userId }
     },
     {
       headers: {
@@ -121,4 +121,25 @@ export const initiateTransfer = async (code: string, amount: number, reason: str
   }
 
   return transfer.data.data.transfer_code;
+}
+
+export const initializeTransaction = async (email: string, amount: number, metadata: Record<string, any>) => {
+  const url = 'https://api.paystack.co/transaction/initialize'
+  const transaction = await axios.post(url,
+    {
+      "amount": amount,
+      "email": email,
+      "metadata": metadata
+    },
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${PAYSTACK_SECRET_KEY}`
+      }
+    }
+  )
+
+  if (transaction.status !== 200) {
+    throw new Error('An error occured while creating transfer recipient')
+  }
 }

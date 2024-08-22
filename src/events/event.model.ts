@@ -10,7 +10,7 @@ export interface IEvent extends Document {
   ageRestriction?: string;
   media: { poster: string, photos: string[], videos: string[] };
   time: { start: string, end: string };
-  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  status: 'upcoming' | 'ongoing' | 'completed' | 'sold out' | 'cancelled';
   venue: {
     name: string
     capacity: number
@@ -21,7 +21,12 @@ export interface IEvent extends Document {
   tickets: [{
     tier: string
     price: number
-    discount?: { price: number, expirationDate: number, numberOfTickets: number }
+    discount?: {
+      price: number,
+      expirationDate: number,
+      numberOfTickets: number,
+      status: 'active' | 'ended'
+    }
     benefits?: string
     totalNumber: number
     soldOut: boolean
@@ -40,6 +45,7 @@ const eventSchema = new Schema<IEvent>({
     bankName: { type: String, required: true },
     recipient: { type: String } 
   },
+  
   title: { type: String, required: true },
   description: { type: String, required: true },
   date: { type: Date, required: true },
@@ -64,7 +70,7 @@ const eventSchema = new Schema<IEvent>({
 
   status: {
     type: String,
-    enum: ['upcoming', 'ongoing', 'completed', 'cancelled'],
+    enum: ['upcoming', 'ongoing', 'completed', 'sold out', 'cancelled'],
     required: true,
     default: 'upcoming'
   },
@@ -87,7 +93,13 @@ const eventSchema = new Schema<IEvent>({
     discount: {
       price: { type: Number, required: true },
       expirationDate: { type: Number, required: true },
-      numberOfTickets: { type: Number, required: true }
+      numberOfTickets: { type: Number, required: true },
+      status: {
+        type: String,
+        enum: ['active', 'ended'],
+        required: true,
+        default: 'active'
+      },
     },
     benefits: { type: String },
     totalNumber: { type: Number, required: true },

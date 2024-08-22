@@ -79,19 +79,27 @@ export const updateEventStatus = async () => {
       event.status = 'completed'
       // Remove the organizer as a transfer recipient when event is complete
       await Paystack.deleteTransferRecipient(event.organizer.recipient)
+    } else if (event.tickets.every(ticket => ticket.soldOut === true)) {
+      // Mark event as sold out if every ticket tier is sold out
+      event.status = 'sold out'
     }
 
-    await event.save()
+    await event.save() // Save changes
   }
 }
 
-export const cancelEvent = async (id: string) => {
-  const event = await Event.findByIdAndUpdate(id, { status: 'cancelled' }, { new: true })
+export const cancelEvent = async (eventId: string) => {
+  // Update event status to 'cancelled' and reset revenue value
+  const event = await Event.findByIdAndUpdate(eventId, 
+    {
+      status: 'cancelled',
+      revenue: 0
+    }, { new: true })
   await event.save()
 
   for (let attendee of event.attendees) {
     const receiver = await User.findById(attendee)
-    const subject = 'Event Update'
+    const subject = 'Event Cancellation'
     const emailContent = `
     <p>Dear ${receiver.fullname.split(' ')[0]}, We hope this message finds you well.</p>
     <p>We regret to inform you that the event titled: <span><b>${event.title}</b></span>,
@@ -162,7 +170,7 @@ export const addDiscount = async (id: string, tier: string, dicountDetails: Reco
 
   event.tickets.forEach(ticket => {
     if (ticket.tier === tier) {
-      ticket.discount = { price, expirationDate: expirationTimestamp, numberOfTickets }
+      ticket.discount = { price, expirationDate: expirationTimestamp, numberOfTickets, status: 'active' }
     }
   })
   await event.save()

@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import { User } from '../../users/user.model';
 import { deleteTransferRecipient } from './paystack';
 import { Event } from '../../events/event.model';
+import { clients } from '../../index';
 
 // Load environment variable as string
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY as string
@@ -15,10 +16,11 @@ async function pasytackCallback(req: Request, res: Response) {
 
   if (hash === req.headers['x-paystack-signature']) {
     const { event, data } = req.body
-    const { id } = data.recipient.metadata
+    const { userId, eventId, tier, quantity, discount } = data.recipient.metadata
 
-    const user = await User.findById(id)
+    const user = await User.findById(userId)
 
+    // Listen for status of transfers for ticket refunds and revenue splits
     if (event === 'transfer.success') {
       res.sendStatus(200) // Send a 200 OK response to Paystack server
 
@@ -32,21 +34,51 @@ async function pasytackCallback(req: Request, res: Response) {
       if (data.reason === 'Revenue Split') {
         // ***Send email to organizer 
       }
-
+      
+      console.log(`${data.reason}: Transfer to ${user.fullname} was successful!`)
       return true;
     } else if (event === 'transfer.failed') {
-      // ***Retry transfer
+      res.sendStatus(200) // Send a 200 OK response to Paystack server
+
       console.log(`${data.reason}: Transfer to ${user.fullname} failed.`)
-
-      return res.sendStatus(200) // Send a 200 OK response to Paystack server
-    } else if (event === 'transfer.reversed') {
       // ***Retry transfer
-      console.log(`${data.reason}: Transfer to ${user.fullname} has been reversed.`)
 
-      return res.sendStatus(200) // Send a 200 OK response to Paystack server
+      return true;
+    } else if (event === 'transfer.reversed') {
+      res.sendStatus(200) // Send a 200 OK response to Paystack server
+
+      console.log(`${data.reason}: Transfer to ${user.fullname} has been reversed.`)
+      // ***Retry transfer
+
+      return true;
     }
 
-    // ***Handle transactions for ticket purchases
+    // Listen for status of transactions for ticket purchases
+    if (event === 'charge.success') {
+      res.sendStatus(200) // Send a 200 OK response to Paystack server
+
+      const event = await Event.findById(eventId)
+
+      // Emit a success message to the user's WebSocket connection
+      if (clients[userId]) {
+        clients[userId].send(JSON.stringify({ status: 'success', message: 'Payment successful!' }));
+      }
+      // Update your database as needed
+
+      return true;
+    } else if (event === 'charge.failed') {
+      res.sendStatus(200) // Send a 200 OK response to Paystack server
+
+      const event = await Event.findById(eventId)
+
+      // Emit a failure message to the user's WebSocket connection
+      if (clients[userId]) {
+        clients[userId].send(JSON.stringify({ status: 'failed', message: 'Payment failed.' }));
+      }
+      // ***Add the quantity back to the total number
+
+      return true;
+    }
   }
 
   return res.status(400).send('Invalid signature')
