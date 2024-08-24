@@ -23,7 +23,7 @@ export interface IEvent extends Document {
     price: number
     discount?: {
       price: number,
-      expirationDate: number,
+      expirationDate: string,
       numberOfTickets: number,
       status: 'active' | 'ended'
     }
@@ -45,7 +45,7 @@ const eventSchema = new Schema<IEvent>({
     bankName: { type: String, required: true },
     recipient: { type: String } 
   },
-  
+
   title: { type: String, required: true },
   description: { type: String, required: true },
   date: { type: Date, required: true },
@@ -92,7 +92,7 @@ const eventSchema = new Schema<IEvent>({
     price: { type: Number, required: true },
     discount: {
       price: { type: Number, required: true },
-      expirationDate: { type: Number, required: true },
+      expirationDate: { type: String, required: true },
       numberOfTickets: { type: Number, required: true },
       status: {
         type: String,

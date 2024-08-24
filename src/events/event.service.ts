@@ -164,13 +164,11 @@ export const getCoordinates = async (address: string, res: Response) => {
 
 export const addDiscount = async (id: string, tier: string, dicountDetails: Record<string, any>) => {
   const { price, expirationDate, numberOfTickets } = dicountDetails
-
   const event = await Event.findById(id)
-  const expirationTimestamp = new Date(expirationDate).getTime()
 
   event.tickets.forEach(ticket => {
     if (ticket.tier === tier) {
-      ticket.discount = { price, expirationDate: expirationTimestamp, numberOfTickets, status: 'active' }
+      ticket.discount = { price, expirationDate, numberOfTickets, status: 'active' }
     }
   })
   await event.save()
