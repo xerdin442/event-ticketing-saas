@@ -5,18 +5,18 @@ import { User } from '../../users/user.model';
 import { deleteTransferRecipient } from './paystack';
 import { Event } from '../../events/event.model';
 import { clients } from '../../index';
+import { completeTicketPurchase } from '../../tickets/ticket.service';
 
 // Load environment variable as string
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY as string
 
-// Webhook URL to listen for status of transactions and transfers on Paystack
 async function pasytackCallback(req: Request, res: Response) {
   const hash = crypto.createHmac('sha512', PAYSTACK_SECRET_KEY)
     .update(JSON.stringify(req.body)).digest('hex')
 
   if (hash === req.headers['x-paystack-signature']) {
     const { event, data } = req.body
-    const { userId, eventId, tier, quantity, discount } = data.recipient.metadata
+    const { userId, eventId, discount, tier, quantity } = data.recipient.metadata
 
     const user = await User.findById(userId)
 
@@ -57,25 +57,30 @@ async function pasytackCallback(req: Request, res: Response) {
     if (event === 'charge.success') {
       res.sendStatus(200) // Send a 200 OK response to Paystack server
 
-      const event = await Event.findById(eventId)
-
       // Emit a success message to the user's WebSocket connection
       if (clients[userId]) {
         clients[userId].send(JSON.stringify({ status: 'success', message: 'Payment successful!' }));
       }
-      // Update your database as needed
+      
+      await completeTicketPurchase(data.recipient.metadata)
 
       return true;
     } else if (event === 'charge.failed') {
       res.sendStatus(200) // Send a 200 OK response to Paystack server
 
-      const event = await Event.findById(eventId)
-
       // Emit a failure message to the user's WebSocket connection
       if (clients[userId]) {
         clients[userId].send(JSON.stringify({ status: 'failed', message: 'Payment failed.' }));
       }
-      // ***Add the quantity back to the total number
+
+      // Update number of tickets after failed ticket purchase
+      const event = await Event.findById(eventId)
+      const ticket = event.tickets.find(ticket => ticket.tier === tier)
+
+      if (discount) { ticket.discount.numberOfTickets += quantity }
+
+      ticket.totalNumber += quantity
+      await event.save()
 
       return true;
     }

@@ -26,7 +26,7 @@ export const createEvent = async (req: MulterRequest, res: Response) => {
       user,
       organizer: { name: organizerName, accountName, accountNumber, bankName },
       title,
-      category,
+      category: category.toLowercase(),
       description,
       date,
       ageRestriction,
@@ -142,6 +142,18 @@ export const nearbyEvents = async (req: Request, res: Response) => {
     const events = await Event.findNearbyEvents(+longitude, +latitude)
 
     return res.status(200).json({ message: 'Nearby events found', events }).end()
+  } catch (error) {
+    console.log(error)
+    return res.sendStatus(500)
+  }
+}
+
+export const filterEventsByCategory = async (req: Request, res: Response) => {
+  try {
+    const { category } = req.query
+    const events = await Event.filterEventsByCategory(category as string)
+
+    return res.status(200).json({ events }).end()
   } catch (error) {
     console.log(error)
     return res.sendStatus(500)

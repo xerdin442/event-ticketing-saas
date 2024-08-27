@@ -4,7 +4,7 @@ export interface IEvent extends Document {
   user: Types.ObjectId
   organizer: { name: string, accountName: string, accountNumber: string, bankName: string, recipient: string }
   title: string
-  category: 'Tech' | 'Health' | 'Entertainment' | 'Fashion' | 'Sports' | 'Business' | 'Conference' |'Others'
+  category: 'tech' | 'health' | 'entertainment' | 'fashion' | 'sports' | 'business' | 'conference' |'others'
   description: string
   date: Date
   ageRestriction?: string;
@@ -53,7 +53,7 @@ const eventSchema = new Schema<IEvent>({
 
   category: {
     type: String,
-    enum: ['Tech', 'Health', 'Entertainment', 'Fashion', 'Sports', 'Business', 'Conference', 'Others'],
+    enum: ['tech', 'health', 'entertainment', 'fashion', 'sports', 'business', 'conference', 'others'],
     required: true,
   },
   

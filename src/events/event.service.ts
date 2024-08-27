@@ -4,7 +4,7 @@ import { Response } from "express";
 import { Event } from "./event.model";
 import { User } from "../users/user.model";
 import { Ticket } from "../tickets/ticket.model";
-import { sendEmail } from "../shared/util/mail";
+import { sendEmail, eventUpdateMail, eventCancellationMail } from "../shared/util/mail";
 import * as Paystack from "../shared/util/paystack";
 
 // Load the environment variables as strings
@@ -39,24 +39,7 @@ export const updateEventDetails = async (id: string, details: Record<string, any
   for (let attendee of event.attendees) {
     const receiver = await User.findById(attendee)
     const subject = 'Event Update'
-    const emailContent = `
-    <p>Dear ${receiver.fullname.split(' ')[0]}, We trust you're doing well.</p>
-    <p>We would like to inform you of some updates regarding the event: <b>${event.title}</b>;</p>
-
-    <div>
-      <ul>
-        <li>Date: ${event.date}</li>
-        <li>Time: ${event.time.start} - ${event.time.end}</li>
-        <li>Venue: ${event.venue.name}, ${event.venue.address}</li>
-      </ul>
-    </div>
-    
-    <p>We sincerely apologize for any inconvenience these changes may cause.
-    We appreciate your understanding and look forward to your presence at the event.</p>
-    <br/>
-    
-    <p>Best regards,</p>
-    <p><b>${event.organizer.name}</b></p>`
+    const emailContent = eventUpdateMail(receiver, event)
 
     // Notify the attendee of the event updates
     await sendEmail(receiver, subject, emailContent, null)
@@ -91,30 +74,13 @@ export const updateEventStatus = async () => {
 export const cancelEvent = async (eventId: string) => {
   // Update event status to 'cancelled' and reset revenue value
   const event = await Event.findByIdAndUpdate(eventId, 
-    {
-      status: 'cancelled',
-      revenue: 0
-    }, { new: true })
+    { status: 'cancelled', revenue: 0 }, { new: true })
   await event.save()
 
   for (let attendee of event.attendees) {
     const receiver = await User.findById(attendee)
     const subject = 'Event Cancellation'
-    const emailContent = `
-    <p>Dear ${receiver.fullname.split(' ')[0]}, We hope this message finds you well.</p>
-    <p>We regret to inform you that the event titled: <span><b>${event.title}</b></span>,
-    scheduled to take place on ${event.date}, has been cancelled. We sincerely apologize for any inconvenience this may cause.</p>
-
-    <p>We regret the disappointment this may bring, and we want to assure you that a refund
-    for your ticket will be initiated shortly. The full refund amount will be deposited in the account
-    you provided during the sign up process.</p>
-
-    <p>If you have any questions or require further assistance, please do not hesitate to contact us.
-    We appreciate your understanding and patience during this process.</p>
-    <br/>
-
-    <p>Best regards,</p>
-    <p><b>${event.organizer.name}</b></p>`
+    const emailContent = eventCancellationMail(receiver, event)
 
     // Notify the attendee of the event cancellation
     await sendEmail(receiver, subject, emailContent, null)
@@ -186,5 +152,10 @@ export const findNearbyEvents = async (longitude: number, latitude: number) => {
     }
   })
 
+  return events;
+}
+
+export const filterEventsByCategory = async (category: string) => {
+  const events = await Event.find({ category })
   return events;
 }

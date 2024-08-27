@@ -17,4 +17,5 @@ export default (router: express.Router) => {
   router.put('/events/:eventId/update', isLoggedIn, validateRole('Organizer'), Event.updateEventDetails)
   router.post('/events/:eventId/cancel', isLoggedIn, validateRole('Organizer'), Event.cancelEvent)
   router.get('/events/nearby', isLoggedIn, Event.nearbyEvents)
+  router.get('/events/filter', isLoggedIn, Event.filterEventsByCategory)
 };

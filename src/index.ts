@@ -14,6 +14,7 @@ import { Server, WebSocket } from 'ws';
 import router from './shared/index.router';
 import sessionDts from '../types/session';
 import { updateEventStatus } from './events/event.service';
+import { checkDiscountExpiration } from './tickets/ticket.service';
 
 // Initialize express app and create a server
 const app = express()
@@ -52,9 +53,7 @@ export const clients: Record<string, WebSocket> = {};
 wss.on('connection', (ws, req) => {
   const userId = req.url?.split('/').pop(); // Extract user id from the URL
 
-  if (userId) {
-    clients[userId] = ws; // Store client connection with user id
-  }
+  if (userId) { clients[userId] = ws } // Store client connection with user id
 
   ws.on('close', () => {
     delete clients[userId as string]; // Remove client connection when closed
@@ -67,7 +66,8 @@ mongoose.connect(process.env.MONGO_URI)
     server.listen(process.env.PORT)
     console.log('Server is running on port 3000')
 
-    // Check database regularly and update status of events
-    setInterval(async () => await updateEventStatus(), 15 * 60 * 1000);
-  })
-  .catch(err => console.log(err))
+    setInterval(async () => {
+      await updateEventStatus() // Update event status
+      await checkDiscountExpiration() // Check and update discount expiration dates
+    }, 15 * 60 * 1000);
+  }).catch(err => console.log(err))

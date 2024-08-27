@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 
 import * as User from './user.service';
-import { sendEmail } from '../shared/util/mail'
+import { passwordResetMail, sendEmail } from '../shared/util/mail'
 import { verifyAccountDetails } from '../shared/util/paystack';
 
 export const register = async (req: Request, res: Response) => {
@@ -109,16 +109,13 @@ export const resetPassword = async (req: Request, res: Response) => {
     user.resetTokenExpiration = Date.now() + (3 * 60 * 60 * 1000)
     await user.save()
   
-    const subject: string = 'Password Reset'
-    const emailContent: string = `
-    <p>Hello ${user.fullname.split(' ')[0]},</p>
-    <h1>${user.resetToken}</h1>
-    <p>You requested for a password reset. This code expires in <b>3 hours.</b></p>
-    <p>If this wasn't you, please ignore this email.</p>
-    `
-    await sendEmail(user, subject, emailContent, null) // Send reset token to the user's email address
+    // Send reset token to the user's email address
+    const subject = 'Password Reset'
+    const emailContent = passwordResetMail(user)
+    await sendEmail(user, subject, emailContent, null)
     
-    req.session.email = user.email // Save user's email address in a session incase the user requests for the token to be re-sent
+    // Save user's email address in a session incase the user requests for the token to be re-sent
+    req.session.email = user.email
   
     console.log(token)
     // Notify user that password reset token has been sent
