@@ -7,7 +7,7 @@ export interface IEvent extends Document {
   category: 'tech' | 'health' | 'entertainment' | 'fashion' | 'sports' | 'business' | 'conference' |'others'
   description: string
   date: Date
-  ageRestriction?: string;
+  ageRestriction?: number;
   media: { poster: string, photos: string[], videos: string[] };
   time: { start: string, end: string };
   status: 'upcoming' | 'ongoing' | 'completed' | 'sold out' | 'cancelled';
@@ -49,7 +49,7 @@ const eventSchema = new Schema<IEvent>({
   title: { type: String, required: true },
   description: { type: String, required: true },
   date: { type: Date, required: true },
-  ageRestriction: { type: String },
+  ageRestriction: { type: Number },
 
   category: {
     type: String,

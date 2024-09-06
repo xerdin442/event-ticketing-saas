@@ -4,6 +4,7 @@ import { Types } from 'mongoose';
 import { initializeTransaction } from '../shared/util/paystack';
 import { getUserById } from '../users/user.service';
 import * as Ticket from '../tickets/ticket.service'
+import { getEventById } from '../events/event.service';
 
 export const purchaseTicket = async (req: Request, res: Response) => {
   try {
@@ -18,7 +19,7 @@ export const purchaseTicket = async (req: Request, res: Response) => {
     const userId = req.session.user.id
     const email = (await getUserById(userId)).email
 
-    const { amount, discount, insufficient } = await Ticket.purchaseTicket(eventId, tier, +quantity)
+    const { amount, discount, insufficient, restricted } = await Ticket.purchaseTicket(eventId, tier, +quantity, userId)
     const metadata = {
       userId,
       eventId,
@@ -32,6 +33,12 @@ export const purchaseTicket = async (req: Request, res: Response) => {
     // Return an error message if the purchase quantity is more than the available tickets
     if (insufficient) {
       return res.status(400).json({ error: `Insufficient ${tier} tickets. Check out other ticket tiers` }).end()
+    }
+
+    // Return an error message if the user is restricted by age from purchasing the event tickets
+    const ageRestriction = (await getEventById(eventId)).ageRestriction
+    if (restricted) {
+      return res.status(400).json({ error: `You must be at least ${ageRestriction} years old to attend this event` }).end()
     }
 
     // Initialize transaction and listen for the status on the webhook URL

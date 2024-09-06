@@ -21,36 +21,41 @@ export const generateBarcode = async (accessKey: string) => {
   return barcodeImage.toString('base64');
 }
 
-export const purchaseTicket = async (eventId: string, tier: string, quantity: number) => {
+export const purchaseTicket = async (eventId: string, tier: string, quantity: number, userId: string) => {
   const event = await Event.findById(eventId)
+  const user = await User.findById(userId)
   let amount: number;
 
-  for (const ticket of event.tickets) {
-    // Find the ticket tier and check if the number of tickets left is greater than or equal to the purchase quantity
-    if (ticket.tier === tier && ticket.totalNumber >= quantity) {
-      // Check if a discount is available
-      if (ticket.discount) {
-        const currentTime = new Date().getTime()
-        const expirationDate = new Date(ticket.discount.expirationDate).getTime()
-        // Check if the discount has expired and if the discount tickets left is greater than or equal to the purchase quantity
-        if (currentTime < expirationDate && ticket.discount.numberOfTickets >= quantity) {
-          amount = ticket.discount.price * quantity // Calculate the ticket purchase amount using the discount price
-          ticket.discount.numberOfTickets -= quantity // Subtract purchase quantity from number of discount tickets left
-          ticket.totalNumber -= quantity // Also subtract purchase quantity from total number of tickets left
+  if (user.age > event.ageRestriction) {
+    for (const ticket of event.tickets) {
+      // Find the ticket tier and check if the number of tickets left for that tier is greater than or equal to the purchase quantity
+      if (ticket.tier === tier && ticket.totalNumber >= quantity) {
+        // Check if a discount is available
+        if (ticket.discount) {
+          const currentTime = new Date().getTime()
+          const expirationDate = new Date(ticket.discount.expirationDate).getTime()
+          // Check if the discount has expired and if the discount tickets left is greater than or equal to the purchase quantity
+          if (currentTime < expirationDate && ticket.discount.numberOfTickets >= quantity) {
+            amount = ticket.discount.price * quantity // Calculate the ticket purchase amount using the discount price
+            ticket.discount.numberOfTickets -= quantity // Subtract purchase quantity from number of discount tickets left
+            ticket.totalNumber -= quantity // Also subtract purchase quantity from total number of tickets left
+            await event.save()
+  
+            return { amount, discount: true }
+          }
+        } else {
+          amount = ticket.price * quantity // Calculate the ticket purchase amount using the original price
+          ticket.totalNumber -= quantity // Subtract purchase quantity from total number of tickets left
           await event.save()
-
-          return { amount, discount: true }
+  
+          return { amount }
         }
       } else {
-        amount = ticket.price * quantity // Calculate the ticket purchase amount using the original price
-        ticket.totalNumber -= quantity // Subtract purchase quantity from total number of tickets left
-        await event.save()
-
-        return { amount }
+        return { insufficient: true }
       }
-    } else {
-      return { insufficient: true }
     }
+  } else {
+    return { restricted: true }
   }
 }
 
@@ -69,10 +74,10 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
   if (ticket.totalNumber === 0) { ticket.soldOut = true }
 
   const recipient = event.organizer.recipient
-  const split = amount * 0.9 // Subtract the platform fee (10%) from transaction amount and calculate organizer's split
-  await initiateTransfer(recipient, split, 'Revenue Split', organizer._id.toString()) // Initiate transfer of organizer's split
+  const split = amount * 0.9 // Subtract the platform fee (10%) from transaction amount and calculate the organizer's split
+  await initiateTransfer(recipient, split, 'Revenue Split', organizer._id.toString()) // Initiate transfer of the organizer's split
   
-  event.revenue = split // Add organizer's split to the event's total revenue
+  event.revenue += split // Add the organizer's split to the event's total revenue
   event.attendees.push(new mongoose.Types.ObjectId(userId as string)) // Add the user to the attendee list
 
   await event.save() // Save all changes

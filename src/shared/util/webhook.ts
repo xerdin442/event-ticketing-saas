@@ -78,7 +78,6 @@ async function pasytackCallback(req: Request, res: Response) {
       const ticket = event.tickets.find(ticket => ticket.tier === tier)
 
       if (discount) { ticket.discount.numberOfTickets += quantity }
-
       ticket.totalNumber += quantity
       await event.save()
 

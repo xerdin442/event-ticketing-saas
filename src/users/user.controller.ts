@@ -29,7 +29,7 @@ export const register = async (req: Request, res: Response) => {
     }
 
     const user = await User.createUser({
-      age,
+      age: +age,
       email,
       fullname,
       password: hashedPassword,
@@ -38,7 +38,7 @@ export const register = async (req: Request, res: Response) => {
       refundProfile: { accountName, accountNumber, bankName }
     })
     
-    // Create and assign a JWT to expire in 3hrs
+    // Create and assign a JWT that expires in 3 hours
     const token = jwt.sign(
       { id: user._id.toString(), role: user.role },
       process.env.JWT_SECRET,
@@ -64,7 +64,7 @@ export const login = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "An error occured while fetching user by email address" })
     }
 
-    // Create and assign a JWT to expire in 3hrs
+    // Create and assign a JWT that expires in 3 hours
     const token = jwt.sign(
       { id: user._id.toString(), role: user.role },
       process.env.JWT_SECRET,
