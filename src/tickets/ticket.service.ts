@@ -1,12 +1,17 @@
 import { randomUUID } from "crypto";
 import mongoose from "mongoose";
 import bwipjs from 'bwip-js'
+import fs from 'fs'
+import path from 'path'
 
-import { Event } from "../events/event.model";
+import { Event, IEvent } from "../events/event.model";
 import { Ticket } from "./ticket.model";
-import { User } from "../users/user.model";
+import { User, IUser } from "../users/user.model";
 import { initiateTransfer } from "../shared/util/paystack";
 import { emailAttachment } from "../shared/util/declarations";
+import { manualUpload } from "../shared/config/storage";
+import PDFDocument from 'pdfkit'
+import { ticketPurchaseMail, sendEmail } from "../shared/util/mail";
 
 export const generateBarcode = async (accessKey: string) => {
   const barcodeImage = await bwipjs.toBuffer({
@@ -21,11 +26,44 @@ export const generateBarcode = async (accessKey: string) => {
   return barcodeImage.toString('base64');
 }
 
+export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: string, tier: string, barcode: string) => {
+  const ticket = 'ticket-' + accessKey + '.pdf'
+  const fileLocation = path.join('src/tickets/pdf', ticket)
+
+  const doc = new PDFDocument({ size: 'A4', margin: 40 })
+  doc.pipe(fs.createWriteStream(fileLocation))
+
+  doc.font('Times-Bold', 24).text('This is your ticket', { align: 'center' })
+  doc.text('Please present it at the event', { align: 'center' })
+
+  // Add the event details
+  doc.moveDown()
+  doc.text(`EVENT: ${event.title}`)
+  doc.text(`DATE: ${event.date}`)
+  doc.text(`TIME: ${event.time.start} - ${event.time.end}`)
+  doc.text(`VENUE: ${event.venue.name}, ${event.venue.address}`)
+
+  // Add the attendee's details and ticket information
+  doc.moveDown()
+  doc.text(`ISSUED TO: ${attendee.fullname.toUpperCase()}`, )
+  doc.text(`ACCESS KEY: ${accessKey}`)
+  doc.text(`RSVP: ${tier.toUpperCase()}`)
+
+  // Add the barcode image
+  doc.moveDown()
+  doc.image(barcode, { align: 'center', width: 150 })
+
+  doc.end() // End write stream
+
+  return manualUpload(fileLocation) // Upload the PDF to cloudinary and retrieve the upload url
+}
+
 export const purchaseTicket = async (eventId: string, tier: string, quantity: number, userId: string) => {
   const event = await Event.findById(eventId)
   const user = await User.findById(userId)
   let amount: number;
 
+  // Check if the user is restricted by age from attending the event
   if (user.age > event.ageRestriction) {
     for (const ticket of event.tickets) {
       // Find the ticket tier and check if the number of tickets left for that tier is greater than or equal to the purchase quantity
@@ -65,7 +103,6 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
 
   const event = await Event.findById(eventId)
   const attendee = await User.findById(userId)
-  const organizer = await User.findById(event.user.toString())
 
   const ticket = event.tickets.find(ticket => ticket.tier === tier)
   // Check the number of discount tickets left and update status of the discount offer
@@ -73,9 +110,8 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
   // Check the total number of tickets left and update status of the ticket tier
   if (ticket.totalNumber === 0) { ticket.soldOut = true }
 
-  const recipient = event.organizer.recipient
   const split = amount * 0.9 // Subtract the platform fee (10%) from transaction amount and calculate the organizer's split
-  await initiateTransfer(recipient, split, 'Revenue Split', organizer._id.toString()) // Initiate transfer of the organizer's split
+  await initiateTransfer(event.organizer.recipient, split, 'Revenue Split', event.user.toString()) // Initiate transfer of the organizer's split
   
   event.revenue += split // Add the organizer's split to the event's total revenue
   event.attendees.push(new mongoose.Types.ObjectId(userId as string)) // Add the user to the attendee list
@@ -88,9 +124,8 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
   for (let i = 1; i <= quantity; i++) {
     const accessKey = `EVENT-${randomUUID().replace(/-/g, '')}`
     const barcode = await generateBarcode(accessKey)
+    const pdf = generateTicketPDF(attendee, event, accessKey, tier, barcode)
 
-    // ***Generate and upload ticket pdf to cloudinary and add to pdf array
-    
     const ticket = await Ticket.create({
       attendee: userId,
       event: eventId,
@@ -98,12 +133,20 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
       price,
       accessKey,
       barcode,
-      pdfDocument: ''
+      pdf
     })
     await ticket.save()
+
+    ticketPDFs.push({
+      content: pdf,
+      name: `TICKET-${ticket._id.toString()}`
+    })
   }
   
-  // ***Send ticket purchase email to attendee and organizer
+  // Send ticket PDFs to attendee via email
+  const subject = 'Ticket Purchase'
+  const attendeeMailContent = ticketPurchaseMail(attendee, event, tier, quantity, amount)
+  await sendEmail(attendee, subject, attendeeMailContent, ticketPDFs)
 }
 
 export const checkDiscountExpiration = async () => {

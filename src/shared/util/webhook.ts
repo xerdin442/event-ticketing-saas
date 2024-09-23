@@ -56,22 +56,17 @@ async function pasytackCallback(req: Request, res: Response) {
     // Listen for status of transactions for ticket purchases
     if (event === 'charge.success') {
       res.sendStatus(200) // Send a 200 OK response to Paystack server
+      
+      await completeTicketPurchase(data.recipient.metadata)
 
       // Emit a success message to the user's WebSocket connection
       if (clients[userId]) {
         clients[userId].send(JSON.stringify({ status: 'success', message: 'Payment successful!' }));
       }
-      
-      await completeTicketPurchase(data.recipient.metadata)
 
       return true;
     } else if (event === 'charge.failed') {
       res.sendStatus(200) // Send a 200 OK response to Paystack server
-
-      // Emit a failure message to the user's WebSocket connection
-      if (clients[userId]) {
-        clients[userId].send(JSON.stringify({ status: 'failed', message: 'Payment failed.' }));
-      }
 
       // Update number of tickets after failed ticket purchase
       const event = await Event.findById(eventId)
@@ -80,6 +75,11 @@ async function pasytackCallback(req: Request, res: Response) {
       if (discount) { ticket.discount.numberOfTickets += quantity }
       ticket.totalNumber += quantity
       await event.save()
+
+      // Emit a failure message to the user's WebSocket connection
+      if (clients[userId]) {
+        clients[userId].send(JSON.stringify({ status: 'failed', message: 'Payment failed.' }));
+      }
 
       return true;
     }

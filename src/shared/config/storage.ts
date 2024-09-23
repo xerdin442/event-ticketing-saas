@@ -56,3 +56,17 @@ export const deleteUpload = (publicId: string) => {
     }
   })
 }
+
+export const manualUpload = (filePath: string) => {
+  let url: string;
+
+  cloudinary.uploader.upload(filePath, (error, result) => {
+    if (error) {
+      console.error('Failed to upload file to Cloudinary:', error);
+    }
+
+    url = result.url;
+  })
+
+  return url;
+}

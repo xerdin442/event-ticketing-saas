@@ -94,3 +94,26 @@ export const passwordResetMail = (receiver: IUser) => {
   
   return content;
 }
+
+export const ticketPurchaseMail = (receiver: IUser, event: IEvent, tier: string, quantity: number, amount: number) => {
+  const content = `
+    <p>Dear ${receiver.fullname.split(' ')[0]}, Your ticket purchase was successful!</p>
+
+    <div>
+      <h2>Order Summary</h2>
+      <ul>
+        <li>Event: ${event.title}</li>
+        <li>RSVP: ${tier}</li>
+        <li>Quantity: ${quantity}</li>
+        <li>Total: ${amount}</li>
+      </ul>
+    </div>
+    
+    <p>The tickets are attached below. They will be required for entry at the event. See you there!</p>
+    <br/>
+    
+    <p>Best regards,</p>
+    <p><b>${event.organizer.name}</b></p>`
+  
+  return content;
+}
