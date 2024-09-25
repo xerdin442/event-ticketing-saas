@@ -37,7 +37,6 @@
     "typescript": "^5.5.3"
   },
   "dependencies": {
-    "@zxing/library": "^0.21.3",
     "axios": "^1.7.2",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
