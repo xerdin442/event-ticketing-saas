@@ -117,3 +117,35 @@ export const ticketPurchaseMail = (receiver: IUser, event: IEvent, tier: string,
   
   return content;
 }
+
+export const ticketRefundMail = (receiver: IUser, event: IEvent) => {
+  const content = `
+    <p>Dear ${receiver.fullname.split(' ')[0]}, We hope this message finds you well.</p>
+    <p>Due to the cancellation of the event: <span><b>${event.title}</b></span>,
+    scheduled to take place on ${event.date}, a ticket refund has been initiated successfully 
+    and the purchase amount will be transferred to ${receiver.refundProfile.bankName} 
+    (${receiver.refundProfile.accountNumber}, ${receiver.refundProfile.accountName})</p>
+
+    <p>If the above details are incorrect, please contact the support team within 24 hours.
+    We appreciate your understanding and patience during this process.</p>
+
+    <p>Best regards,</p>
+    <p><b>${event.organizer.name}</b></p>`
+  
+  return content;
+}
+
+export const eventSoldOutMail = (receiver: IUser, event: IEvent) => {
+  const content = `
+    <p>Dear ${receiver.fullname.split(' ')[0]}, We have great news!</p>
+    <p>Your event titled: <span><b>${event.title}</b></span> is SOLD OUT!</p>
+
+    <p>We celebrate you on this milestone achievement and wish you all the best
+    during the course of the event. Visit the website and check the dashboard to view
+    your earnings, ticket sales and other metrics.</p>
+
+    <p>Best regards,</p>
+    <p><b>Event Ticketing App</b></p>`
+  
+  return content;
+}

@@ -5,5 +5,5 @@ import { isLoggedIn, validateRole } from '../shared/middlewares/authorization';
 
 export default (router: express.Router) => {
   router.post('events/:eventId/tickets/purchase', isLoggedIn, Ticket.purchaseTicket)
-  router.post('events/:eventId/tickets/validate', isLoggedIn, Ticket.validateTicket)
+  router.post('events/:eventId/tickets/validate', isLoggedIn, validateRole('Organizer'), Ticket.validateTicket)
 }

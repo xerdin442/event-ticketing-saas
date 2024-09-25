@@ -4,7 +4,7 @@ import { Response } from "express";
 import { Event } from "./event.model";
 import { User } from "../users/user.model";
 import { Ticket } from "../tickets/ticket.model";
-import { sendEmail, eventUpdateMail, eventCancellationMail } from "../shared/util/mail";
+import { sendEmail, eventUpdateMail, eventCancellationMail, eventSoldOutMail } from "../shared/util/mail";
 import * as Paystack from "../shared/util/paystack";
 
 // Load the environment variables as strings
@@ -63,8 +63,14 @@ export const updateEventStatus = async () => {
       // Remove the organizer as a transfer recipient when event is complete
       await Paystack.deleteTransferRecipient(event.organizer.recipient)
     } else if (event.tickets.every(ticket => ticket.soldOut === true)) {
-      // Mark event as sold out if every ticket tier is sold out
       event.status = 'sold out'
+
+      // Notify the event organizer that the event is sold out
+      const receiver = await User.findById(event.user.toString())
+      const subject = 'SOLD OUT!'
+      const emailContent = eventSoldOutMail(receiver, event)
+
+      await sendEmail(receiver, subject, emailContent, null)
     }
 
     await event.save() // Save changes

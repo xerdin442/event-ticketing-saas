@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import mongoose from "mongoose";
 import bwipjs from 'bwip-js'
+import PDFDocument from 'pdfkit'
 import fs from 'fs'
 import path from 'path'
 
@@ -10,7 +11,6 @@ import { User, IUser } from "../users/user.model";
 import { initiateTransfer } from "../shared/util/paystack";
 import { emailAttachment } from "../shared/util/declarations";
 import { manualUpload } from "../shared/config/storage";
-import PDFDocument from 'pdfkit'
 import { ticketPurchaseMail, sendEmail } from "../shared/util/mail";
 
 export const generateBarcode = async (accessKey: string) => {
@@ -143,10 +143,10 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
     })
   }
   
-  // Send ticket PDFs to attendee via email
+  // Send an email with the ticket PDFs to the attendee
   const subject = 'Ticket Purchase'
-  const attendeeMailContent = ticketPurchaseMail(attendee, event, tier, quantity, amount)
-  await sendEmail(attendee, subject, attendeeMailContent, ticketPDFs)
+  const emailContent = ticketPurchaseMail(attendee, event, tier, quantity, amount)
+  await sendEmail(attendee, subject, emailContent, ticketPDFs)
 }
 
 export const checkDiscountExpiration = async () => {

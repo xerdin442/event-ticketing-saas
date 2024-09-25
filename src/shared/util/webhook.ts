@@ -6,6 +6,7 @@ import { deleteTransferRecipient } from './paystack';
 import { Event } from '../../events/event.model';
 import { clients } from '../../index';
 import { completeTicketPurchase } from '../../tickets/ticket.service';
+import { sendEmail, ticketRefundMail } from './mail';
 
 // Load environment variable as string
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY as string
@@ -28,13 +29,12 @@ async function pasytackCallback(req: Request, res: Response) {
         // Remove the attendee as a transfer recipient after the refund is complete
         await deleteTransferRecipient(data.recipient.recipient_code)
         
-        // ***Send email to attendee
+        // Notify the attendee of the ticket refund
+        const event = await Event.findById(eventId)
+        const emailContent = ticketRefundMail(user, event)
+        await sendEmail(user, data.reason, emailContent, null)
       }
 
-      if (data.reason === 'Revenue Split') {
-        // ***Send email to organizer 
-      }
-      
       console.log(`${data.reason}: Transfer to ${user.fullname} was successful!`)
       return true;
     } else if (event === 'transfer.failed') {
@@ -78,7 +78,7 @@ async function pasytackCallback(req: Request, res: Response) {
 
       // Emit a failure message to the user's WebSocket connection
       if (clients[userId]) {
-        clients[userId].send(JSON.stringify({ status: 'failed', message: 'Payment failed.' }));
+        clients[userId].send(JSON.stringify({ status: 'failed', message: 'Payment failed!' }));
       }
 
       return true;

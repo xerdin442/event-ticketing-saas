@@ -35,7 +35,7 @@ export const purchaseTicket = async (req: Request, res: Response) => {
       return res.status(400).json({ error: `Insufficient ${tier} tickets. Check out other ticket tiers` }).end()
     }
 
-    // Return an error message if the user is restricted by age from purchasing the event tickets
+    // Return an error message if the user is restricted by age from purchasing the tickets
     const ageRestriction = (await getEventById(eventId)).ageRestriction
     if (restricted) {
       return res.status(400).json({ error: `You must be at least ${ageRestriction} years old to attend this event` }).end()
