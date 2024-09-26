@@ -25,4 +25,8 @@ export default (router: express.Router) => {
   router.get('/profile', isLoggedIn, User.getProfile)
   router.put('/profile/update', upload('event-ticketing').single('profileImage'), isLoggedIn, validateUpdateProfile, handleValidationErrors, User.updateProfile)
   router.delete('/profile/delete', isLoggedIn, User.deleteAccount)
+
+  // Events and tickets
+  router.get('/user/tickets', isLoggedIn, User.getAllTickets)
+  router.get('user/events', isLoggedIn, User.getAllEvents)
 };

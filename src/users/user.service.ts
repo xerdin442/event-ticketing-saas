@@ -1,4 +1,6 @@
 import { IUser, User } from './user.model';
+import { Event } from '../events/event.model';
+import { Ticket } from '../tickets/ticket.model';
 
 export const getUserById = async (id: string) => {
   const user = await User.findById(id)
@@ -42,4 +44,14 @@ export const deleteUser = (id: string) => {
 export const checkResetToken = async (resetToken: string) => {
   const token = Number(resetToken)
   return User.findOne({ resetToken: token }).select('+password')
+}
+
+export const getAllEvents = async (userId: string) => {
+  const events = await Event.find({ user: userId })
+  return events;
+}
+
+export const getAllTickets = async (userId: string) => {
+  const tickets = await Ticket.find({ attendee: userId })
+  return tickets;
 }

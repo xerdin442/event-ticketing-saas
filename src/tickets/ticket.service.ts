@@ -55,7 +55,15 @@ export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: str
 
   doc.end() // End write stream
 
-  return manualUpload(fileLocation) // Upload the PDF to cloudinary and retrieve the upload url
+  const uploadURL = manualUpload(fileLocation) // Upload the PDF to cloudinary and retrieve the upload url
+  
+  // Delete the ticket PDF after upload
+  fs.unlink(fileLocation, (err) => {
+    if (err) throw err;
+    console.log(`${ticket} deleted successfully`)
+  })
+
+  return uploadURL;
 }
 
 export const purchaseTicket = async (eventId: string, tier: string, quantity: number, userId: string) => {
@@ -111,7 +119,7 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
   if (ticket.totalNumber === 0) { ticket.soldOut = true }
 
   const split = amount * 0.9 // Subtract the platform fee (10%) from transaction amount and calculate the organizer's split
-  await initiateTransfer(event.organizer.recipient, split, 'Revenue Split', event.user.toString()) // Initiate transfer of the organizer's split
+  await initiateTransfer(event.organizer.recipient, split * 100, 'Revenue Split', event.user.toString()) // Initiate transfer of the organizer's split
   
   event.revenue += split // Add the organizer's split to the event's total revenue
   event.attendees.push(new mongoose.Types.ObjectId(userId as string)) // Add the user to the attendee list

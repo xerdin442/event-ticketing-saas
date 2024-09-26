@@ -65,11 +65,11 @@ export const updateEventStatus = async () => {
     } else if (event.tickets.every(ticket => ticket.soldOut === true)) {
       event.status = 'sold out'
 
-      // Notify the event organizer that the event is sold out
-      const receiver = await User.findById(event.user.toString())
+      const receiver = await User.findById(event.user)
       const subject = 'SOLD OUT!'
       const emailContent = eventSoldOutMail(receiver, event)
 
+      // Notify the event organizer that the event is sold out
       await sendEmail(receiver, subject, emailContent, null)
     }
 
@@ -78,7 +78,7 @@ export const updateEventStatus = async () => {
 }
 
 export const cancelEvent = async (eventId: string) => {
-  // Update event status to 'cancelled' and reset revenue value
+  // Update event status and reset revenue value
   const event = await Event.findByIdAndUpdate(eventId, 
     { status: 'cancelled', revenue: 0 }, { new: true })
   await event.save()

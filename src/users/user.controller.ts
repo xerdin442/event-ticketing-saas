@@ -22,7 +22,7 @@ export const register = async (req: Request, res: Response) => {
 
     await verifyAccountDetails(req.body, res) // Verify the user's account details
     
-    // If all the checks are successful, create a new user
+    // If all the checks are successful, hash password and create a new user
     const hashedPassword = await bcrypt.hash(password, 12)
     if (!hashedPassword) {
       return res.status(400).json({ error: "An error occured while hashing password" })
@@ -151,10 +151,7 @@ export const checkResetToken = async (req: Request, res: Response) => {
       if (err) { console.log(err) }
     })
 
-    // Return redirect URL containing user's reset token
-    const redirectURL = `https://====/api/auth/change-password?resetToken=${user.resetToken}`
-    
-    return res.status(200).json({ message: "Verification successful!", redirectURL })
+    return res.status(200).json({ message: "Verification successful!", resetToken: user.resetToken })
   } catch (error) {
     // Log and send an error message if any server errors are encountered
     console.log(error)
@@ -272,6 +269,28 @@ export const deleteAccount = async (req: Request, res: Response) => {
     await User.deleteUser(req.session.user.id)
 
     return res.redirect(redirectURL as string)
+  } catch (error) {
+    console.log(error)
+    return res.sendStatus(500)
+  }
+}
+
+export const getAllEvents = async (req: Request, res: Response) => {
+  try {
+    const events = await User.getAllEvents(req.session.user.id)
+
+    return res.status(200).json({ events })
+  } catch (error) {
+    console.log(error)
+    return res.sendStatus(500)
+  }
+}
+
+export const getAllTickets = async (req: Request, res: Response) => {
+  try {
+    const tickets = await User.getAllTickets(req.session.user.id)
+
+    return res.status(200).json({ tickets })
   } catch (error) {
     console.log(error)
     return res.sendStatus(500)

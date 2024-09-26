@@ -41,8 +41,7 @@ export const purchaseTicket = async (req: Request, res: Response) => {
       return res.status(400).json({ error: `You must be at least ${ageRestriction} years old to attend this event` }).end()
     }
 
-    // Initialize transaction and listen for the status on the webhook URL
-    await initializeTransaction(email, amount, metadata)
+    await initializeTransaction(email, amount, metadata) // Initialize ticket purchase
 
     return res.sendStatus(200).end()
   } catch (error) {

@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express'
 import jwt, { JwtPayload } from 'jsonwebtoken';
 
+import { getEventById } from '../../events/event.service';
+
 export const isLoggedIn = (req: Request, res: Response, next: NextFunction) => {
   const header = req.headers['authorization'] // Extract the header value
   if (!header) {
@@ -36,9 +38,19 @@ export const isLoggedIn = (req: Request, res: Response, next: NextFunction) => {
 export const validateRole = (role: string) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (req.session.user.role !== role) {
-      return res.status(400).json({ error: "Not authorized to perfrom this operation" })
+      return res.status(400).json({ error: "Not authorized to perform this action" })
     }
 
     next()
   }
+}
+
+export const isEventOwner = async (req: Request, res: Response, next: NextFunction) => {
+  const event = await getEventById(req.params.eventId)
+
+  if (!(event.user.equals(req.session.user.id))) {
+    return res.status(400).json({ error: 'Only the event owner is authorized to perform this action' })
+  }
+
+  next()
 }
