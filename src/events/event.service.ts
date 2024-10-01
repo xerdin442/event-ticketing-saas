@@ -111,7 +111,7 @@ export const cancelEvent = async (eventId: string) => {
   }
 }
 
-export const getCoordinates = async (address: string, res: Response) => {
+export const getCoordinates = async (address: string) => {
   // Encode the given address as a URL component
   const encodedAddress = address.replace(/,/g, '').replace(/\s/g, '+')
   const url = `https://geocode.maps.co/search?q=${encodedAddress}&api_key=${GEOCODING_API_KEY}`
@@ -123,7 +123,7 @@ export const getCoordinates = async (address: string, res: Response) => {
   const response = await axios.get(url)
   if (response.status === 200) {
     if (response.data[0] === undefined) {
-      return res.status(400).json({ error: 'Failed to find address on the map and generate coordinates' }).end()
+      throw new Error('Failed to find address on the map and generate coordinates')
     }
 
     latitude = response.data[0].lat

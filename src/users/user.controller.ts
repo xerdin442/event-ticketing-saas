@@ -9,7 +9,7 @@ import { verifyAccountDetails } from '../shared/util/paystack';
 export const register = async (req: Request, res: Response) => {
   try {
     // Extract required fields from request body
-    let { age, fullname, email, password, profileImage, role } = req.body
+    let { age, fullname, email, password, profileImage } = req.body
     const { accountName, accountNumber, bankName } = req.body
 
     /* Use a default image if user does not upload file
@@ -20,7 +20,7 @@ export const register = async (req: Request, res: Response) => {
       profileImage = req.file.path
     }
 
-    await verifyAccountDetails(req.body, res) // Verify the user's account details
+    await verifyAccountDetails(req.body) // Verify the user's account details
     
     // If all the checks are successful, hash password and create a new user
     const hashedPassword = await bcrypt.hash(password, 12)
@@ -34,19 +34,18 @@ export const register = async (req: Request, res: Response) => {
       fullname,
       password: hashedPassword,
       profileImage,
-      role,
       refundProfile: { accountName, accountNumber, bankName }
     })
     
     // Create and assign a JWT that expires in 3 hours
     const token = jwt.sign(
-      { id: user._id.toString(), role: user.role },
+      { id: user._id.toString() },
       process.env.JWT_SECRET,
       { expiresIn: '3h' }
     )
 
     // Send a success message and authorization token if registration is complete
-    return res.status(200).json({ message: 'Registration successful!', user, token }).end()
+    return res.status(201).json({ message: 'Registration successful!', user, token }).end()
   } catch (error) {
     // Log and send an error message if any server errors are encountered
     console.log(error)
@@ -66,7 +65,7 @@ export const login = async (req: Request, res: Response) => {
 
     // Create and assign a JWT that expires in 3 hours
     const token = jwt.sign(
-      { id: user._id.toString(), role: user.role },
+      { id: user._id.toString() },
       process.env.JWT_SECRET,
       { expiresIn: '3h' }
     )
@@ -84,7 +83,6 @@ export const logout = (req: Request, res: Response) => {
   // Delete and reset session data before logout
   req.session.destroy((err) => {
     if (err) {
-      // Log and send an error message if any server errors are encountered
       console.log(err)
       return res.sendStatus(500)
     }

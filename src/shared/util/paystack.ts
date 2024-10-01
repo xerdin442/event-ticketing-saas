@@ -31,6 +31,9 @@ export const getBankCode = async (bankName: string) => {
   if (bankDetails.status === 200) {
     const banks = bankDetails.data.data
     recipientBank = banks.find((bank: paystackBankDetails) => bank.name === bankName)
+    if (!recipientBank) {
+      throw new Error('Bank not found. Kindly input the correct bank name')
+    }
   } else {
     throw new Error('An error occured while fetching bank information')
   }
@@ -38,7 +41,7 @@ export const getBankCode = async (bankName: string) => {
   return recipientBank.code;
 }
 
-export const verifyAccountDetails = async (accountDetails: Record<string, any>, res: Response) => {
+export const verifyAccountDetails = async (accountDetails: Record<string, any>) => {
   const { accountName, accountNumber, bankName } = accountDetails
   const code = await getBankCode(bankName)
 
@@ -49,8 +52,9 @@ export const verifyAccountDetails = async (accountDetails: Record<string, any>, 
   })
 
   if (verification.status === 200) {
-    if (verification.data.data.account_name !== accountName) {
-      return res.status(400).json({ error: "Failed to verify account details. Kindly input the correct account information" }).end()
+    const acctName: string = accountName
+    if (verification.data.data.account_name !== acctName.toUpperCase()) {
+      throw new Error('Failed to verify account details. Kindly input your account information in the correct order')
     }
   } else {
     throw new Error('An error occured while verifiying account details')

@@ -4,6 +4,7 @@ import { Types } from 'mongoose';
 import * as Event from './event.service'
 import { MulterRequest } from "../shared/util/declarations";
 import { verifyAccountDetails } from '../shared/util/paystack';
+import { getUserById } from '../users/user.service';
 
 export const createEvent = async (req: MulterRequest, res: Response) => {
   try {
@@ -19,8 +20,8 @@ export const createEvent = async (req: MulterRequest, res: Response) => {
     const videos = req.files.videos.map(file => file.path)
 
     const user = req.session.user.id // Get the id of the logged in user
-    const coordinates = await Event.getCoordinates(address, res) // Generate the coordinates of the address
-    await verifyAccountDetails(req.body, res) // Verify the organizer's account details
+    const coordinates = await Event.getCoordinates(address) // Generate the coordinates of the address
+    await verifyAccountDetails(req.body) // Verify the organizer's account details
 
     const event = await Event.createEvent({
       user,
@@ -94,7 +95,7 @@ export const updateEventDetails = async (req: Request, res: Response) => {
     }
     const { date, startTime, endTime, venueName, capacity, address } = req.body
     
-    const coordinates = await Event.getCoordinates(address, res) // Generate coordinates from the updated address
+    const coordinates = await Event.getCoordinates(address) // Generate coordinates from the updated address
     const event = await Event.updateEventDetails(eventId, {
       date,
       time: { start: startTime, end: endTime },

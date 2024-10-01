@@ -6,7 +6,6 @@ export interface IUser extends Document {
   email: string
   profileImage: string
   password: string
-  role: string
   resetToken?: number,
   resetTokenExpiration?: number
   refundProfile: { accountName: string, accountNumber: string, bankName: string }
@@ -18,11 +17,6 @@ const userSchema = new Schema<IUser>({
   email: { type: String, required: true },
   profileImage: { type: String, required: true },
   password: { type: String, required: true, select: false },
-  role: {
-    type: String,
-    enum: ['Attendee', 'Organizer'],
-    required: true,
-  },
   resetToken: { type: Number },
   resetTokenExpiration: { type: Number },
   refundProfile: {
