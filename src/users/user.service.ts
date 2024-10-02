@@ -15,13 +15,6 @@ export const getUserByEmail = (email: string) => {
   return User.findOne({ email });
 }
 
-export const populateUser = async (user: IUser) => {
-  const populatedUser = await User.findById(user._id)
-    .populate({ path: 'cart.items.event', select: 'title' }).exec()
-
-  return populatedUser;
-}
-
 export const createUser = async (values: Record<string, any>) => {
   const user = new User(values)
   if (!user) {
@@ -33,8 +26,7 @@ export const createUser = async (values: Record<string, any>) => {
 }
 
 export const updateProfile = async (id: string, values: Record<string, any>) => {
-  const user = await User.findByIdAndUpdate(id, values, { new: true })
-  return await populateUser(user)
+  return await User.findByIdAndUpdate(id, values, { new: true })
 }
 
 export const deleteUser = (id: string) => {

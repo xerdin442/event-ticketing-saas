@@ -149,7 +149,7 @@ export const checkResetToken = async (req: Request, res: Response) => {
       if (err) { console.log(err) }
     })
 
-    return res.status(200).json({ message: "Verification successful!", resetToken: user.resetToken })
+    return res.status(200).json({ message: "Verification successful!", resetToken })
   } catch (error) {
     // Log and send an error message if any server errors are encountered
     console.log(error)
@@ -172,12 +172,7 @@ export const resendToken = async (req: Request, res: Response) => {
     await user.save()
 
     const subject: string = 'Password Reset'
-    const emailContent: string = `
-    <p>Hello ${user.fullname.split(' ')[0]},</p>
-    <h1>${user.resetToken}</h1>
-    <p>You requested for a password reset. This code expires in <b>3 hours.</b></p>
-    <p>If this wasn't you, please ignore this email.</p>
-    `
+    const emailContent: string = passwordResetMail(user)
     await sendEmail(user, subject, emailContent, null) // Send email with new reset token to user
 
     console.log(token)
@@ -254,7 +249,7 @@ export const updateProfile = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "An error occured while updating user profile" })
     }
   
-    return res.status(200).json({ user }).end()
+    return res.status(200).json({ message: "Profile updated successfully", user }).end()
   } catch (error) {
     console.log(error)
     return res.sendStatus(500) 
@@ -263,10 +258,16 @@ export const updateProfile = async (req: Request, res: Response) => {
 
 export const deleteAccount = async (req: Request, res: Response) => {
   try {
-    const { redirectURL } = req.query
     await User.deleteUser(req.session.user.id)
-
-    return res.redirect(redirectURL as string)
+    
+    req.session.destroy((err) => {
+      if (err) {
+        console.log(err)
+        return res.sendStatus(500)
+      }
+  
+      return res.status(200).json({ message: "Account deleted successfully" }).end()
+    })
   } catch (error) {
     console.log(error)
     return res.sendStatus(500)

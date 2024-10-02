@@ -1,5 +1,4 @@
 import axios from "axios";
-import { Response } from "express";
 
 import { Event } from "./event.model";
 import { User } from "../users/user.model";

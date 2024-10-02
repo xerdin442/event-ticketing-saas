@@ -1,4 +1,3 @@
-import { Response } from "express";
 import axios from "axios";
 
 import { paystackBankDetails } from "./declarations";
@@ -54,7 +53,7 @@ export const verifyAccountDetails = async (accountDetails: Record<string, any>) 
   if (verification.status === 200) {
     const acctName: string = accountName
     if (verification.data.data.account_name !== acctName.toUpperCase()) {
-      throw new Error('Failed to verify account details. Kindly input your account information in the correct order')
+      throw new Error('Failed to verify account details. Kindly input your account name in the correct order')
     }
   } else {
     throw new Error('An error occured while verifiying account details')
