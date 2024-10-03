@@ -40,7 +40,7 @@ export const getBankCode = async (bankName: string) => {
   return recipientBank.code;
 }
 
-export const verifyAccountDetails = async (accountDetails: Record<string, any>) => {
+export const verifyAccountDetails = async (accountDetails: Record<string, string>) => {
   const { accountName, accountNumber, bankName } = accountDetails
   const code = await getBankCode(bankName)
 
@@ -51,8 +51,7 @@ export const verifyAccountDetails = async (accountDetails: Record<string, any>) 
   })
 
   if (verification.status === 200) {
-    const acctName: string = accountName
-    if (verification.data.data.account_name !== acctName.toUpperCase()) {
+    if (verification.data.data.account_name !== accountName.toUpperCase()) {
       throw new Error('Failed to verify account details. Kindly input your account name in the correct order')
     }
   } else {
@@ -60,7 +59,7 @@ export const verifyAccountDetails = async (accountDetails: Record<string, any>) 
   }
 }
 
-export const createTransferRecipient = async (accountDetails: Record<string, any>) => {
+export const createTransferRecipient = async (accountDetails: Record<string, string>) => {
   const { accountName, accountNumber, bankName } = accountDetails
   const code = await getBankCode(bankName)
 

@@ -13,7 +13,7 @@ const multipleUpload = upload('event-ticketing').fields([
 export default (router: express.Router) => {
   router.post('/events/create', multipleUpload, isLoggedIn, Event.createEvent)
   router.get('/events/:eventId', isLoggedIn, Event.getEventDetails)
-  router.post('/events/:eventId/discount', isLoggedIn, isEventOwner, Event.addDiscount)
+  router.post('/events/:eventId/add-ticket', isLoggedIn, isEventOwner, Event.addTicketTier)
   router.put('/events/:eventId/update', isLoggedIn, isEventOwner, Event.updateEventDetails)
   router.post('/events/:eventId/cancel', isLoggedIn, isEventOwner, Event.cancelEvent)
   router.get('/events/nearby', isLoggedIn, Event.nearbyEvents)

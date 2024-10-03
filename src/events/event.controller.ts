@@ -4,15 +4,14 @@ import { Types } from 'mongoose';
 import * as Event from './event.service'
 import { MulterRequest } from "../shared/util/declarations";
 import { verifyAccountDetails } from '../shared/util/paystack';
-import { getUserById } from '../users/user.service';
 
 export const createEvent = async (req: MulterRequest, res: Response) => {
   try {
     // Extract all necessary fields from the request body
     const { organizerName, accountName, accountNumber, bankName } = req.body
-    const { title, description, category, date, ageRestriction } = req.body
+    const { title, description, date, ageRestriction } = req.body
     const { startTime, endTime, venueName, capacity, address } = req.body
-    const { tickets, email, phone, whatsapp, twitter, instagram, website } = req.body
+    const { email, phone, whatsapp, twitter, instagram, website } = req.body
         
     // Extract the path of all the uploaded files
     const poster = req.files.poster.path
@@ -21,13 +20,14 @@ export const createEvent = async (req: MulterRequest, res: Response) => {
 
     const user = req.session.user.id // Get the id of the logged in user
     const coordinates = await Event.getCoordinates(address) // Generate the coordinates of the address
+    const category: string = req.body.category
     await verifyAccountDetails(req.body) // Verify the organizer's account details
 
     const event = await Event.createEvent({
       user,
       organizer: { name: organizerName, accountName, accountNumber, bankName },
       title,
-      category: category.toLowercase(),
+      category: category.toLowerCase(),
       description,
       date,
       ageRestriction,
@@ -39,7 +39,6 @@ export const createEvent = async (req: MulterRequest, res: Response) => {
         address,
         location: { type: 'Point', coordinates: coordinates as number[] }
       },
-      tickets,
       contact: { email, phone, whatsapp, twitter, instagram, website }
     })
 
@@ -66,21 +65,19 @@ export const getEventDetails = async (req: Request, res: Response) => {
   }
 }
 
-export const addDiscount = async (req: Request, res: Response) => {
+export const addTicketTier = async (req: Request, res: Response) => {
   try {
     const { eventId } = req.params
     if (!Types.ObjectId.isValid(eventId)) {
-      return res.status(400).json({ error: "Invalid event id parameter" }).end()
+      return res.status(400).json({ error: 'Invalid event id parameter' }).end()
     }
 
-    const { tier } = req.query
-    if (!tier) {
-      return res.status(400).json({ error: 'Invalid ticket tier provided' }).end()
+    const { event, soldOut } = await Event.addTicketTier(eventId, req.body)
+    if (soldOut) {
+      return res.status(400).json({ error: 'Ticket tiers cannot be added to a sold out event' })
+    } else if (event) {
+      return res.status(200).json({ message: 'Ticket tier added successfully', event }).end()
     }
-
-    await Event.addDiscount(eventId, tier as string, req.body)
-
-    return res.status(200).json({ message: `Discount offer added for ${tier} tickets.` }).end()
   } catch (error) {
     console.log(error)
     return res.sendStatus(500)

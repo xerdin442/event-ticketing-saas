@@ -133,16 +133,38 @@ export const getCoordinates = async (address: string) => {
   return [+latitude, +longitude];
 }
 
-export const addDiscount = async (id: string, tier: string, dicountDetails: Record<string, any>) => {
-  const { price, expirationDate, numberOfTickets } = dicountDetails
+export const addTicketTier = async (id: string, ticketDetails: Record<string, any>) => {
   const event = await Event.findById(id)
+  const { tier, price, benefits, totalNumber, discountPrice, discountExpirationDate, numberOfDiscountTickets } = ticketDetails
 
-  event.tickets.forEach(ticket => {
-    if (ticket.tier === tier) {
-      ticket.discount = { price, expirationDate, numberOfTickets, status: 'active' }
+  // Create a new ticket tier if the event is not sold out
+  if (event.status !== 'sold out') {
+    event.tickets.push({
+      tier,
+      price,
+      benefits,
+      totalNumber,
+      soldOut: false
+    })
+    await event.save()
+
+    // Add discount offer to the newly created ticket tier if discount details are defined
+    if (discountPrice && discountExpirationDate && numberOfDiscountTickets) {
+      const ticket = event.tickets.find(ticket => ticket.tier === tier)
+
+      ticket.discount = {
+        price,
+        expirationDate: discountExpirationDate,
+        numberOfTickets: numberOfDiscountTickets,
+        status: 'active'
+      }
+      await event.save()
     }
-  })
-  await event.save()
+
+    return { event }
+  } else { 
+    return { soldOut: true }
+  }
 }
 
 export const findNearbyEvents = async (longitude: number, latitude: number) => {

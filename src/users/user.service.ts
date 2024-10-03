@@ -1,4 +1,4 @@
-import { IUser, User } from './user.model';
+import { User } from './user.model';
 import { Event } from '../events/event.model';
 import { Ticket } from '../tickets/ticket.model';
 
