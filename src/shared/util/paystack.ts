@@ -81,7 +81,7 @@ export const createTransferRecipient = async (accountDetails: Record<string, str
     }
   )
 
-  if (recipient.status !== 200) {
+  if (recipient.status !== 201) {
     throw new Error('An error occured while creating transfer recipient')
   }
 

@@ -1,13 +1,3 @@
-import { Request } from "express"
-
-export type MulterRequest = Request & {
-  files: {
-    poster?: Express.Multer.File
-    photos?: Express.Multer.File[]
-    videos?: Express.Multer.File[]
-  }
-}
-
 export type paystackBankDetails = {
   id: number
   name: string

@@ -4,11 +4,11 @@ export interface IEvent extends Document {
   user: Types.ObjectId
   organizer: { name: string, accountName: string, accountNumber: string, bankName: string, recipient: string }
   title: string
-  category: 'tech' | 'health' | 'entertainment' | 'fashion' | 'sports' | 'business' | 'conference' |'others'
+  category: 'Tech' | 'Health' | 'Entertainment' | 'Fashion' | 'Sports' | 'Business' | 'Conference' |'Others'
   description: string
   date: Date
   ageRestriction?: number;
-  media: { poster: string, photos: string[], videos: string[] };
+  poster: string,
   time: { start: string, end: string };
   status: 'upcoming' | 'ongoing' | 'completed' | 'sold out' | 'cancelled';
   venue: {
@@ -53,19 +53,15 @@ const eventSchema = new Schema<IEvent>({
 
   category: {
     type: String,
-    enum: ['tech', 'health', 'entertainment', 'fashion', 'sports', 'business', 'conference', 'others'],
+    enum: ['Tech', 'Health', 'Entertainment', 'Fashion', 'Sports', 'Business', 'Conference', 'Others'],
     required: true,
   },
   
-  media: {
-    poster: { type: String, required: true },
-    photos: [{ type: String, required: true }],
-    videos: [{ type: String, required: true }]
-  },
+  poster: { type: String, required: true },
   
   time: {
-    start: { type: String, required: true },
-    end: { type: String, required: true }
+    start: { type: Date, required: true },
+    end: { type: Date, required: true }
   },
 
   status: {

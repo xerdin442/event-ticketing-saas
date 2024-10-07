@@ -59,7 +59,7 @@ export const updateEventStatus = async () => {
       event.status = 'ongoing'
     } else if (currentTime > endTime) {
       event.status = 'completed'
-      // Remove the organizer as a transfer recipient when event is complete
+      // Remove the organizer as a transfer recipient when the event is complete
       await Paystack.deleteTransferRecipient(event.organizer.recipient)
     } else if (event.tickets.every(ticket => ticket.soldOut === true)) {
       event.status = 'sold out'
@@ -101,7 +101,7 @@ export const cancelEvent = async (eventId: string) => {
     const recipientCode = await Paystack.createTransferRecipient(receiver.refundProfile)
 
     // Convert the amount to kobo and calculate the refund
-    let refund = 0;
+    let refund: number = 0;
     tickets.forEach(ticket => refund += ticket.price * 100)
 
     // Initiate transfer of ticket refund and listen for response on the webhook URL
@@ -115,22 +115,18 @@ export const getCoordinates = async (address: string) => {
   const encodedAddress = address.replace(/,/g, '').replace(/\s/g, '+')
   const url = `https://geocode.maps.co/search?q=${encodedAddress}&api_key=${GEOCODING_API_KEY}`
 
-  let latitude: string;
-  let longitude: string;
-
   // Get the latitude and longitude from the address information returned by the Geocoding API
   const response = await axios.get(url)
   if (response.status === 200) {
     if (response.data[0] === undefined) {
-      throw new Error('Failed to find address on the map and generate coordinates')
+      return { notFound: true }
     }
 
-    latitude = response.data[0].lat
-    longitude = response.data[0].lon
-  }
+    const latitude = response.data[0].lat
+    const longitude = response.data[0].lon
 
-  // Convert both values to numbers and return in an array
-  return [+latitude, +longitude];
+    return { latitude, longitude }
+  }
 }
 
 export const addTicketTier = async (id: string, ticketDetails: Record<string, any>) => {
@@ -153,7 +149,7 @@ export const addTicketTier = async (id: string, ticketDetails: Record<string, an
       const ticket = event.tickets.find(ticket => ticket.tier === tier)
 
       ticket.discount = {
-        price,
+        price: discountPrice,
         expirationDate: discountExpirationDate,
         numberOfTickets: numberOfDiscountTickets,
         status: 'active'

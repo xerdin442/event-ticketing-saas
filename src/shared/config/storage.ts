@@ -1,22 +1,24 @@
-import { v2 as cloudinary } from "cloudinary";
+import { v2 } from "cloudinary";
 import multer from "multer";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import { Request } from "express";
 
 // Cloudinary configuration
-cloudinary.config({
+v2.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.CLOUD_API_KEY,
   api_secret: process.env.CLOUD_API_SECRET,
   secure: true
 });
 
+export const cloudinary = v2.uploader
+
 export const upload = (folderName: string) => {
   const imageMimetypes: string[] = ['image/png', 'image/heic', 'image/jpeg', 'image/webp', 'image/heif']
 
   // Configure cloudinary storage otpions
   const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
+    cloudinary: v2,
     params: (req, file) => {
       const public_id = new Date().toISOString().replace(/:/g, '-') + '-' + file.originalname;
       
@@ -46,27 +48,3 @@ export const upload = (folderName: string) => {
     fileFilter
   });
 };
-
-export const deleteUpload = (publicId: string) => {
-  cloudinary.uploader.destroy(publicId, (error, result) => {
-    if (error) {
-      console.error('Failed to delete image from Cloudinary:', error);
-    } else {
-      console.log('Image deleted from Cloudinary');
-    }
-  })
-}
-
-export const manualUpload = (filePath: string) => {
-  let url: string;
-
-  cloudinary.uploader.upload(filePath, (error, result) => {
-    if (error) {
-      console.error('Failed to upload file to Cloudinary:', error);
-    }
-
-    url = result.url;
-  })
-
-  return url;
-}

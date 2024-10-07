@@ -2,42 +2,41 @@ import { Request, Response } from 'express';
 import { Types } from 'mongoose';
 
 import * as Event from './event.service'
-import { MulterRequest } from "../shared/util/declarations";
 import { verifyAccountDetails } from '../shared/util/paystack';
 
-export const createEvent = async (req: MulterRequest, res: Response) => {
+export const createEvent = async (req: Request, res: Response) => {
   try {
     // Extract all necessary fields from the request body
     const { organizerName, accountName, accountNumber, bankName } = req.body
-    const { title, description, date, ageRestriction } = req.body
+    const { title, description, category, date, ageRestriction } = req.body
     const { startTime, endTime, venueName, capacity, address } = req.body
     const { email, phone, whatsapp, twitter, instagram, website } = req.body
-        
-    // Extract the path of all the uploaded files
-    const poster = req.files.poster.path
-    const photos = req.files.photos.map(file => file.path)
-    const videos = req.files.videos.map(file => file.path)
 
     const user = req.session.user.id // Get the id of the logged in user
-    const coordinates = await Event.getCoordinates(address) // Generate the coordinates of the address
-    const category: string = req.body.category
     await verifyAccountDetails(req.body) // Verify the organizer's account details
+
+    // Generate the coordinates of the address
+    const location = venueName + '+' + address
+    const { notFound, latitude, longitude } = await Event.getCoordinates(location)
+    if (notFound) {
+      return res.status(400).json({ error: 'Failed to find address on the map and generate coordinates' })
+    }
 
     const event = await Event.createEvent({
       user,
       organizer: { name: organizerName, accountName, accountNumber, bankName },
       title,
-      category: category.toLowerCase(),
+      category,
       description,
       date,
       ageRestriction,
       time: { start: startTime, end: endTime },
-      media: { poster, photos, videos },
+      poster: req.file.path,
       venue: {
         name: venueName,
         capacity,
         address,
-        location: { type: 'Point', coordinates: coordinates as number[] }
+        location: { type: 'Point', coordinates: [+latitude, +longitude] }
       },
       contact: { email, phone, whatsapp, twitter, instagram, website }
     })
@@ -90,17 +89,27 @@ export const updateEventDetails = async (req: Request, res: Response) => {
     if (!Types.ObjectId.isValid(eventId)) {
       return res.status(400).json({ error: "Invalid event id parameter" })
     }
-    const { date, startTime, endTime, venueName, capacity, address } = req.body
+    const { title, description, category, date, startTime, endTime, venueName, capacity, address } = req.body
     
-    const coordinates = await Event.getCoordinates(address) // Generate coordinates from the updated address
+    // Generate the coordinates from the updated address
+    const location = venueName + '+' + address
+    const { notFound, latitude, longitude } = await Event.getCoordinates(location)
+    if (notFound) {
+      return res.status(400).json({ error: 'Failed to find address on the map and generate coordinates' })
+    }
+    
     const event = await Event.updateEventDetails(eventId, {
+      title,
+      description,
+      category,
       date,
+      poster: req.file.path,
       time: { start: startTime, end: endTime },
       venue: {
         name: venueName,
         capacity,
         address,
-        location: { type: 'Point', coordinates: coordinates as number[] }
+        location: { type: 'Point', coordinates: [+latitude, +longitude] }
       }
     })
 

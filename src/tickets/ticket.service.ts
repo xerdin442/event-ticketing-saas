@@ -10,7 +10,7 @@ import { Ticket } from "./ticket.model";
 import { User, IUser } from "../users/user.model";
 import { initiateTransfer } from "../shared/util/paystack";
 import { emailAttachment } from "../shared/util/declarations";
-import { manualUpload } from "../shared/config/storage";
+import { cloudinary } from "../shared/config/storage";
 import { ticketPurchaseMail, sendEmail } from "../shared/util/mail";
 
 export const generateBarcode = async (accessKey: string) => {
@@ -55,7 +55,15 @@ export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: str
 
   doc.end() // End write stream
 
-  const uploadURL = manualUpload(fileLocation) // Upload the PDF to cloudinary and retrieve the upload url
+  // Upload the PDF to cloudinary and retrieve the upload url
+  let uploadURL: string;
+  cloudinary.upload(fileLocation, (error, result) => {
+    if (error) {
+      console.error('Failed to upload file to Cloudinary:', error);
+    }
+
+    uploadURL = result.url;
+  })
   
   // Delete the ticket PDF after upload
   fs.unlink(fileLocation, (err) => {
