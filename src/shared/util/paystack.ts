@@ -144,4 +144,6 @@ export const initializeTransaction = async (email: string, amount: number, metad
   if (transaction.status !== 200) {
     throw new Error('An error occured while creating transfer recipient')
   }
+
+  return transaction.data.data.authorization_url
 }

@@ -41,9 +41,9 @@ export const purchaseTicket = async (req: Request, res: Response) => {
       return res.status(400).json({ error: `You must be at least ${ageRestriction} years old to attend this event` }).end()
     }
 
-    await initializeTransaction(email, amount, metadata) // Initialize ticket purchase
+    const checkoutURL = await initializeTransaction(email, amount * 100, metadata) // Initialize ticket purchase
 
-    return res.sendStatus(200).end()
+    return res.status(200).json({ checkoutURL }).end()
   } catch (error) {
     console.log(error)
     return res.sendStatus(500)

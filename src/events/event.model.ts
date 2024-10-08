@@ -87,13 +87,12 @@ const eventSchema = new Schema<IEvent>({
     tier: { type: String, required: true },
     price: { type: Number, required: true },
     discount: {
-      price: { type: Number, required: true },
-      expirationDate: { type: String, required: true },
-      numberOfTickets: { type: Number, required: true },
+      price: { type: Number },
+      expirationDate: { type: Date },
+      numberOfTickets: { type: Number },
       status: {
         type: String,
         enum: ['active', 'ended'],
-        required: true,
         default: 'active'
       },
     },
