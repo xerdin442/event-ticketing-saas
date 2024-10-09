@@ -14,8 +14,6 @@ import { cloudinary } from "../shared/config/storage";
 import { ticketPurchaseMail, sendEmail } from "../shared/util/mail";
 
 export const generateBarcode = async (accessKey: string) => {
-  console.log('Barcode is generating..')
-
   const barcodeImage = await bwipjs.toBuffer({
     bcid: 'code128',
     text: accessKey,
@@ -25,14 +23,15 @@ export const generateBarcode = async (accessKey: string) => {
     textxalign: 'center',
   })
 
+  console.log(barcodeImage)
+
   return barcodeImage.toString('base64');
 }
 
 export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: string, tier: string, barcode: string) => {
-  console.log('PDF generation started..')
-
   const ticket = 'ticket-' + accessKey + '.pdf'
   const fileLocation = path.join(__dirname, 'pdf', ticket)
+  console.log(fileLocation)
 
   const doc = new PDFDocument({ size: 'A4', margin: 40 })
   doc.pipe(fs.createWriteStream(fileLocation))
@@ -58,6 +57,7 @@ export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: str
   doc.image(barcode, { align: 'center', width: 150 })
 
   doc.end() // End write stream
+  console.log('PDF generated..')
 
   // Upload the PDF to cloudinary and retrieve the upload url
   let uploadURL: string;
@@ -118,8 +118,6 @@ export const purchaseTicket = async (eventId: string, tier: string, quantity: nu
 }
 
 export const completeTicketPurchase = async (metadata: Record<string, any>) => {
-  console.log('Ticket purchase completion process begins..')
-
   const { userId, eventId, tier, quantity, amount } = metadata
   const price = amount / quantity
 
@@ -147,7 +145,7 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
 
   // Create the required number of tickets
   for (let i = 1; i <= quantity; i++) {
-    const accessKey = `EVENT-${randomUUID().replace(/-/g, '')}`
+    const accessKey = randomUUID().split('-')[4]
     const barcode = await generateBarcode(accessKey)
     const pdf = generateTicketPDF(attendee, event, accessKey, tier, barcode)
 
