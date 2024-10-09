@@ -12,6 +12,8 @@ import { sendEmail, ticketRefundMail } from './mail';
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY as string
 
 async function pasytackCallback(req: Request, res: Response) {
+  console.log('Webhook logic initiated')
+  
   const hash = crypto.createHmac('sha512', PAYSTACK_SECRET_KEY)
     .update(JSON.stringify(req.body)).digest('hex')
 

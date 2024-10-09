@@ -114,6 +114,8 @@ export const purchaseTicket = async (eventId: string, tier: string, quantity: nu
 }
 
 export const completeTicketPurchase = async (metadata: Record<string, any>) => {
+  console.log('Ticket purchase completion process begins..')
+
   const { userId, eventId, tier, quantity, amount } = metadata
   const price = amount / quantity
 
@@ -163,6 +165,8 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
   const subject = 'Ticket Purchase'
   const emailContent = ticketPurchaseMail(attendee, event, tier, quantity, amount)
   await sendEmail(attendee, subject, emailContent, ticketPDFs)
+
+  console.log('Ticket purchase finalized')
 }
 
 export const checkDiscountExpiration = async () => {
