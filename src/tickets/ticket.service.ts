@@ -129,7 +129,10 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
   if (ticket.totalNumber === 0) { ticket.soldOut = true }
 
   const split = amount * 0.9 // Subtract the platform fee (10%) from transaction amount and calculate the organizer's split
-  await initiateTransfer(event.organizer.recipient, split * 100, 'Revenue Split', event.user.toString()) // Initiate transfer of the organizer's split
+  
+  // Initiate transfer of the organizer's split
+  const transferMetadata = { userId: event.user.toString(), eventId }
+  await initiateTransfer(event.organizer.recipient, split * 100, 'Revenue Split', transferMetadata)
   
   event.revenue += split // Add the organizer's split to the event's total revenue
   event.attendees.push(new mongoose.Types.ObjectId(userId as string)) // Add the user to the attendee list

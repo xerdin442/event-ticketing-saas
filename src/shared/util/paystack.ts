@@ -99,7 +99,7 @@ export const deleteTransferRecipient = async (code: string) => {
   }
 }
 
-export const initiateTransfer = async (code: string, amount: number, reason: string, userId: string) => {
+export const initiateTransfer = async (code: string, amount: number, reason: string, metadata: Record<string, any>) => {
   const url = 'https://api.paystack.co/transfer'
   const transfer = await axios.post(url,
     {
@@ -108,7 +108,7 @@ export const initiateTransfer = async (code: string, amount: number, reason: str
       "source": "balance",
       "recipient": code,
       "currency": "NGN",
-      "metadata": { userId }
+      "metadata": metadata
     },
     {
       headers: {
