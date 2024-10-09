@@ -64,7 +64,7 @@ async function pasytackCallback(req: Request, res: Response) {
         clients[userId].send(JSON.stringify({ status: 'success', message: 'Payment successful!' }));
       }
 
-      await completeTicketPurchase(data.recipient.metadata)
+      await completeTicketPurchase(data.metadata)
 
       return true;
     } else if (event === 'charge.failed') {
