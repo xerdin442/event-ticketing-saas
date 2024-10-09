@@ -106,7 +106,7 @@ export const cancelEvent = async (eventId: string) => {
 
     // Initiate transfer of ticket refund and listen for response on the webhook URL
     const metadata = { userId: attendee.toString(), eventId }
-    await Paystack.initiateTransfer(recipientCode, refund, 'Ticket Refund', metadata)
+    // await Paystack.initiateTransfer(recipientCode, refund, 'Ticket Refund', metadata)
   }
 }
 

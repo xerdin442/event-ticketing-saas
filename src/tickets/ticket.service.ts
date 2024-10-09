@@ -14,6 +14,8 @@ import { cloudinary } from "../shared/config/storage";
 import { ticketPurchaseMail, sendEmail } from "../shared/util/mail";
 
 export const generateBarcode = async (accessKey: string) => {
+  console.log('Barcode is generating..')
+
   const barcodeImage = await bwipjs.toBuffer({
     bcid: 'code128',
     text: accessKey,
@@ -27,8 +29,10 @@ export const generateBarcode = async (accessKey: string) => {
 }
 
 export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: string, tier: string, barcode: string) => {
+  console.log('PDF generation started..')
+
   const ticket = 'ticket-' + accessKey + '.pdf'
-  const fileLocation = path.join('src/tickets/pdf', ticket)
+  const fileLocation = path.join(__dirname, 'pdf', ticket)
 
   const doc = new PDFDocument({ size: 'A4', margin: 40 })
   doc.pipe(fs.createWriteStream(fileLocation))
@@ -132,7 +136,7 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
   
   // Initiate transfer of the organizer's split
   const transferMetadata = { userId: event.user.toString(), eventId }
-  await initiateTransfer(event.organizer.recipient, split * 100, 'Revenue Split', transferMetadata)
+  // await initiateTransfer(event.organizer.recipient, split * 100, 'Revenue Split', transferMetadata)
   
   event.revenue += split // Add the organizer's split to the event's total revenue
   event.attendees.push(new mongoose.Types.ObjectId(userId as string)) // Add the user to the attendee list
