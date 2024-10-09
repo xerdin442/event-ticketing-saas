@@ -90,5 +90,5 @@ async function pasytackCallback(req: Request, res: Response) {
 
 
 export default (router: express.Router) => {
-  router.post('paystack/callback', pasytackCallback)
+  router.post('/paystack/callback', pasytackCallback)
 }
