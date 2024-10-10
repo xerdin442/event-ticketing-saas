@@ -37,9 +37,12 @@ export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: str
   const doc = new PDFDocument({ size: 'A4', margin: 40 })
     
   // Collect PDF data into buffer as it streams
-  doc.on('data', buffers.push.bind(buffers))
+  doc.on('data', (chunk) => {
+    buffers.push(chunk)
+  })
+  // Combine all buffers into one after generating the PDF
   doc.on('end', () => {
-    pdfBuffer = Buffer.concat(buffers).toString('base64'); // Combine all buffers into one
+    pdfBuffer = Buffer.concat(buffers).toString('base64');
   });
     
   doc.font('Times-Bold', 24).text('This is your ticket', { align: 'center' })
