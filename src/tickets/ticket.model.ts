@@ -7,7 +7,6 @@ export interface ITicket extends Document {
   price: number
   status: 'active' | 'used' | 'cancelled'
   accessKey: string
-  pdf: string
 }
 
 const ticketSchema = new Schema<ITicket>({
@@ -22,7 +21,6 @@ const ticketSchema = new Schema<ITicket>({
     default: 'active'
   },
   accessKey: { type: String, required: true },
-  pdf: { type: String, required: true },
 }, {
   timestamps: { createdAt: 'orderDate', updatedAt: false }
 })

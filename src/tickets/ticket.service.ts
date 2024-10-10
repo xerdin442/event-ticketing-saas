@@ -10,7 +10,6 @@ import { Ticket } from "./ticket.model";
 import { User, IUser } from "../users/user.model";
 import { initiateTransfer } from "../shared/util/paystack";
 import { emailAttachment } from "../shared/util/declarations";
-import { cloudinary } from "../shared/config/storage";
 import { ticketPurchaseMail, sendEmail } from "../shared/util/mail";
 
 export const generateBarcode = async (accessKey: string) => {
@@ -33,7 +32,7 @@ export const generateBarcode = async (accessKey: string) => {
   return barcode;
 }
 
-export const generateTicketPDF = async (attendee: IUser, event: IEvent, accessKey: string, tier: string, barcode: string) => {
+export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: string, tier: string, barcode: string) => {
   const ticket = 'ticket-' + accessKey + '.pdf'
   const fileLocation = path.join(__dirname, 'assets', ticket)
 
@@ -61,25 +60,15 @@ export const generateTicketPDF = async (attendee: IUser, event: IEvent, accessKe
   doc.image(barcode, { align: 'center', width: 150 });
 
   doc.end() // End write stream
-  console.log('PDF generated..')
 
-  // Upload the PDF to cloudinary and retrieve the upload url
-  let uploadURL: string;
-  cloudinary.upload(fileLocation, { resource_type: 'raw' }, (error, result) => {
-    if (error) {
-      console.error('Failed to upload file to Cloudinary:', error);
-    }
-
-    uploadURL = result.url;
-  })
-  
-  // Delete the ticket PDF after upload
+  // Retrieve PDF content as buffer and delete the file after use
+  const pdfBuffer = fs.readFileSync(fileLocation)
   fs.unlink(fileLocation, (err) => {
-    if (err) throw err;
+    if (err) throw err
     console.log(`${ticket} deleted successfully`)
   })
 
-  return uploadURL;
+  return pdfBuffer.toString('base64')
 }
 
 export const purchaseTicket = async (eventId: string, tier: string, quantity: number, userId: string) => {
@@ -151,7 +140,7 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
   for (let i = 1; i <= quantity; i++) {
     const accessKey = randomUUID().split('-')[4]
     const barcode = await generateBarcode(accessKey)
-    const pdf = await generateTicketPDF(attendee, event, accessKey, tier, barcode)
+    const pdf = generateTicketPDF(attendee, event, accessKey, tier, barcode)
 
     const ticket = await Ticket.create({
       attendee: userId,
@@ -159,7 +148,6 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
       tier,
       price,
       accessKey,
-      pdf
     })
     await ticket.save()
 
