@@ -42,7 +42,7 @@ export const updateEventDetails = async (id: string, details: Record<string, any
     const emailContent = eventUpdateMail(receiver, event)
 
     // Notify the attendee of the event updates
-    await sendEmail(receiver, subject, emailContent, null)
+    await sendEmail(receiver, subject, emailContent)
   }
 
   return event;
@@ -70,7 +70,7 @@ export const updateEventStatus = async () => {
       const emailContent = eventSoldOutMail(receiver, event)
 
       // Notify the event organizer that the event is sold out
-      await sendEmail(receiver, subject, emailContent, null)
+      await sendEmail(receiver, subject, emailContent)
     }
 
     await event.save() // Save changes
@@ -89,7 +89,7 @@ export const cancelEvent = async (eventId: string) => {
     const emailContent = eventCancellationMail(receiver, event)
 
     // Notify the attendee of the event cancellation
-    await sendEmail(receiver, subject, emailContent, null)
+    await sendEmail(receiver, subject, emailContent)
 
     // Update the status of the attendee's tickets for this event
     const tickets = await Ticket.find({ attendee, event: new mongoose.Types.ObjectId(eventId) })

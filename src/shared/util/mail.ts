@@ -3,9 +3,8 @@ import * as cheerio from 'cheerio';
 
 import { IUser } from '../../users/user.model';
 import { IEvent } from '../../events/event.model';
-import { emailAttachment } from './declarations';
 
-export const sendEmail = async (receiver: IUser, subject: string, content: string, attachment: emailAttachment[] | null) => {  
+export const sendEmail = async (receiver: IUser, subject: string, content: string) => {  
   // Generate html content
   const $ = cheerio.load(content)
   const htmlContent = $.html()
@@ -22,8 +21,7 @@ export const sendEmail = async (receiver: IUser, subject: string, content: strin
       },
     ],
     subject,
-    htmlContent,
-    attachment
+    htmlContent
   };
 
   try {
@@ -95,21 +93,28 @@ export const passwordResetMail = (receiver: IUser) => {
   return content;
 }
 
-export const ticketPurchaseMail = (receiver: IUser, event: IEvent, tier: string, quantity: number, amount: number) => {
+export const ticketPurchaseMail = (emailData: Record<string, any>) => {
+  const { attendee, event, tier, quantity, amount, accessKey, barcode } = emailData
+
   const content = `
-    <p>Dear ${receiver.fullname.split(' ')[0]}, Your ticket purchase was successful!</p>
+    <p>Dear ${attendee.fullname.split(' ')[0]}, Your ticket purchase was successful!</p>
 
     <div>
       <h2>Order Summary</h2>
       <ul>
         <li>Event: ${event.title}</li>
+        <li>Date: ${event.date}</li>
+        <li>Time: ${event.time.start} - ${event.time.end}</li>
         <li>RSVP: ${tier}</li>
         <li>Quantity: ${quantity}</li>
         <li>Total: ${amount}</li>
       </ul>
+
+      <h3>EVENT ACCESS: ${accessKey}</h3>
+      <img src=${barcode} width=150 height=150>
     </div>
     
-    <p>The tickets are attached below. They will be required for entry at the event. See you there!</p>
+    <p>This email will be required for entry at the event. See you there!</p>
     <br/>
     
     <p>Best regards,</p>

@@ -33,7 +33,7 @@ async function pasytackCallback(req: Request, res: Response) {
           // Notify the attendee of the ticket refund
           const event = await Event.findById(eventId)
           const emailContent = ticketRefundMail(user, event)
-          await sendEmail(user, data.reason, emailContent, null)
+          await sendEmail(user, data.reason, emailContent)
         }
   
         console.log(`${data.reason}: Transfer to ${user.fullname} was successful!`)

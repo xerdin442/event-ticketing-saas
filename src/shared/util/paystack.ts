@@ -1,6 +1,22 @@
 import axios from "axios";
 
-import { paystackBankDetails } from "./declarations";
+interface paystackBankDetails {
+  id: number
+  name: string
+  slug: string
+  code: string
+  longcode: string
+  gateway: string | null
+  pay_with_bank: boolean
+  supports_transfer: boolean
+  active: boolean
+  country: string
+  currency: string
+  type: string
+  is_deleted: boolean
+  createdAt: string
+  updatedAt: string
+}
 
 // Load the environment variables as strings
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY as string

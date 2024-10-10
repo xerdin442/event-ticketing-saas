@@ -110,7 +110,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     // Send reset token to the user's email address
     const subject = 'Password Reset'
     const emailContent = passwordResetMail(user)
-    await sendEmail(user, subject, emailContent, null)
+    await sendEmail(user, subject, emailContent)
     
     // Save user's email address in a session incase the user requests for the token to be re-sent
     req.session.email = user.email
@@ -173,7 +173,7 @@ export const resendToken = async (req: Request, res: Response) => {
 
     const subject: string = 'Password Reset'
     const emailContent: string = passwordResetMail(user)
-    await sendEmail(user, subject, emailContent, null) // Send email with new reset token to user
+    await sendEmail(user, subject, emailContent) // Send email with new reset token to user
 
     console.log(token)
     // Notify user that password reset token has been re-sent

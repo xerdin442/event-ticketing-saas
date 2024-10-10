@@ -1,74 +1,26 @@
 import { randomUUID } from "crypto";
 import mongoose from "mongoose";
-import PDFDocument from 'pdfkit'
 import qrcode from "qrcode";
 
-import { Event, IEvent } from "../events/event.model";
+import { Event } from "../events/event.model";
 import { Ticket } from "./ticket.model";
-import { User, IUser } from "../users/user.model";
+import { User } from "../users/user.model";
 import { initiateTransfer } from "../shared/util/paystack";
-import { emailAttachment } from "../shared/util/declarations";
 import { ticketPurchaseMail, sendEmail } from "../shared/util/mail";
 
-export const generateBarcode = async (accessKey: string) => {
+export const generateBarcode = (accessKey: string) => {
   let barcode: string;
 
-  // Create barcode image and save to assets folder
-  await new Promise((resolve, reject) => {
-    qrcode.toDataURL(accessKey, (err, imageUrl) => {
-      if (err) {
-        console.log('An error occured', err)
-        reject(err)  
-      }
+  qrcode.toDataURL(accessKey, (err, imageUrl) => {
+    if (err) {
+      console.log('An error occured', err)
+    }
 
-      console.log('Barcode image saved successfully')
-      barcode = imageUrl;
-      resolve(true)
-    })
+    console.log('Barcode image saved successfully')
+    barcode = imageUrl;
   })
 
   return barcode;
-}
-
-export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: string, tier: string, barcode: string) => {
-  let buffers: Array<Buffer> = [];
-  let pdfBuffer: string;
-
-  const doc = new PDFDocument({ size: 'A4', margin: 40 })
-    
-  // Collect PDF data into buffer as it streams
-  doc.on('data', (chunk) => {
-    buffers.push(chunk)
-  })
-  // Combine all buffers into one after generating the PDF
-  doc.on('end', () => {
-    pdfBuffer = Buffer.concat(buffers).toString('base64');
-  });
-    
-  doc.font('Times-Bold', 24).text('This is your ticket', { align: 'center' })
-  doc.text('Please present it at the event', { align: 'center' })
-
-  // Add the event details
-  doc.moveDown()
-  doc.text(`EVENT: ${event.title}`)
-  doc.text(`DATE: ${event.date}`)
-  doc.text(`TIME: ${event.time.start} - ${event.time.end}`)
-  doc.text(`VENUE: ${event.venue.name}, ${event.venue.address}`)
-
-  // Add the attendee's details and ticket information
-  doc.moveDown()
-  doc.text(`ISSUED TO: ${attendee.fullname.toUpperCase()}`, )
-  doc.text(`ACCESS KEY: ${accessKey}`)
-  doc.text(`RSVP: ${tier.toUpperCase()}`)
-
-  // Add the barcode image to the PDF
-  doc.moveDown();
-  doc.image(barcode, { align: 'center', width: 150 });
-
-  doc.end() // End write stream
-
-  console.log('PDF buffer:', pdfBuffer)
-  return pdfBuffer;
 }
 
 export const purchaseTicket = async (eventId: string, tier: string, quantity: number, userId: string) => {
@@ -134,14 +86,11 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
 
   await event.save() // Save all changes
 
-  let ticketPDFs: emailAttachment[] = [];
+  const accessKey = randomUUID().split('-')[4]
+  const barcode = generateBarcode(accessKey)
 
   // Create the required number of tickets
   for (let i = 1; i <= quantity; i++) {
-    const accessKey = randomUUID().split('-')[4]
-    const barcode = await generateBarcode(accessKey)
-    const pdf = generateTicketPDF(attendee, event, accessKey, tier, barcode)
-
     const ticket = await Ticket.create({
       attendee: userId,
       event: eventId,
@@ -150,19 +99,12 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
       accessKey,
     })
     await ticket.save()
-
-    ticketPDFs.push({
-      content: pdf,
-      name: `TICKET-${ticket._id.toString()}`
-    })
   }
   
   // Send an email with the ticket PDFs to the attendee
   const subject = 'Ticket Purchase'
-  const emailContent = ticketPurchaseMail(attendee, event, tier, quantity, amount)
-  await sendEmail(attendee, subject, emailContent, ticketPDFs)
-
-  console.log('Ticket purchase finalized')
+  const emailContent = ticketPurchaseMail({ attendee, event, tier, quantity, amount, accessKey, barcode })
+  await sendEmail(attendee, subject, emailContent)
 }
 
 export const checkDiscountExpiration = async () => {
