@@ -18,7 +18,7 @@ export const generateBarcode = async (accessKey: string) => {
 
   // Create barcode image and save to assets folder
   await new Promise((resolve, reject) => {
-    qrcode.toDataURL('text', (err, imageUrl) => {
+    qrcode.toDataURL(accessKey, (err, imageUrl) => {
       if (err) {
         console.log('An error occured', err)
         reject(err)  
@@ -39,7 +39,6 @@ export const generateTicketPDF = async (attendee: IUser, event: IEvent, accessKe
 
   const doc = new PDFDocument({ size: 'A4', margin: 40 })
   doc.pipe(fs.createWriteStream(fileLocation))
-  console.log('PDF stream started..')
 
   doc.font('Times-Bold', 24).text('This is your ticket', { align: 'center' })
   doc.text('Please present it at the event', { align: 'center' })
@@ -50,32 +49,23 @@ export const generateTicketPDF = async (attendee: IUser, event: IEvent, accessKe
   doc.text(`DATE: ${event.date}`)
   doc.text(`TIME: ${event.time.start} - ${event.time.end}`)
   doc.text(`VENUE: ${event.venue.name}, ${event.venue.address}`)
-  console.log('Event details added..')
 
   // Add the attendee's details and ticket information
   doc.moveDown()
   doc.text(`ISSUED TO: ${attendee.fullname.toUpperCase()}`, )
   doc.text(`ACCESS KEY: ${accessKey}`)
   doc.text(`RSVP: ${tier.toUpperCase()}`)
-  console.log('Attendee details added..')
 
   // Add the barcode image to the PDF
   doc.moveDown();
   doc.image(barcode, { align: 'center', width: 150 });
-  console.log('Barcode image added..')
-
-  // Delete the barcode image after use
-  fs.unlink(barcode, (err) => {
-    if (err) throw err;
-    console.log('Barcode image deleted successfully')
-  })
 
   doc.end() // End write stream
   console.log('PDF generated..')
 
   // Upload the PDF to cloudinary and retrieve the upload url
   let uploadURL: string;
-  cloudinary.upload(fileLocation, (error, result) => {
+  cloudinary.upload(fileLocation, { resource_type: 'raw' }, (error, result) => {
     if (error) {
       console.error('Failed to upload file to Cloudinary:', error);
     }
