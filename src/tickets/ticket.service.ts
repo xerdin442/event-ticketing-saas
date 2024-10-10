@@ -4,6 +4,7 @@ import bwipjs from 'bwip-js'
 import PDFDocument from 'pdfkit'
 import fs from 'fs'
 import path from 'path'
+import axios from "axios";
 
 import { Event, IEvent } from "../events/event.model";
 import { Ticket } from "./ticket.model";
@@ -55,7 +56,7 @@ export const generateBarcode = async (accessKey: string) => {
   return uploadURL;
 }
 
-export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: string, tier: string, barcode: string) => {
+export const generateTicketPDF = async (attendee: IUser, event: IEvent, accessKey: string, tier: string, barcode: string) => {
   const ticket = 'ticket-' + accessKey + '.pdf'
   const fileLocation = path.join(__dirname, 'assets', ticket)
 
@@ -78,9 +79,17 @@ export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: str
   doc.text(`ACCESS KEY: ${accessKey}`)
   doc.text(`RSVP: ${tier.toUpperCase()}`)
 
-  // Add the barcode image
-  doc.moveDown()
-  doc.image(barcode, { align: 'center', width: 150 })
+  // Download barcode image from Cloudinary and convert to buffer
+  try {
+    const response = await axios.get(barcode, { responseType: 'arraybuffer' });
+    const barcodeBuffer = Buffer.from(response.data, 'binary');
+
+    // Add the barcode image to the PDF
+    doc.moveDown();
+    doc.image(barcodeBuffer, { align: 'center', width: 150 });
+  } catch (error) {
+    console.error('Error downloading barcode from Cloudinary:', error);
+  }
 
   doc.end() // End write stream
   console.log('PDF generated..')
@@ -173,7 +182,7 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
   for (let i = 1; i <= quantity; i++) {
     const accessKey = randomUUID().split('-')[4]
     const barcode = await generateBarcode(accessKey)
-    const pdf = generateTicketPDF(attendee, event, accessKey, tier, barcode)
+    const pdf = await generateTicketPDF(attendee, event, accessKey, tier, barcode)
 
     const ticket = await Ticket.create({
       attendee: userId,
