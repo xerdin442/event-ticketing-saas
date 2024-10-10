@@ -29,16 +29,17 @@
     "@types/mongoose": "^5.11.97",
     "@types/multer": "^1.4.11",
     "@types/node": "^20.14.11",
-    "@types/qrcode": "^1.5.5",
     "@types/ws": "^8.5.12",
     "nodemon": "^3.1.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.3"
   },
   "dependencies": {
+    "@types/bwip-js": "^3.2.3",
     "axios": "^1.7.2",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.20.2",
+    "bwip-js": "^4.5.1",
     "cheerio": "^1.0.0",
     "cloudinary": "^1.41.3",
     "compression": "^1.7.4",
@@ -54,7 +55,6 @@
     "mongoose": "^8.5.0",
     "multer": "^1.4.5-lts.1",
     "multer-storage-cloudinary": "^4.0.0",
-    "qrcode": "^1.5.4",
     "ws": "^8.18.0"
   }
 }

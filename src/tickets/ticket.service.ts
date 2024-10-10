@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import mongoose from "mongoose";
-import qrcode from "qrcode";
+import bwipjs from 'bwip-js';
 
 import { Event } from "../events/event.model";
 import { Ticket } from "./ticket.model";
@@ -8,19 +8,17 @@ import { User } from "../users/user.model";
 import { initiateTransfer } from "../shared/util/paystack";
 import { ticketPurchaseMail, sendEmail } from "../shared/util/mail";
 
-export const generateBarcode = (accessKey: string) => {
-  let barcode: string;
-
-  qrcode.toDataURL(accessKey, (err, imageUrl) => {
-    if (err) {
-      console.log('An error occured', err)
-    }
-
-    console.log('Barcode image saved successfully')
-    barcode = imageUrl;
+export const generateBarcode = async (accessKey: string) => {
+  const barcodeImage = await bwipjs.toBuffer({
+    text: accessKey,
+    bcid: 'code128',
+    scale: 3,
+    height: 10,
+    includetext: true,
+    textxalign: 'center',
   })
 
-  return barcode;
+  return barcodeImage.toString('base64');
 }
 
 export const purchaseTicket = async (eventId: string, tier: string, quantity: number, userId: string) => {
@@ -43,14 +41,14 @@ export const purchaseTicket = async (eventId: string, tier: string, quantity: nu
             ticket.discount.numberOfTickets -= quantity // Subtract purchase quantity from number of discount tickets left
             ticket.totalNumber -= quantity // Also subtract purchase quantity from total number of tickets left
             await event.save()
-  
+
             return { amount, discount: true }
           }
         } else {
           amount = ticket.price * quantity // Calculate the ticket purchase amount using the original price
           ticket.totalNumber -= quantity // Subtract purchase quantity from total number of tickets left
           await event.save()
-  
+
           return { amount }
         }
       } else {
@@ -76,21 +74,21 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
   if (ticket.totalNumber === 0) { ticket.soldOut = true }
 
   const split = amount * 0.9 // Subtract the platform fee (10%) from transaction amount and calculate the organizer's split
-  
+
   // Initiate transfer of the organizer's split
   const transferMetadata = { userId: event.user.toString(), eventId }
   // await initiateTransfer(event.organizer.recipient, split * 100, 'Revenue Split', transferMetadata)
-  
+
   event.revenue += split // Add the organizer's split to the event's total revenue
   event.attendees.push(new mongoose.Types.ObjectId(userId as string)) // Add the user to the attendee list
 
   await event.save() // Save all changes
 
-  const accessKey = randomUUID().split('-')[4]
-  const barcode = generateBarcode(accessKey)
-
   // Create the required number of tickets
   for (let i = 1; i <= quantity; i++) {
+    const accessKey = randomUUID().split('-')[4]
+    const barcode = generateBarcode(accessKey)
+
     const ticket = await Ticket.create({
       attendee: userId,
       event: eventId,
@@ -99,19 +97,19 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
       accessKey,
     })
     await ticket.save()
+
+    // Send an email with the ticket PDFs to the attendee
+    const subject = 'Ticket Purchase'
+    const emailContent = ticketPurchaseMail({ attendee, event, tier, quantity, amount, accessKey, barcode })
+    await sendEmail(attendee, subject, emailContent)
   }
-  
-  // Send an email with the ticket PDFs to the attendee
-  const subject = 'Ticket Purchase'
-  const emailContent = ticketPurchaseMail({ attendee, event, tier, quantity, amount, accessKey, barcode })
-  await sendEmail(attendee, subject, emailContent)
 }
 
 export const checkDiscountExpiration = async () => {
   const events = await Event.find()
 
   for (let event of events) {
-    event.tickets.forEach(ticket => {      
+    event.tickets.forEach(ticket => {
       if (ticket.discount) {
         const currentTime = new Date().getTime()
         const expirationDate = new Date(ticket.discount.expirationDate).getTime()
