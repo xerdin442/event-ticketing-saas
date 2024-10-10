@@ -20,7 +20,7 @@ export const generateBarcode = async (accessKey: string) => {
     qrcode.toDataURL(accessKey, (err, imageUrl) => {
       if (err) {
         console.log('An error occured', err)
-        reject(err)  
+        reject(err)
       }
 
       console.log('Barcode image saved successfully')
@@ -35,9 +35,10 @@ export const generateBarcode = async (accessKey: string) => {
 export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: string, tier: string, barcode: string) => {
   const ticket = 'ticket-' + accessKey + '.pdf'
   const fileLocation = path.join(__dirname, 'assets', ticket)
+  const writeStream = fs.createWriteStream(fileLocation)
 
   const doc = new PDFDocument({ size: 'A4', margin: 40 })
-  doc.pipe(fs.createWriteStream(fileLocation))
+  doc.pipe(writeStream)
 
   doc.font('Times-Bold', 24).text('This is your ticket', { align: 'center' })
   doc.text('Please present it at the event', { align: 'center' })
@@ -51,7 +52,7 @@ export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: str
 
   // Add the attendee's details and ticket information
   doc.moveDown()
-  doc.text(`ISSUED TO: ${attendee.fullname.toUpperCase()}`, )
+  doc.text(`ISSUED TO: ${attendee.fullname.toUpperCase()}`,)
   doc.text(`ACCESS KEY: ${accessKey}`)
   doc.text(`RSVP: ${tier.toUpperCase()}`)
 
@@ -61,14 +62,19 @@ export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: str
 
   doc.end() // End write stream
 
-  // Retrieve PDF content as buffer and delete the file after use
-  const pdfBuffer = fs.readFileSync(fileLocation)
-  fs.unlink(fileLocation, (err) => {
-    if (err) throw err
-    console.log(`${ticket} deleted successfully`)
+  let pdfBuffer: string;
+  writeStream.on('finish', () => {
+    // Retrieve PDF content as buffer and delete the file after use
+    const pdfContent = fs.readFileSync(fileLocation)
+    fs.unlink(fileLocation, (err) => {
+      if (err) throw err
+      console.log(`${ticket} deleted successfully`)
+    })
+
+    pdfBuffer = pdfContent.toString('base64')
   })
 
-  return pdfBuffer.toString('base64')
+  return pdfBuffer;
 }
 
 export const purchaseTicket = async (eventId: string, tier: string, quantity: number, userId: string) => {
@@ -91,14 +97,14 @@ export const purchaseTicket = async (eventId: string, tier: string, quantity: nu
             ticket.discount.numberOfTickets -= quantity // Subtract purchase quantity from number of discount tickets left
             ticket.totalNumber -= quantity // Also subtract purchase quantity from total number of tickets left
             await event.save()
-  
+
             return { amount, discount: true }
           }
         } else {
           amount = ticket.price * quantity // Calculate the ticket purchase amount using the original price
           ticket.totalNumber -= quantity // Subtract purchase quantity from total number of tickets left
           await event.save()
-  
+
           return { amount }
         }
       } else {
@@ -124,11 +130,11 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
   if (ticket.totalNumber === 0) { ticket.soldOut = true }
 
   const split = amount * 0.9 // Subtract the platform fee (10%) from transaction amount and calculate the organizer's split
-  
+
   // Initiate transfer of the organizer's split
   const transferMetadata = { userId: event.user.toString(), eventId }
   // await initiateTransfer(event.organizer.recipient, split * 100, 'Revenue Split', transferMetadata)
-  
+
   event.revenue += split // Add the organizer's split to the event's total revenue
   event.attendees.push(new mongoose.Types.ObjectId(userId as string)) // Add the user to the attendee list
 
@@ -156,7 +162,7 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
       name: `TICKET-${ticket._id.toString()}`
     })
   }
-  
+
   // Send an email with the ticket PDFs to the attendee
   const subject = 'Ticket Purchase'
   const emailContent = ticketPurchaseMail(attendee, event, tier, quantity, amount)
@@ -169,7 +175,7 @@ export const checkDiscountExpiration = async () => {
   const events = await Event.find()
 
   for (let event of events) {
-    event.tickets.forEach(ticket => {      
+    event.tickets.forEach(ticket => {
       if (ticket.discount) {
         const currentTime = new Date().getTime()
         const expirationDate = new Date(ticket.discount.expirationDate).getTime()
