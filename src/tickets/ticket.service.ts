@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import mongoose from "mongoose";
 import PDFDocument from 'pdfkit'
 import fs from 'fs'
-import path, { resolve } from 'path'
+import path from 'path'
 import axios from "axios";
 import qrcode from "qrcode";
 
@@ -15,14 +15,15 @@ import { cloudinary } from "../shared/config/storage";
 import { ticketPurchaseMail, sendEmail } from "../shared/util/mail";
 
 export const generateBarcode = async (accessKey: string) => {
-  const imageFile = 'barcode-' + accessKey
+  const imageFile = 'barcode-' + accessKey + '.png'
   const fileLocation = path.join(__dirname, 'assets', imageFile)
   console.log(fileLocation)
 
   // Create barcode image and save to assets folder
   await new Promise((resolve, reject) => {
     qrcode.toFile(fileLocation, accessKey, {
-      color: { dark: '#00F', light: '#0000' }
+      color: { dark: '#00F', light: '#0000' },
+      type: 'png'
     }, (err) => {
       if (err) reject(err)
       console.log('Barcode image saved successfully to', fileLocation)
