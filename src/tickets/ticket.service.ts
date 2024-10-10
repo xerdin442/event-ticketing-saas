@@ -1,10 +1,10 @@
 import { randomUUID } from "crypto";
 import mongoose from "mongoose";
-import bwipjs from 'bwip-js'
 import PDFDocument from 'pdfkit'
 import fs from 'fs'
 import path from 'path'
 import axios from "axios";
+import qrcode from "qrcode";
 
 import { Event, IEvent } from "../events/event.model";
 import { Ticket } from "./ticket.model";
@@ -15,27 +15,16 @@ import { cloudinary } from "../shared/config/storage";
 import { ticketPurchaseMail, sendEmail } from "../shared/util/mail";
 
 export const generateBarcode = async (accessKey: string) => {
-  const barcodeImage = await bwipjs.toBuffer({
-    bcid: 'code128',
-    text: accessKey,
-    scale: 3,
-    height: 10,
-    includetext: true,
-    textxalign: 'center',
-  })
-
-  const imageData = barcodeImage.toString('base64')
   const imageFile = 'barcode-' + accessKey + '.png'
   const fileLocation = path.join(__dirname, 'assets', imageFile)
 
-  // Save the barcode image to the assets folder
-  fs.writeFile(fileLocation, imageData, (err) => {
-    if (err) {
-      console.error('Error saving image:', err);
-    } else {
-      console.log('Image saved successfully to', fileLocation);
-    }
-  });
+  // Create barcode image and save to assets folder
+  qrcode.toFile(fileLocation, accessKey, {
+    color: { dark: '#00F', light: '#0000' }
+  }, (err) => {
+    if (err) throw err
+    console.log('Barcode image saved successfully to', fileLocation)
+  })
 
   // Upload the barcode image to cloudinary and retrieve the upload url
   let uploadURL: string;
@@ -53,6 +42,7 @@ export const generateBarcode = async (accessKey: string) => {
     console.log(`${imageFile} deleted successfully`)
   })
 
+  console.log(uploadURL)
   return uploadURL;
 }
 
