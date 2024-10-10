@@ -15,8 +15,9 @@ import { cloudinary } from "../shared/config/storage";
 import { ticketPurchaseMail, sendEmail } from "../shared/util/mail";
 
 export const generateBarcode = async (accessKey: string) => {
-  const imageFile = 'barcode-' + accessKey + '.png'
+  const imageFile = 'barcode-' + accessKey
   const fileLocation = path.join(__dirname, 'assets', imageFile)
+  console.log(fileLocation)
 
   // Create barcode image and save to assets folder
   qrcode.toFile(fileLocation, accessKey, {
