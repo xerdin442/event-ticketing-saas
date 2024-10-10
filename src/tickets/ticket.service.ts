@@ -24,7 +24,10 @@ export const generateBarcode = async (accessKey: string) => {
       color: { dark: '#00F', light: '#0000' },
       type: 'png'
     }, (err) => {
-      if (err) reject(err)
+      if (err) {
+        console.log('An error occured')
+        reject(err)
+      }
       
       console.log('Barcode image saved successfully')
       resolve(true)
