@@ -1,4 +1,5 @@
 import axios from "axios";
+import mongoose from "mongoose";
 
 import { Event } from "./event.model";
 import { User } from "../users/user.model";
@@ -91,7 +92,7 @@ export const cancelEvent = async (eventId: string) => {
     await sendEmail(receiver, subject, emailContent, null)
 
     // Update the status of the attendee's tickets for this event
-    const tickets = await Ticket.find({ attendee, event: event._id })
+    const tickets = await Ticket.find({ attendee, event: new mongoose.Types.ObjectId(eventId) })
     tickets.forEach(async (ticket) => {
       ticket.status = 'cancelled'
       await ticket.save()

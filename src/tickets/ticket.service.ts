@@ -23,15 +23,41 @@ export const generateBarcode = async (accessKey: string) => {
     textxalign: 'center',
   })
 
-  console.log(barcodeImage)
+  const imageData = barcodeImage.toString('base64')
+  const imageFile = 'barcode-' + accessKey + '.png'
+  const fileLocation = path.join(__dirname, 'assets', imageFile)
 
-  return barcodeImage.toString('base64');
+  // Save the barcode image to the assets folder
+  fs.writeFile(fileLocation, imageData, (err) => {
+    if (err) {
+      console.error('Error saving image:', err);
+    } else {
+      console.log('Image saved successfully to', fileLocation);
+    }
+  });
+
+  // Upload the barcode image to cloudinary and retrieve the upload url
+  let uploadURL: string;
+  cloudinary.upload(fileLocation, (error, result) => {
+    if (error) {
+      console.error('Failed to upload image to Cloudinary:', error);
+    }
+
+    uploadURL = result.url;
+  })
+  
+  // Delete the barcode image after upload
+  fs.unlink(fileLocation, (err) => {
+    if (err) throw err;
+    console.log(`${imageFile} deleted successfully`)
+  })
+
+  return uploadURL;
 }
 
 export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: string, tier: string, barcode: string) => {
   const ticket = 'ticket-' + accessKey + '.pdf'
-  const fileLocation = path.join(__dirname, 'pdf', ticket)
-  console.log(fileLocation)
+  const fileLocation = path.join(__dirname, 'assets', ticket)
 
   const doc = new PDFDocument({ size: 'A4', margin: 40 })
   doc.pipe(fs.createWriteStream(fileLocation))
