@@ -56,10 +56,8 @@ export const validateTicket = async (req: Request, res: Response) => {
     if (!Types.ObjectId.isValid(eventId)) {
       return res.status(400).json({ error: "Invalid event id parameter" })
     }
-    const { barcode, accessKey } = req.body
-    const text = barcode || accessKey
 
-    const { invalid, used, validated } = await Ticket.validateTicket(eventId, text)
+    const { invalid, used, validated } = await Ticket.validateTicket(eventId, req.body.accessKey)
     if (invalid) {
       return res.status(400).json({ error: 'Invalid barcode or access key' }).end()
     } else if (used) {
