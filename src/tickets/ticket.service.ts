@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import mongoose from "mongoose";
 import PDFDocument from 'pdfkit'
 import fs from 'fs'
-import path from 'path'
+import path, { resolve } from 'path'
 import axios from "axios";
 import qrcode from "qrcode";
 
@@ -20,21 +20,28 @@ export const generateBarcode = async (accessKey: string) => {
   console.log(fileLocation)
 
   // Create barcode image and save to assets folder
-  qrcode.toFile(fileLocation, accessKey, {
-    color: { dark: '#00F', light: '#0000' }
-  }, (err) => {
-    if (err) throw err
-    console.log('Barcode image saved successfully to', fileLocation)
-  })
+  await new Promise((resolve, reject) => {
+    qrcode.toFile(fileLocation, accessKey, {
+      color: { dark: '#00F', light: '#0000' }
+    }, (err) => {
+      if (err) reject(err)
+      console.log('Barcode image saved successfully to', fileLocation)
+      resolve(true)
+    })
+  });
 
   // Upload the barcode image to cloudinary and retrieve the upload url
   let uploadURL: string;
-  cloudinary.upload(fileLocation, (error, result) => {
-    if (error) {
-      console.error('Failed to upload image to Cloudinary:', error);
-    }
+  await new Promise((resolve, reject) => {
+    cloudinary.upload(fileLocation, (error, result) => {
+      if (error) {
+        console.error('Failed to upload image to Cloudinary:', error);
+        reject(error)
+      }
 
-    uploadURL = result.url;
+      resolve(result)
+      uploadURL = result.url
+    })
   })
   
   // Delete the barcode image after upload
