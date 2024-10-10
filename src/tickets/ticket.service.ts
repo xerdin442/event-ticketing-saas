@@ -17,7 +17,6 @@ import { ticketPurchaseMail, sendEmail } from "../shared/util/mail";
 export const generateBarcode = async (accessKey: string) => {
   const imageFile = 'barcode-' + accessKey + '.png'
   const fileLocation = path.join(__dirname, 'assets', imageFile)
-  console.log(fileLocation)
 
   // Create barcode image and save to assets folder
   await new Promise((resolve, reject) => {
@@ -26,33 +25,13 @@ export const generateBarcode = async (accessKey: string) => {
       type: 'png'
     }, (err) => {
       if (err) reject(err)
-      console.log('Barcode image saved successfully to', fileLocation)
+      
+      console.log('Barcode image saved successfully')
       resolve(true)
     })
   });
 
-  // Upload the barcode image to cloudinary and retrieve the upload url
-  let uploadURL: string;
-  await new Promise((resolve, reject) => {
-    cloudinary.upload(fileLocation, (error, result) => {
-      if (error) {
-        console.error('Failed to upload image to Cloudinary:', error);
-        reject(error)
-      }
-
-      resolve(result)
-      uploadURL = result.url
-    })
-  })
-  
-  // Delete the barcode image after upload
-  fs.unlink(fileLocation, (err) => {
-    if (err) throw err;
-    console.log(`${imageFile} deleted successfully`)
-  })
-
-  console.log(uploadURL)
-  return uploadURL;
+  return fileLocation;
 }
 
 export const generateTicketPDF = async (attendee: IUser, event: IEvent, accessKey: string, tier: string, barcode: string) => {
@@ -78,17 +57,15 @@ export const generateTicketPDF = async (attendee: IUser, event: IEvent, accessKe
   doc.text(`ACCESS KEY: ${accessKey}`)
   doc.text(`RSVP: ${tier.toUpperCase()}`)
 
-  // Download barcode image from Cloudinary and convert to buffer
-  try {
-    const response = await axios.get(barcode, { responseType: 'arraybuffer' });
-    const barcodeBuffer = Buffer.from(response.data, 'binary');
+  // Add the barcode image to the PDF
+  doc.moveDown();
+  doc.image(barcode, { align: 'center', width: 150 });
 
-    // Add the barcode image to the PDF
-    doc.moveDown();
-    doc.image(barcodeBuffer, { align: 'center', width: 150 });
-  } catch (error) {
-    console.error('Error downloading barcode from Cloudinary:', error);
-  }
+  // Delete the barcode image after use
+  fs.unlink(barcode, (err) => {
+    if (err) throw err;
+    console.log('Barcode image deleted successfully')
+  })
 
   doc.end() // End write stream
   console.log('PDF generated..')
@@ -189,7 +166,6 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
       tier,
       price,
       accessKey,
-      barcode,
       pdf
     })
     await ticket.save()
