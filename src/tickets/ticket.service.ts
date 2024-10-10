@@ -1,8 +1,6 @@
 import { randomUUID } from "crypto";
 import mongoose from "mongoose";
 import PDFDocument from 'pdfkit'
-import fs from 'fs'
-import path from 'path'
 import qrcode from "qrcode";
 
 import { Event, IEvent } from "../events/event.model";
@@ -66,6 +64,7 @@ export const generateTicketPDF = (attendee: IUser, event: IEvent, accessKey: str
 
   doc.end() // End write stream
 
+  console.log('PDF buffer:', pdfBuffer)
   return pdfBuffer;
 }
 
@@ -132,7 +131,7 @@ export const completeTicketPurchase = async (metadata: Record<string, any>) => {
 
   await event.save() // Save all changes
 
-  let ticketPDFs: emailAttachment[];
+  let ticketPDFs: emailAttachment[] = [];
 
   // Create the required number of tickets
   for (let i = 1; i <= quantity; i++) {
