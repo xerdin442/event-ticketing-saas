@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 import PDFDocument from 'pdfkit'
 import fs from 'fs'
 import path from 'path'
-import axios from "axios";
 import qrcode from "qrcode";
 
 import { Event, IEvent } from "../events/event.model";
@@ -15,26 +14,23 @@ import { cloudinary } from "../shared/config/storage";
 import { ticketPurchaseMail, sendEmail } from "../shared/util/mail";
 
 export const generateBarcode = async (accessKey: string) => {
-  const imageFile = 'barcode-' + accessKey + '.png'
-  const fileLocation = path.join(__dirname, 'assets', imageFile)
+  let barcode: string;
 
   // Create barcode image and save to assets folder
   await new Promise((resolve, reject) => {
-    qrcode.toFile(fileLocation, accessKey, {
-      color: { dark: '#00F', light: '#0000' },
-      type: 'png'
-    }, (err) => {
+    qrcode.toDataURL('text', (err, imageUrl) => {
       if (err) {
-        console.log('An error occured')
-        reject(err)
+        console.log('An error occured', err)
+        reject(err)  
       }
-      
+
       console.log('Barcode image saved successfully')
+      barcode = imageUrl;
       resolve(true)
     })
-  });
+  })
 
-  return fileLocation;
+  return barcode;
 }
 
 export const generateTicketPDF = async (attendee: IUser, event: IEvent, accessKey: string, tier: string, barcode: string) => {
