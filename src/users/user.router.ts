@@ -28,5 +28,5 @@ export default (router: express.Router) => {
 
   // Events and tickets
   router.get('/user/tickets', isLoggedIn, User.getAllTickets)
-  router.get('user/events', isLoggedIn, User.getAllEvents)
+  router.get('/user/events', isLoggedIn, User.getAllEvents)
 };
