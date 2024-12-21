@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
-import { UserModule } from './user/user.module';
+import { UserModule } from './users/user.module';
 import { DbModule } from './db/db.module';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
@@ -8,12 +8,18 @@ import { APP_GUARD } from '@nestjs/core';
 import { BullModule } from '@nestjs/bull';
 import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { Secrets } from './common/env';
+import { EventsModule } from './events/events.module';
+import { TicketsModule } from './tickets/tickets.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
     AuthModule,
     UserModule,
     DbModule,
+    EventsModule,
+    TicketsModule,
+    PaymentsModule,
     ConfigModule.forRoot({ isGlobal: true }),
     BullModule.forRoot({
       redis: {
