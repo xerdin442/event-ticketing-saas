@@ -2,9 +2,11 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import axios from "axios";
 import { AccountDetails, BankData } from './types';
 import { Secrets } from '../common/env';
+import logger from '../common/logger';
 
 @Injectable()
 export class PaymentsService {
+  private readonly context: string = PaymentsService.name
 
   async getBankNames(): Promise<string[]> {
     try {
@@ -33,6 +35,7 @@ export class PaymentsService {
 
       return recipientBank.code;
     } catch (error) {
+      logger.error(`[${this.context}] An error occurred while retrieving bank code. Error: ${error.message}\n`);
       throw error;
     }
   }
@@ -53,6 +56,7 @@ export class PaymentsService {
 
       return;
     } catch (error) {
+      logger.error(`[${this.context}] An error occurred while verifying account details. Error: ${error.message}\n`);
       throw error;
     }
   }
@@ -80,6 +84,7 @@ export class PaymentsService {
 
       return recipient.data.data.recipient_code;
     } catch (error) {
+      logger.error(`[${this.context}] An error occurred while creating transfer recipient. Error: ${error.message}\n`);
       throw error;
     }
   }
@@ -91,6 +96,7 @@ export class PaymentsService {
         { headers: { 'Authorization': `Bearer ${Secrets.PAYSTACK_SECRET_KEY}` } }
       );
     } catch (error) {
+      logger.error(`[${this.context}] An error occurred while deleting transfer recipient. Error: ${error.message}\n`);
       throw error;
     }
   }
@@ -122,23 +128,29 @@ export class PaymentsService {
 
       return transfer.data.data.transfer_code;
     } catch (error) {
+      logger.error(`[${this.context}] An error occurred while initiating transfer from balance. Error: ${error.message}\n`);
       throw error;
     }
   }
 
   async initializeTransaction(email: string, amount: number, metadata: Record<string, any>)
     : Promise<string> {
-    const url = 'https://api.paystack.co/transaction/initialize'
-    const transaction = await axios.post(url,
-      { amount, email, metadata },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${Secrets.PAYSTACK_SECRET_KEY}`
-        }
+      try {
+        const url = 'https://api.paystack.co/transaction/initialize'
+        const transaction = await axios.post(url,
+          { amount, email, metadata },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Secrets.PAYSTACK_SECRET_KEY}`
+            }
+          }
+        )
+    
+        return transaction.data.data.authorization_url
+      } catch (error) {
+        logger.error(`[${this.context}] An error occurred while initializing transaction. Error: ${error.message}\n`);
+        throw error;
       }
-    )
-
-    return transaction.data.data.authorization_url
   }
 }

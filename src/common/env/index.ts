@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 const config = new ConfigService();
 
 export const Secrets = {
-  NODE_ENV: process.env.NODE_ENV,
+  NODE_ENV: process.env.NODE_ENV as string,
   PORT: config.getOrThrow<number>('PORT'),
   DATABASE_PASSWORD: config.getOrThrow<string>('DATABASE_PASSWORD'),
   DATABASE_NAME: config.getOrThrow<string>('DATABASE_NAME'),

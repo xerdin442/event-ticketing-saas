@@ -19,7 +19,7 @@ import {
 } from './dto';
 import { User } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { UploadConfig } from '../common/config/upload';
+import { UploadService } from '../common/config/upload';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from '../common/decorators';
 import logger from '../common/logger';
@@ -34,9 +34,9 @@ export class AuthController {
 
   @Post('signup')
   @UseInterceptors(FileInterceptor('profileImage', {
-    fileFilter: new UploadConfig().fileFilter,
+    fileFilter: UploadService.fileFilter,
     limits: { fieldSize: 5 * 1024 * 1024 }, // File sizes must be less than 5MB
-    storage: new UploadConfig().storage('profile-images', 'image')
+    storage: UploadService.storage('profile-images', 'image'),
   }))
   async signup(
     @Body() dto: AuthDto,
@@ -49,7 +49,7 @@ export class AuthController {
       return response;
     } catch (error) {
       if (file) {
-        new UploadConfig().deleteFile(file.path, 'Signup');
+        UploadService.deleteFile(file.path, 'Signup');
       }
 
       logger.error(`[${this.context}] An error occurred during user signup. Error: ${error.message}\n`);

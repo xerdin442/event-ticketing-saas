@@ -25,7 +25,7 @@ export class PaymentsController {
 
   @Post('callback')
   @HttpCode(HttpStatus.OK)
-  async webhook(@Req() req: Request, @Res() res: Response) {
+  async paymentCallback(@Req() req: Request, @Res() res: Response) {
     try {
       const hash = crypto.createHmac('sha512', Secrets.PAYSTACK_SECRET_KEY)
         .update(JSON.stringify(req.body)).digest('hex');
@@ -34,6 +34,7 @@ export class PaymentsController {
         res.sendStatus(200) // Send a 200 OK response to Paystack server
       };
     } catch (error) {
+      logger.error(`[${this.context}] An error occurred while listening on webhook URL. Error: ${error.message}\n`);
       throw error;
     }
   }

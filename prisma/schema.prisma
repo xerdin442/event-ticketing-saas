@@ -88,12 +88,12 @@ model Ticket {
 model Organizer {
   id Int @id @default(autoincrement())
 
-  name          String
+  name          String[]
   email         String
   accountName   String
   accountNumber String  @unique
   bankName      String
-  recipientCode String
+  recipientCode String?
   phone         String
   whatsapp      String?
   twitter       String?
@@ -105,6 +105,7 @@ model Organizer {
 
   events Event[]
 
+  @@index([userId])
   @@map("organizers")
 }
 
@@ -119,7 +120,7 @@ model TicketTier {
   discountStatus          DiscountStatus?
   benefits                String?
   totalNumberOfTickets    Int
-  soldOut                 Boolean
+  soldOut                 Boolean @default(false)
 
   eventId Int
   event   Event @relation(fields: [eventId], references: [id])
@@ -139,12 +140,12 @@ model Event {
   date           DateTime
   startTime      DateTime
   endTime        DateTime
-  status         EventStatus
+  status         EventStatus   @default(UPCOMING)
   ageRestriction Int?
   venue          String
   address        String
   capacity       Int
-  shares         Int
+  numberOfShares Int
   revenue        Float
   poster         String
   media          String[]
@@ -157,5 +158,6 @@ model Event {
   ticketTier TicketTier[]
   tickets    Ticket[]
 
+  @@index([category])
   @@map("events")
 }
