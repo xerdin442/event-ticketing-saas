@@ -1,7 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { AppModule } from "../../../src/app.module";
 import { DbService } from "../../../src/db/db.service";
-import { UserService } from "../../../src/users/user.service";
+import { UserService } from "../../../src/users/users.service";
 import { updateProfileDto } from "../../../src/users/dto";
 import { ConfigService } from "@nestjs/config";
 

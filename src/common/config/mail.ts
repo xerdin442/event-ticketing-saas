@@ -12,7 +12,7 @@ export const sendEmail = async (
   receiver: any,
   subject: string,
   content: string,
-  attachment: EmailAttachment[] | null
+  attachment?: EmailAttachment[]
 ): Promise<void> => {  
   const context = sendEmail.name
 

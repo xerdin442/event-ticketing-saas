@@ -30,7 +30,7 @@ export class AuthService {
     @InjectMetric('two_fa_enabled_users') public twoFactorAuthMetric: Gauge
   ) { }
 
-  async signup(dto: AuthDto, filePath: string | undefined)
+  async signup(dto: AuthDto, filePath?: string)
     : Promise<{ user: User, token: string }> {
     try {
       // Hash password and create new user

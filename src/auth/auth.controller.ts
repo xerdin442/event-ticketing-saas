@@ -41,16 +41,11 @@ export class AuthController {
   async signup(
     @Body() dto: AuthDto,
     @UploadedFile() file: Express.Multer.File
-  ): Promise<object> {
+  ): Promise<{ user: User, token: string }> {
     try {
-      let response: object;
-      if (file) {
-        response = await this.authService.signup(dto, file.path)
-      } else {
-        response = await this.authService.signup(dto, undefined)
-      }
-
+      const response = await this.authService.signup(dto, file.path);
       logger.info(`[${this.context}] User signup successful. Email: ${dto.email}\n`);
+      
       return response;
     } catch (error) {
       if (file) {
@@ -58,7 +53,6 @@ export class AuthController {
       }
 
       logger.error(`[${this.context}] An error occurred during user signup. Error: ${error.message}\n`);
-
       throw error;
     }
   }

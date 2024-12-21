@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
@@ -8,35 +8,154 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum TicketStatus {
+  ACTIVE
+  USED
+  CANCELLED
+}
+
+enum EventStatus {
+  UPCOMING
+  ONGOING
+  COMPLETED
+  SOLD_OUT
+  CANCELLED
+}
+
+enum EventCategory {
+  TECH
+  HEALTH
+  ENTERTAINMENT
+  FASHION
+  SPORTS
+  BUSINESS
+  CONFERENCE
+  OTHERS
+}
+
+enum DiscountStatus {
+  ACTIVE
+  ENDED
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  email        String  @unique
-  password     String
-  profileImage String
-  firstName    String?
-  lastName     String?
-  twoFASecret  String?
-  twoFAEnabled Boolean @default(false)
+  age           Int
+  email         String  @unique
+  password      String
+  profileImage  String
+  firstName     String
+  lastName      String
+  twoFASecret   String?
+  twoFAEnabled  Boolean @default(false)
+  accountName   String
+  accountNumber String  @unique
+  bankName      String
 
-  bookmarks Bookmark[]
+  tickets   Ticket[]
+  events    Event[]    @relation("Attendees")
+  organizer Organizer?
 
+  @@index([email])
   @@map("users")
 }
 
-model Bookmark {
+model Ticket {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  title       String
-  description String
-  link        String?
+  tier      String
+  price     Int
+  accessKey String       @unique
+  status    TicketStatus @default(ACTIVE)
 
-  userId Int
+  attendee Int
+  user     User @relation(fields: [attendee], references: [id])
+
+  eventId Int
+  event   Event @relation(fields: [eventId], references: [id])
+
+  @@index([attendee])
+  @@index([eventId])
+  @@index([accessKey])
+  @@map("tickets")
+}
+
+model Organizer {
+  id Int @id @default(autoincrement())
+
+  name          String
+  email         String
+  accountName   String
+  accountNumber String  @unique
+  bankName      String
+  recipientCode String
+  phone         String
+  whatsapp      String?
+  twitter       String?
+  instagram     String?
+  website       String?
+
+  userId Int  @unique
   user   User @relation(fields: [userId], references: [id])
 
-  @@map("bookmarks")
+  events Event[]
+
+  @@map("organizers")
+}
+
+model TicketTier {
+  id Int @id @default(autoincrement())
+
+  tier                    String
+  price                   Int
+  discountPrice           Int?
+  discountExpiration      DateTime?
+  numberOfDiscountTickets Int?
+  discountStatus          DiscountStatus?
+  benefits                String?
+  totalNumberOfTickets    Int
+  soldOut                 Boolean
+
+  eventId Int
+  event   Event @relation(fields: [eventId], references: [id])
+
+  @@index([tier])
+  @@map("ticket tiers")
+}
+
+model Event {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title          String
+  category       EventCategory
+  description    String
+  date           DateTime
+  startTime      DateTime
+  endTime        DateTime
+  status         EventStatus
+  ageRestriction Int?
+  venue          String
+  address        String
+  capacity       Int
+  shares         Int
+  revenue        Float
+  poster         String
+  media          String[]
+
+  organizerId Int
+  organizer   Organizer @relation(fields: [organizerId], references: [id])
+
+  users User[] @relation("Attendees")
+
+  ticketTier TicketTier[]
+  tickets    Ticket[]
+
+  @@map("events")
 }
