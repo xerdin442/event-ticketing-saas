@@ -11,7 +11,8 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
-  AuthDto,
+  CreateUserDto,
+  LoginDto,
   NewPasswordDto,
   PasswordResetDto,
   Verify2FADto,
@@ -39,7 +40,7 @@ export class AuthController {
     storage: UploadService.storage('profile-images', 'image'),
   }))
   async signup(
-    @Body() dto: AuthDto,
+    @Body() dto: CreateUserDto,
     @UploadedFile() file: Express.Multer.File
   ): Promise<{ user: User, token: string }> {
     try {
@@ -59,7 +60,7 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  async login(@Body() dto: AuthDto)
+  async login(@Body() dto: LoginDto)
     : Promise<{ token: string, twoFactorAuth: boolean }> {
     try {
       const response = await this.authService.login(dto);

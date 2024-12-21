@@ -11,6 +11,7 @@ import { Secrets } from './common/env';
 import { EventsModule } from './events/events.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { PaymentsModule } from './payments/payments.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { PaymentsModule } from './payments/payments.module';
       ttl: 60000,
       limit: Secrets.RATE_LIMITING_PER_MINUTE
     }]),
+    ScheduleModule.forRoot(),
   ],
 
   providers: [{

@@ -91,7 +91,7 @@ model Organizer {
   name          String[]
   email         String
   accountName   String
-  accountNumber String  @unique
+  accountNumber String   @unique
   bankName      String
   recipientCode String?
   phone         String
@@ -120,7 +120,7 @@ model TicketTier {
   discountStatus          DiscountStatus?
   benefits                String?
   totalNumberOfTickets    Int
-  soldOut                 Boolean @default(false)
+  soldOut                 Boolean         @default(false)
 
   eventId Int
   event   Event @relation(fields: [eventId], references: [id])
