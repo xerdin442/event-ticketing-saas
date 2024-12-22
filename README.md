@@ -1,1 +1,1 @@
-# NestJS Starter boilerplate
+# event-ticketing-saas
