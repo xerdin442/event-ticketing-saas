@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 const config = new ConfigService();
 
 export const Secrets = {
-  NODE_ENV: process.env.NODE_ENV,
+  NODE_ENV: process.env.NODE_ENV as string,
   PORT: config.getOrThrow<number>('PORT'),
   DATABASE_PASSWORD: config.getOrThrow<string>('DATABASE_PASSWORD'),
   DATABASE_NAME: config.getOrThrow<string>('DATABASE_NAME'),
@@ -24,5 +24,6 @@ export const Secrets = {
   RATE_LIMITING_PER_SECOND: config.getOrThrow<number>('RATE_LIMITING_PER_SECOND'),
   RATE_LIMITING_PER_MINUTE: config.getOrThrow<number>('RATE_LIMITING_PER_MINUTE'),
   SESSION_STORE_INDEX: config.getOrThrow<number>('SESSION_STORE_INDEX'),
-  QUEUE_STORE_INDEX: config.getOrThrow<number>('QUEUE_STORE_INDEX')
+  QUEUE_STORE_INDEX: config.getOrThrow<number>('QUEUE_STORE_INDEX'),
+  PAYSTACK_SECRET_KEY: config.getOrThrow<string>('PAYSTACK_SECRET_KEY')
 }

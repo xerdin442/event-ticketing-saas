@@ -16,7 +16,7 @@ export class MailProcessor {
       const subject = 'Welcome Onboard!'
       const content = 'Thanks for signing up'
   
-      await sendEmail(receiver, subject, content, null);
+      await sendEmail(receiver, subject, content);
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing "${job.name}", Job ID: ${job.id}. Error: ${error.message}\n`);
 
@@ -31,7 +31,7 @@ export class MailProcessor {
       const subject = 'Password Reset'
       const content = `This is your OTP: ${receiver.otp}. It is valid for one hour.`
   
-      await sendEmail(receiver, subject, content, null);
+      await sendEmail(receiver, subject, content);
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing "${job.name}", Job ID: ${job.id}. Error: ${error.message}\n`);
 

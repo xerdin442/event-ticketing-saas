@@ -2,7 +2,8 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import * as argon from 'argon2'
 import {
-  AuthDto,
+  CreateUserDto,
+  LoginDto,
   NewPasswordDto,
   PasswordResetDto,
   Verify2FADto,
@@ -12,7 +13,7 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
 import * as speakeasy from 'speakeasy';
-import * as qrCode from 'qrcode';
+import * as qrcode from 'qrcode';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { SessionData, SessionService } from '../common/session';
@@ -30,7 +31,7 @@ export class AuthService {
     @InjectMetric('two_fa_enabled_users') public twoFactorAuthMetric: Gauge
   ) { }
 
-  async signup(dto: AuthDto, filePath: string | undefined)
+  async signup(dto: CreateUserDto, filePath?: string)
     : Promise<{ user: User, token: string }> {
     try {
       // Hash password and create new user
@@ -40,8 +41,8 @@ export class AuthService {
           email: dto.email,
           password: hash,
           profileImage: filePath || Secrets.DEFAULT_IMAGE,
-          firstName: dto.firstName || null,
-          lastName: dto.lastName || null
+          firstName: dto.firstName,
+          lastName: dto.lastName
         }
       });
 
@@ -66,7 +67,7 @@ export class AuthService {
     }
   }
 
-  async login(dto: AuthDto)
+  async login(dto: LoginDto)
     : Promise<{ token: string, twoFactorAuth: boolean }> {
     try {
       const user = await this.prisma.user.findUnique({
@@ -125,7 +126,7 @@ export class AuthService {
       this.twoFactorAuthMetric.inc(); // Update metrics value
 
       // Create a QRcode image with the generated secret
-      return await qrCode.toDataURL(secret.otpauth_url, { errorCorrectionLevel: 'high' });
+      return await qrcode.toDataURL(secret.otpauth_url, { errorCorrectionLevel: 'high' });
     } catch (error) {
       throw error;
     }

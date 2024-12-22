@@ -10,7 +10,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { User } from '@prisma/client';
 import { GetUser } from '../common/decorators';
 import { updateProfileDto } from './dto';
-import { UserService } from './user.service';
+import { UserService } from './users.service';
 import logger from '../common/logger';
 
 @UseGuards(AuthGuard('jwt'))

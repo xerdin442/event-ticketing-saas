@@ -1,6 +1,16 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsStrongPassword } from "class-validator";
+import { 
+  IsEmail,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  IsStrongPassword
+} from "class-validator";
 
-export class AuthDto {
+export class CreateUserDto {
+  @IsNumber()
+  @IsNotEmpty()
+  age: number;
+
   @IsEmail({}, { message: 'Please enter a valid email address' })
   @IsNotEmpty()
   email: string;
@@ -13,16 +23,38 @@ export class AuthDto {
     minUppercase: 1,
     minNumbers: 1,
     minSymbols: 1
-  }, { message: 'Password must contain at least one uppercase letter, one lowercase letter, one digit and one symbol' })
-  password: string
+  }, { message: 'Password must contain at least one uppercase and lowercase letter, one digit and one symbol' })
+  password: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  firstName?: string
+  firstName: string;
 
-  @IsOptional()
+  @IsNotEmpty()
   @IsString()
-  lastName?: string
+  lastName: string;
+
+  @IsNotEmpty()
+  @IsString()
+  accountNumber: string;
+
+  @IsNotEmpty()
+  @IsString()
+  accountName: string;
+
+  @IsNotEmpty()
+  @IsString()
+  bankName: string;
+}
+
+export class LoginDto {
+  @IsEmail({}, { message: 'Please enter a valid email address' })
+  @IsNotEmpty()
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
+  password: string;
 }
 
 export class Verify2FADto {
@@ -52,6 +84,6 @@ export class NewPasswordDto {
     minUppercase: 1,
     minNumbers: 1,
     minSymbols: 1
-  }, { message: 'Password must contain at least one uppercase letter, one lowercase letter, one digit and one symbol' })
+  }, { message: 'Password must contain at least one uppercase and lowercase letter, one digit and one symbol' })
   newPassword: string;
 }

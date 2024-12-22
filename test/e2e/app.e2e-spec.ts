@@ -10,7 +10,7 @@ import {
   Verify2FADto,
   VerifyOTPDto
 } from "../../src/auth/dto";
-import { updateProfileDto } from '../../src/user/dto';
+import { updateProfileDto } from '../../src/users/dto';
 import { SessionService } from '../../src/common/session';
 
 describe('App e2e', () => {

@@ -11,7 +11,8 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
-  AuthDto,
+  CreateUserDto,
+  LoginDto,
   NewPasswordDto,
   PasswordResetDto,
   Verify2FADto,
@@ -19,7 +20,7 @@ import {
 } from './dto';
 import { User } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { UploadConfig } from '../common/config/upload';
+import { UploadService } from '../common/config/upload';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from '../common/decorators';
 import logger from '../common/logger';
@@ -34,38 +35,32 @@ export class AuthController {
 
   @Post('signup')
   @UseInterceptors(FileInterceptor('profileImage', {
-    fileFilter: new UploadConfig().fileFilter,
+    fileFilter: UploadService.fileFilter,
     limits: { fieldSize: 5 * 1024 * 1024 }, // File sizes must be less than 5MB
-    storage: new UploadConfig().storage('profile-images', 'image')
+    storage: UploadService.storage('profile-images', 'image'),
   }))
   async signup(
-    @Body() dto: AuthDto,
+    @Body() dto: CreateUserDto,
     @UploadedFile() file: Express.Multer.File
-  ): Promise<object> {
+  ): Promise<{ user: User, token: string }> {
     try {
-      let response: object;
-      if (file) {
-        response = await this.authService.signup(dto, file.path)
-      } else {
-        response = await this.authService.signup(dto, undefined)
-      }
-
+      const response = await this.authService.signup(dto, file.path);
       logger.info(`[${this.context}] User signup successful. Email: ${dto.email}\n`);
+      
       return response;
     } catch (error) {
       if (file) {
-        new UploadConfig().deleteFile(file.path, 'Signup');
+        UploadService.deleteFile(file.path, 'Signup');
       }
 
       logger.error(`[${this.context}] An error occurred during user signup. Error: ${error.message}\n`);
-
       throw error;
     }
   }
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  async login(@Body() dto: AuthDto)
+  async login(@Body() dto: LoginDto)
     : Promise<{ token: string, twoFactorAuth: boolean }> {
     try {
       const response = await this.authService.login(dto);
