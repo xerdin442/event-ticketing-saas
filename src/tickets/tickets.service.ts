@@ -1,7 +1,7 @@
-import { 
+import {
   BadRequestException,
   Injectable,
-  UnauthorizedException 
+  UnauthorizedException
 } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { PurchaseTicketDto, ValidateTicketDto } from './dto';
@@ -47,18 +47,11 @@ export class TicketsService {
               amount = tier.discountPrice * dto.quantity;
 
               // Decrement the number of discount tickets and total number of tickets left in the tier
-              await this.prisma.event.update({
-                where: { id: eventId },
+              await this.prisma.ticketTier.update({
+                where: { id: tier.id },
                 data: {
-                  ticketTiers: {
-                    update: {
-                      where: { id: tier.id },
-                      data: {
-                        numberOfDiscountTickets: { decrement: dto.quantity },
-                        totalNumberOfTickets: { decrement: dto.quantity }
-                      }
-                    }
-                  }
+                  numberOfDiscountTickets: { decrement: dto.quantity },
+                  totalNumberOfTickets: { decrement: dto.quantity }
                 }
               });
             }
@@ -67,17 +60,10 @@ export class TicketsService {
             amount = tier.price * dto.quantity;
 
             // Decrement the total number of tickets left in the tier
-            await this.prisma.event.update({
-              where: { id: eventId },
+            await this.prisma.ticketTier.update({
+              where: { id: tier.id },
               data: {
-                ticketTiers: {
-                  update: {
-                    where: { id: tier.id },
-                    data: {
-                      totalNumberOfTickets: { decrement: dto.quantity }
-                    }
-                  }
-                }
+                totalNumberOfTickets: { decrement: dto.quantity }
               }
             });
           }
@@ -115,16 +101,9 @@ export class TicketsService {
         throw new BadRequestException('This ticekt has already been used');
       };
 
-      await this.prisma.event.update({
-        where: { id: eventId },
-        data: {
-          tickets: {
-            update: {
-              where: { id: ticket.id },
-              data: { status: 'USED' }
-            }
-          }
-        }
+      await this.prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { status: 'USED' }
       });
 
       return;

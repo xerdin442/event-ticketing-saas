@@ -4,7 +4,7 @@ import { FileFilterCallback } from "multer";
 import { CloudinaryStorage } from "@fluidjs/multer-cloudinary";
 import logger from "../logger";
 import { Secrets } from "../env";
-import crypto from "crypto";
+import { randomUUID } from "crypto";
 
 class UploadConfig {
   private context = UploadConfig.name;
@@ -19,7 +19,7 @@ class UploadConfig {
   };
 
   storage(folder: string, resource_type: 'image' | 'raw'): CloudinaryStorage {
-    const public_id = new Date().toISOString().replace(/:/g, '-') + '-' + crypto.randomUUID().replace(/-/g, '');
+    const public_id = new Date().toISOString().replace(/:/g, '-') + '-' + randomUUID().replace(/-/g, '');
     const storage = new CloudinaryStorage({
       cloudinary: v2,
       params: { folder, public_id, resource_type }

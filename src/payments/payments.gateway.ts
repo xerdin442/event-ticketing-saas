@@ -35,7 +35,7 @@ export class PaymentsGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
   }
 
-  notifyPaymentStatus(email: string, status: string, message: string) {
+  sendPaymentStatus(email: string, status: string, message: string) {
     const client = this.clients[email];
     if (client) {
       client.send(JSON.stringify({ status, message }));

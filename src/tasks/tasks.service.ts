@@ -89,16 +89,9 @@ export class TasksService {
 
           // Update discount status if the expiration time has elapsed
           if (currentTime > expirationDate) {
-            await this.prisma.event.update({
-              where: { id: event.id },
-              data: {
-                ticketTiers: {
-                  update: {
-                    where: { id: tier.id },
-                    data: { discountStatus: "ENDED" }
-                  }
-                }
-              }
+            await this.prisma.ticketTier.update({
+              where: { id: tier.id },
+              data: { discountStatus: "ENDED" }
             });
           };
         })
