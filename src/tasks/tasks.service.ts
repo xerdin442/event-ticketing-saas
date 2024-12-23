@@ -28,7 +28,7 @@ export class TasksService {
           ]
         },
         include: {
-          ticketTier: true,
+          ticketTiers: true,
           organizer: true
         }
       });
@@ -51,7 +51,7 @@ export class TasksService {
 
           // Remove the organizer as a transfer recipient when the event is complete
           await this.payments.deleteTransferRecipient(event.organizer.recipientCode);
-        } else if (event.ticketTier.every(tier => tier.soldOut === true)) {
+        } else if (event.ticketTiers.every(tier => tier.soldOut === true)) {
           await this.prisma.event.update({
             where: { id: event.id },
             data: { status: "SOLD_OUT" }
@@ -79,11 +79,11 @@ export class TasksService {
     try {
       // Get all events and their ticket tiers
       const events = await this.prisma.event.findMany({
-        include: { ticketTier: true }
+        include: { ticketTiers: true }
       });
 
       for (let event of events) {
-        event.ticketTier.forEach(async (tier) => {
+        event.ticketTiers.forEach(async (tier) => {
           const currentTime = new Date().getTime();
           const expirationDate = new Date(tier.discountExpiration).getTime();
 
@@ -92,7 +92,7 @@ export class TasksService {
             await this.prisma.event.update({
               where: { id: event.id },
               data: {
-                ticketTier: {
+                ticketTiers: {
                   update: {
                     where: { id: tier.id },
                     data: { discountStatus: "ENDED" }

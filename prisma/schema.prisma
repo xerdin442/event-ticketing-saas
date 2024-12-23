@@ -112,8 +112,9 @@ model Organizer {
 model TicketTier {
   id Int @id @default(autoincrement())
 
-  tier                    String
+  name                    String
   price                   Int
+  discount                Boolean         @default(false)
   discountPrice           Int?
   discountExpiration      DateTime?
   numberOfDiscountTickets Int?
@@ -125,7 +126,7 @@ model TicketTier {
   eventId Int
   event   Event @relation(fields: [eventId], references: [id])
 
-  @@index([tier])
+  @@index([name])
   @@map("ticket tiers")
 }
 
@@ -155,9 +156,10 @@ model Event {
 
   users User[] @relation("Attendees")
 
-  ticketTier TicketTier[]
-  tickets    Ticket[]
+  ticketTiers TicketTier[]
+  tickets     Ticket[]
 
   @@index([category])
+  @@index([status])
   @@map("events")
 }

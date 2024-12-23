@@ -1,14 +1,16 @@
 import { IsString, IsNotEmpty, IsNumber } from "class-validator";
 
-export class CreateTicketDto {
+export class PurchaseTicketDto {
   @IsString()
   @IsNotEmpty()
   tier: string;
   
   @IsNumber()
   @IsNotEmpty()
-  price: number;
-  
+  quantity: number;
+}
+
+export class ValidateTicketDto {
   @IsString()
   @IsNotEmpty()
   accessKey: string;
