@@ -12,6 +12,7 @@ import { EventsModule } from './events/events.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { TasksModule } from './tasks/tasks.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { ScheduleModule } from '@nestjs/schedule';
       limit: Secrets.RATE_LIMITING_PER_MINUTE
     }]),
     ScheduleModule.forRoot(),
+    TasksModule,
   ],
 
   providers: [{

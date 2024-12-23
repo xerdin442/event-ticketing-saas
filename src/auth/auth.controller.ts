@@ -24,11 +24,11 @@ import { UploadService } from '../common/config/upload';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from '../common/decorators';
 import logger from '../common/logger';
-import { SessionData } from '../common/session';
+import { SessionData } from '../common/types';
 
 @Controller('auth')
 export class AuthController {
-  private context = AuthController.name;
+  private context: string = AuthController.name;
   private sessionData: SessionData = {};
 
   constructor(private readonly authService: AuthService) { };

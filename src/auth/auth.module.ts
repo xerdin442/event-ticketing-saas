@@ -8,6 +8,7 @@ import { MailProcessor } from '../common/workers/mail.processor';
 import { SessionService } from '../common/session';
 import { makeGaugeProvider } from '@willsoto/nestjs-prometheus';
 import { Secrets } from '../common/env';
+import { PaymentsService } from 'src/payments/payments.service';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { Secrets } from '../common/env';
     JwtStrategy,
     MailProcessor,
     SessionService,
+    PaymentsService,
     makeGaugeProvider({
       name: 'two_fa_enabled_users',
       help: 'Total number of users that enabled 2FA'

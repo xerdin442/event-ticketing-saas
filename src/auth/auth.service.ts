@@ -16,10 +16,12 @@ import * as speakeasy from 'speakeasy';
 import * as qrcode from 'qrcode';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { SessionData, SessionService } from '../common/session';
+import { SessionData } from '../common/types';
+import { SessionService } from '../common/session';
 import { InjectMetric } from '@willsoto/nestjs-prometheus';
 import { Gauge } from 'prom-client';
 import { Secrets } from '../common/env';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +29,7 @@ export class AuthService {
     private readonly prisma: DbService,
     private readonly jwt: JwtService,
     private readonly sessionService: SessionService,
+    private readonly payments: PaymentsService,
     @InjectQueue('mail-queue') private readonly mailQueue: Queue,
     @InjectMetric('two_fa_enabled_users') public twoFactorAuthMetric: Gauge
   ) { }
@@ -34,34 +37,40 @@ export class AuthService {
   async signup(dto: CreateUserDto, filePath?: string)
     : Promise<{ user: User, token: string }> {
     try {
+      const { accountName, accountNumber, bankName, age, email, password, firstName, lastName } = dto;
+      
+      // Verify if user account details are correct
+      await this.payments.verifyAccountDetails({ accountName, accountNumber, bankName });
+
       // Hash password and create new user
-      const hash = await argon.hash(dto.password)
+      const hash = await argon.hash(password)
       const user = await this.prisma.user.create({
         data: {
-          email: dto.email,
+          age,
+          email,
           password: hash,
           profileImage: filePath || Secrets.DEFAULT_IMAGE,
-          firstName: dto.firstName,
-          lastName: dto.lastName
+          firstName,
+          lastName,
+          accountName,
+          accountNumber,
+          bankName
         }
       });
 
       // Create JWT payload
-      const payload = { sub: user.id, email: user.email }
+      const payload = { sub: user.id, email };
 
       // Send an onboarding email to the new user
-      await this.mailQueue.add('signup', {
-        email: dto.email,
-        firstName: dto.firstName
-      })
+      await this.mailQueue.add('signup', { email, firstName });
 
-      return { user, token: await this.jwt.signAsync(payload) }
+      return { user, token: await this.jwt.signAsync(payload) };
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           throw new BadRequestException(`This ${error.meta.target[0]} already exists. Please try again!`)
         }
-      }
+      };
 
       throw error;
     }

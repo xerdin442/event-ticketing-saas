@@ -19,7 +19,6 @@ export class MailProcessor {
       await sendEmail(receiver, subject, content);
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing "${job.name}", Job ID: ${job.id}. Error: ${error.message}\n`);
-
       throw error;
     }
   }
@@ -34,7 +33,20 @@ export class MailProcessor {
       await sendEmail(receiver, subject, content);
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing "${job.name}", Job ID: ${job.id}. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
 
+  @Process('sold_out')
+  async soldOutEvent(job: Job) {
+    try {
+      const receiver = job.data
+      const subject = 'SOLD OUT!'
+      const content = `Congratulations, your event titled: ${receiver.eventTitle} is sold out!`
+  
+      await sendEmail(receiver, subject, content);
+    } catch (error) {
+      logger.error(`[${this.context}] An error occured while processing "${job.name}", Job ID: ${job.id}. Error: ${error.message}\n`);
       throw error;
     }
   }

@@ -2,11 +2,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import logger from '../logger';
 import { Secrets } from '../env';
-
-export type EmailAttachment = {
-  name: string
-  content: string
-}
+import { EmailAttachment } from '../types';
 
 export const sendEmail = async (
   receiver: any,
@@ -28,7 +24,7 @@ export const sendEmail = async (
     to: [
       {
         email: `${receiver.email}`,
-        name: `${receiver?.firstName}`
+        name: `${receiver.firstName ?? receiver.name.join(' X ')}`
       },
     ],
     subject,
@@ -49,7 +45,6 @@ export const sendEmail = async (
     logger.info(`[${context}] "${subject}" email sent to ${receiver.email}. Email ID: ${response.data.messageId}\n`);
   } catch (error) {
     logger.error(`[${context}] An error occured while sending "${subject}" email to ${receiver.email}. Error: ${error.message}\n`);
-    
     throw error;
   }
 }

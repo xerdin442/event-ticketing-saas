@@ -21,3 +21,14 @@ export type AccountDetails = {
   accountNumber: string
   bankName: string
 }
+
+export type SessionData = {
+  email?: string
+  otp?: string
+  otpExpiration?: number
+}
+
+export type EmailAttachment = {
+  name: string
+  content: string
+}

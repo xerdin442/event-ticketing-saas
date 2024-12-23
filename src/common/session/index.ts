@@ -2,12 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { createClient, RedisClientType } from "redis";
 import logger from "../logger";
 import { Secrets } from "../env";
-
-export type SessionData = {
-  email?: string
-  otp?: string
-  otpExpiration?: number
-}
+import { SessionData } from "../types";
 
 @Injectable()
 export class SessionService {
