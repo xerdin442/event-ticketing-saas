@@ -22,7 +22,7 @@ import { User } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from '../common/config/upload';
 import { AuthGuard } from '@nestjs/passport';
-import { GetUser } from '../common/decorators';
+import { GetUser } from '../custom/decorators';
 import logger from '../common/logger';
 import { SessionData } from '../common/types';
 

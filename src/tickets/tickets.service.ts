@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { 
+  BadRequestException,
+  Injectable,
+  UnauthorizedException 
+} from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { PurchaseTicketDto, ValidateTicketDto } from './dto';
 import { PaymentsService } from '../payments/payments.service';
@@ -89,7 +93,7 @@ export class TicketsService {
     const metadata = {
       userId,
       eventId,
-      tier: ticketTier,
+      ticketTier,
       amount,
       discount,
       quantity: dto.quantity
@@ -99,7 +103,7 @@ export class TicketsService {
     return this.payments.initializeTransaction(user.email, amount * 100, metadata);
   }
 
-  async validateTicket(eventId: number, dto: ValidateTicketDto): Promise<void> {
+  async validateTicket(dto: ValidateTicketDto, eventId: number): Promise<void> {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
       include: { tickets: true }
