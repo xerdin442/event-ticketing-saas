@@ -20,10 +20,10 @@ export const Secrets = {
   BREVO_API_KEY: config.getOrThrow<string>('BREVO_API_KEY'),
   APP_NAME: config.getOrThrow<string>('APP_NAME'),
   APP_EMAIL: config.getOrThrow<string>('APP_EMAIL'),
-  SESSION_SECRET: config.getOrThrow<string>('SESSION_SECRET'),
   RATE_LIMITING_PER_SECOND: config.getOrThrow<number>('RATE_LIMITING_PER_SECOND'),
   RATE_LIMITING_PER_MINUTE: config.getOrThrow<number>('RATE_LIMITING_PER_MINUTE'),
   SESSION_STORE_INDEX: config.getOrThrow<number>('SESSION_STORE_INDEX'),
   QUEUE_STORE_INDEX: config.getOrThrow<number>('QUEUE_STORE_INDEX'),
+  TRANSFER_RETRIES_STORE_INDEX: config.getOrThrow<number>('TRANSFER_RETRIES_STORE_INDEX'),
   PAYSTACK_SECRET_KEY: config.getOrThrow<string>('PAYSTACK_SECRET_KEY')
 }

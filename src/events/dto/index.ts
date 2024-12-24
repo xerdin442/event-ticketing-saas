@@ -1,3 +1,4 @@
+import { EventCategory, TicketTier } from "@prisma/client";
 import { 
   IsString,
   IsNotEmpty,
@@ -18,7 +19,7 @@ export class CreateEventDto {
 
   @IsString()
   @IsNotEmpty()
-  category: string;
+  category: EventCategory;
 
   @IsDate()
   @IsNotEmpty()
@@ -66,7 +67,7 @@ export class CreateEventDto {
 
   @IsArray()
   @IsNotEmpty()
-  tickets: []
+  tickets: TicketTier[]
 
   @IsString()
   @IsNotEmpty()

@@ -8,6 +8,8 @@ import { randomUUID } from "crypto";
 import * as qrcode from "qrcode";
 import { sendEmail } from "../config/mail";
 import logger from "../logger";
+import { initializeRedis } from "../config/redis-conf";
+import { Secrets } from "../env";
 
 @Injectable()
 @Processor('payments-queue')
@@ -33,10 +35,12 @@ export class PaymentsProcessor {
           organizer: true
         }
       });
-
       const user = await this.prisma.user.findUnique({
         where: { id: userId }
       });
+
+      let split: number;
+      let price: number;
 
       if (eventType === 'charge.success') {
         // Notify the client of payment status via WebSocket connection
@@ -44,6 +48,8 @@ export class PaymentsProcessor {
 
         for (let tier of event.ticketTiers) {
           if (tier.name === ticketTier) {
+            price = tier.price;
+
             // Check the number of discount tickets left and update status of the discount offer
             if (tier.numberOfDiscountTickets === 0) {
               await this.prisma.ticketTier.update({
@@ -58,18 +64,30 @@ export class PaymentsProcessor {
                 where: { id: tier.id },
                 data: { soldOut: true }
               });
+            };
+
+            // Calculate and subtract the platform fee from transaction amount based on ticket price
+            if (price <= 20000) {
+              split = amount * 0.925;
+            } else if (price > 20000 && price <= 100000) {
+              split = amount * 0.95;
+            } else if (price > 100000) {
+              split = amount * 0.975;
             }
           }
         }
-
-        // Subtract the platform fee (10%) from transaction amount
-        const split = amount * 0.9;
+       
         // Intitiate transfer of event organizer's split
         await this.payments.initiateTransfer(
           event.organizer.recipientCode,
           split * 100,
           'Revenue Split',
-          { userId, eventTitle: event.title }
+          {
+            userId,
+            eventTitle: event.title,
+            retryKey: randomUUID().replace(/-/g, ''),
+            amount: split * 100
+          }
         );
 
         // Add the organizer's split to the event's total revenue and the user to the attendee list
@@ -91,7 +109,7 @@ export class PaymentsProcessor {
           await this.prisma.ticket.create({
             data: {
               accessKey,
-              price: amount / quantity,
+              price,
               tier: ticketTier,
               attendee: userId,
               eventId
@@ -141,14 +159,14 @@ export class PaymentsProcessor {
 
   @Process('transfer')
   async finalizeTransfer(job: Job) {
+    const { eventType, metadata, reason, recipientCode } = job.data;
+    const { userId, eventTitle, retryKey, amount } = metadata;
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }
+    });
+
     try {
-      const { eventType, metadata, reason, recipientCode } = job.data;
-      const { userId, eventTitle } = metadata;
-
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId }
-      });
-
       if (eventType === 'transfer.success') {
         if (reason === 'Ticket Refund') {
           // Remove the attendee as a transfer recipient after the refund is complete
@@ -166,12 +184,31 @@ export class PaymentsProcessor {
         return;
       } else if (eventType === 'transfer.reversed') {
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} has been reversed.\n`)
-        // ***Retry transfer
+        
+        // Initialize Redis instance for storing number of transfer retries
+        const redis = initializeRedis(
+          Secrets.REDIS_URL,
+          Secrets.TRANSFER_RETRIES_STORE_INDEX,
+          'Transfer Retries'
+        );
 
-        return;
+        /* Use the retry key to check if the transfer has already been retried.
+        If not, retry the transfer after 20mins and store the status of the retry key */
+        const checkRetry = await redis.get(retryKey);
+        if (checkRetry) {
+          return;
+        } else {
+          setTimeout(async () => {
+            await this.payments.initiateTransfer(recipientCode, amount, reason, metadata);
+            await redis.setEx(retryKey, 60000, JSON.stringify({ status: 'USED' }));
+          }, 20 * 1000 * 1000);
+
+          logger.info(`[${this.context}] ${reason}: Transfer retry to ${user.email} has been initiated.\n`);
+          return;
+        }
       }
     } catch (error) {
-      logger.error(`[${this.context}] An error occured while processing transfer, Job ID: ${job.id}. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occured while processing ${reason} transfer to ${user.email}. Error: ${error.message}\n`);
       throw error;
     }
   }
