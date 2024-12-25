@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, OnModuleInit } from "@nestjs/common";
 import { RedisClientType } from "redis";
 import logger from "../logger";
 import { Secrets } from "../env";
@@ -6,13 +6,17 @@ import { SessionData } from "../types";
 import { initializeRedis } from "../config/redis-conf";
 
 @Injectable()
-export class SessionService {
+export class SessionService implements OnModuleInit {
   private readonly context = SessionService.name;
-  private readonly redis: RedisClientType = initializeRedis(
-    Secrets.REDIS_URL,
-    Secrets.SESSION_STORE_INDEX,
-    this.context
-  );
+  private redis: RedisClientType;
+
+  async onModuleInit() {
+    this.redis = await initializeRedis(
+      Secrets.REDIS_URL,
+      Secrets.SESSION_STORE_INDEX,
+      this.context
+    );
+  }
   
   async set(key: string, value: SessionData): Promise<void> {
     try {

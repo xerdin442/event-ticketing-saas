@@ -76,7 +76,7 @@ export class PaymentsProcessor {
             }
           }
         }
-       
+
         // Intitiate transfer of event organizer's split
         await this.payments.initiateTransfer(
           event.organizer.recipientCode,
@@ -184,9 +184,9 @@ export class PaymentsProcessor {
         return;
       } else if (eventType === 'transfer.reversed') {
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} has been reversed.\n`)
-        
+
         // Initialize Redis instance for storing number of transfer retries
-        const redis = initializeRedis(
+        const redis = await initializeRedis(
           Secrets.REDIS_URL,
           Secrets.TRANSFER_RETRIES_STORE_INDEX,
           'Transfer Retries'
@@ -196,15 +196,22 @@ export class PaymentsProcessor {
         If not, retry the transfer after 20mins and store the status of the retry key */
         const checkRetry = await redis.get(retryKey);
         if (checkRetry) {
+          logger.info(`[${this.context}] Transfer retry already attempted for ${user.email}.`);
           return;
         } else {
           setTimeout(async () => {
-            await this.payments.initiateTransfer(recipientCode, amount, reason, metadata);
-            await redis.setEx(retryKey, 60000, JSON.stringify({ status: 'USED' }));
-          }, 20 * 1000 * 1000);
+            try {
+              await this.payments.initiateTransfer(recipientCode, amount, reason, metadata);
+              await redis.setEx(retryKey, 60 * 60 * 24, JSON.stringify({ status: 'USED' }));
 
-          logger.info(`[${this.context}] ${reason}: Transfer retry to ${user.email} has been initiated.\n`);
-          return;
+              logger.info(`[${this.context}] ${reason}: Transfer retry to ${user.email} has been successfully initiated.\n`);
+              return;
+            } catch (error) {
+              throw error;
+            } finally {
+              await redis.disconnect();
+            }
+          }, 20 * 60 * 1000);
         }
       }
     } catch (error) {
