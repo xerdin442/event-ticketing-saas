@@ -51,10 +51,6 @@ export class CreateEventDto {
 
   @IsNumber()
   @IsNotEmpty()
-  numberOfShares: number;
-
-  @IsNumber()
-  @IsNotEmpty()
   revenue: number
 
   @IsString()

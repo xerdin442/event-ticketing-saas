@@ -10,6 +10,8 @@ import { sendEmail } from "../config/mail";
 import logger from "../logger";
 import { initializeRedis } from "../config/redis-conf";
 import { Secrets } from "../env";
+import { generateTicketPDF } from "../util/document";
+import { EmailAttachment } from "../types";
 
 @Injectable()
 @Processor('payments-queue')
@@ -41,6 +43,7 @@ export class PaymentsProcessor {
 
       let split: number;
       let price: number;
+      let pdfs: EmailAttachment[] = [];
 
       if (eventType === 'charge.success') {
         // Notify the client of payment status via WebSocket connection
@@ -85,8 +88,7 @@ export class PaymentsProcessor {
           {
             userId,
             eventTitle: event.title,
-            retryKey: randomUUID().replace(/-/g, ''),
-            amount: split * 100
+            retryKey: randomUUID().replace(/-/g, '')
           }
         );
 
@@ -104,24 +106,32 @@ export class PaymentsProcessor {
         // Create the required number of tickets
         for (let i = 1; i <= quantity; i++) {
           const accessKey = randomUUID().split('-')[4]
-          const qrcodeImage = qrcode.toDataURL(accessKey, { errorCorrectionLevel: 'H' })
+          const qrcodeImage = await qrcode.toDataURL(accessKey, { errorCorrectionLevel: 'H' })
 
-          await this.prisma.ticket.create({
+          const ticket = await this.prisma.ticket.create({
             data: {
               accessKey,
               price,
               tier: ticketTier,
               attendee: userId,
               eventId
+            },
+            include: {
+              user: true,
+              event: true
             }
           });
 
-          // Send an email with the ticket PDFs to the attendee
-          const subject = 'Ticket Purchase'
-          const content = `You are purchased a ticket for the event: ${event.title}.
-            Attached to this email are your ticket(s). They'll be required for entry at the event, keep them safe!`
-          await sendEmail(user, subject, content);
+          // Generate ticket PDF and configure email attachment
+          const ticketPDF = await generateTicketPDF(ticket, qrcodeImage, ticket.user, ticket.event);
+          pdfs.push(ticketPDF);
         };
+        
+        // Send an email with the ticket PDFs to the attendee
+        const subject = 'Ticket Purchase'
+        const content = `You are purchased a ticket for the event: ${event.title}.
+          Attached to this email are your ticket(s). They'll be required for entry at the event, keep them safe!`
+        await sendEmail(user, subject, content, pdfs);
 
         logger.info(`[${this.context}] Ticket purchase completed by ${user.email}.\n`);
         return;
@@ -159,8 +169,8 @@ export class PaymentsProcessor {
 
   @Process('transfer')
   async finalizeTransfer(job: Job) {
-    const { eventType, metadata, reason, recipientCode } = job.data;
-    const { userId, eventTitle, retryKey, amount } = metadata;
+    const { eventType, metadata, reason, recipientCode, amount } = job.data;
+    const { userId, eventTitle, retryKey } = metadata;
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId }
@@ -196,13 +206,13 @@ export class PaymentsProcessor {
         If not, retry the transfer after 20mins and store the status of the retry key */
         const checkRetry = await redis.get(retryKey);
         if (checkRetry) {
-          logger.info(`[${this.context}] Transfer retry already attempted for ${user.email}.`);
+          logger.info(`[${this.context}] ${reason}: Transfer retry already attempted for ${user.email}.`);
           return;
         } else {
           setTimeout(async () => {
             try {
               await this.payments.initiateTransfer(recipientCode, amount, reason, metadata);
-              await redis.setEx(retryKey, 60 * 60 * 24, JSON.stringify({ status: 'USED' }));
+              await redis.setEx(retryKey, 86400, JSON.stringify({ status: 'USED' }));    
 
               logger.info(`[${this.context}] ${reason}: Transfer retry to ${user.email} has been successfully initiated.\n`);
               return;

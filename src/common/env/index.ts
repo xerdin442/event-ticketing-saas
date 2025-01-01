@@ -25,5 +25,6 @@ export const Secrets = {
   SESSION_STORE_INDEX: config.getOrThrow<number>('SESSION_STORE_INDEX'),
   QUEUE_STORE_INDEX: config.getOrThrow<number>('QUEUE_STORE_INDEX'),
   TRANSFER_RETRIES_STORE_INDEX: config.getOrThrow<number>('TRANSFER_RETRIES_STORE_INDEX'),
+  GEOLOCATION_STORE_INDEX: config.getOrThrow<number>('GEOLOCATION_STORE_INDEX'),
   PAYSTACK_SECRET_KEY: config.getOrThrow<string>('PAYSTACK_SECRET_KEY')
 }

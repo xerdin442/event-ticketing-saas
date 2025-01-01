@@ -59,7 +59,8 @@ export class PaymentsController {
           eventType: event,
           metadata: data.recipient.metadata,
           recipientCode: data.recipient.recipient_code,
-          reason: data.reason
+          reason: data.reason,
+          amount: data.amount
         });
       };
 

@@ -6,6 +6,8 @@ services:
       - "3000:3000"
     networks:
       - backend-network
+    volumes:
+      - ./src/tickets/docs:/usr/src/app/tickets/docs:rw
     env_file:
       - ./.env
     depends_on:

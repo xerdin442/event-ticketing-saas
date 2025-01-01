@@ -18,7 +18,7 @@ class UploadConfig {
     });
   };
 
-  storage(folder: string, resource_type: 'image' | 'raw'): CloudinaryStorage {
+  storage(folder: string, resource_type: 'image' | 'raw' | 'video'): CloudinaryStorage {
     const public_id = new Date().toISOString().replace(/:/g, '-') + '-' + randomUUID().replace(/-/g, '');
     const storage = new CloudinaryStorage({
       cloudinary: v2,
