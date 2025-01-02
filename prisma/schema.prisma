@@ -68,10 +68,11 @@ model Ticket {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tier      String
-  price     Int
-  accessKey String       @unique
-  status    TicketStatus @default(ACTIVE)
+  tier          String
+  price         Int
+  accessKey     String       @unique
+  status        TicketStatus @default(ACTIVE)
+  discountPrice Int?
 
   attendee Int
   user     User @relation(fields: [attendee], references: [id])

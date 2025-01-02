@@ -1,11 +1,11 @@
-import { EventCategory, TicketTier } from "@prisma/client";
+import { EventCategory } from "@prisma/client";
 import { 
   IsString,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsDate,
-  IsArray
+  IsBoolean,
 } from "class-validator";
 
 export class CreateEventDto {
@@ -52,18 +52,6 @@ export class CreateEventDto {
   @IsNumber()
   @IsNotEmpty()
   revenue: number
-
-  @IsString()
-  @IsNotEmpty()
-  poster: string;
-
-  @IsString()
-  @IsNotEmpty()
-  media: string[];
-
-  @IsArray()
-  @IsNotEmpty()
-  tickets: TicketTier[]
 
   @IsString()
   @IsNotEmpty()
@@ -117,7 +105,7 @@ export class UpdateEventDto {
 
   @IsString()
   @IsOptional()
-  category?: string;
+  category?: EventCategory;
 
   @IsDate()
   @IsOptional()
@@ -149,14 +137,6 @@ export class UpdateEventDto {
 
   @IsString()
   @IsOptional()
-  poster?: string;
-
-  @IsString()
-  @IsOptional()
-  media?: string[];
-
-  @IsString()
-  @IsOptional()
   organizerName?: string[];
 
   @IsString()
@@ -182,4 +162,38 @@ export class UpdateEventDto {
   @IsString()
   @IsOptional()
   website?: string;
+}
+
+export class addTicketTierDto {
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @IsNumber()
+  @IsNotEmpty()
+  price: number;
+
+  @IsBoolean()
+  @IsNotEmpty()
+  discount: boolean;
+
+  @IsNumber()
+  @IsOptional()
+  disocuntPrice?: number;
+
+  @IsDate()
+  @IsOptional()
+  discountExpiration?: Date;
+  
+  @IsNumber()
+  @IsOptional()
+  numberOfDiscountTickets?: number;
+
+  @IsString()
+  @IsOptional()
+  benefits?: string;
+  
+  @IsNumber()
+  @IsNotEmpty()
+  totalNumberOfTickets: number;
 }

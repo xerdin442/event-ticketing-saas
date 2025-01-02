@@ -37,7 +37,7 @@ export class MailProcessor {
     }
   }
 
-  @Process('sold_out')
+  @Process('sold-out')
   async soldOutEvent(job: Job) {
     try {
       const receiver = job.data

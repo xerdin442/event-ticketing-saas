@@ -1,15 +1,21 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
-import { CreateEventDto } from './dto';
+import { addTicketTierDto, CreateEventDto, UpdateEventDto } from './dto';
 import { PaymentsService } from '../payments/payments.service';
 import axios from 'axios';
 import { Event } from '@prisma/client';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
+import { RedisClientType } from 'redis';
+import { initializeRedis } from '../common/config/redis-conf';
+import { Secrets } from '../common/env';
 
 @Injectable()
 export class EventsService {
   constructor(
     private readonly prisma: DbService,
-    private readonly payments: PaymentsService
+    private readonly payments: PaymentsService,
+    @InjectQueue('events-queue') private readonly eventsQueue: Queue
   ) { };
 
   async createEvent(
@@ -19,7 +25,7 @@ export class EventsService {
     media: string[]
   ): Promise<Event> {
     try {
-      // Verify organizer's account details
+      // Verify organizer's account details before creating transfer recipient for revenue splits
       const details = {
         accountName: dto.accountName,
         accountNumber: dto.accountNumber,
@@ -31,56 +37,194 @@ export class EventsService {
       // Encode event location in URL format and generate coordinates
       const location = `${dto.venue}+${dto.address}`.replace(/,/g, '').replace(/\s/g, '+');
       const response = await axios.get(`https://nominatim.openstreetmap.org/search?q=${location}&format=json`);
+
       if (response.status === 200) {
+        // Create organizer profile for the user
+        const organizer = await this.prisma.organizer.create({
+          data: {
+            name: [...dto.organizerName],
+            email: dto.organizerEmail,
+            accountName: dto.accountName,
+            accountNumber: dto.accountNumber,
+            bankName: dto.bankName,
+            recipientCode,
+            phone: dto.phone,
+            userId,
+            instagram: dto.instagram,
+            twitter: dto.twitter,
+            website: dto.website,
+            whatsapp: dto.whatsapp
+          }
+        });
+
+        // Create and store event details
+        const event = await this.prisma.event.create({
+          data: {
+            organizerId: organizer.id,
+            title: dto.title,
+            category: dto.category,
+            description: dto.description,
+            date: dto.date,
+            startTime: dto.startTime,
+            endTime: dto.endTime,
+            ageRestriction: dto.ageRestriction,
+            venue: dto.venue,
+            address: dto.address,
+            capacity: dto.capacity,
+            numberOfShares: 0,
+            poster,
+            media,
+            revenue: 0
+          }
+        });
+
+        // Add coordinates to Redis geolocation store
         const { lat, lon } = response.data;
-        const coordinates = { }
-        // Add lat and lon to redis geolocation store
+        await this.eventsQueue.add('geolocation-store', {
+          longitude: +lon,
+          latitude: +lat,
+          event
+        });
+
+        return event;
       } else {
         throw new BadRequestException('Failed to generate coordinates for venue and address');
       };
+    } catch (error) {
+      throw error;
+    }
+  }
 
-      // Create organizer profile for the user
-      const organizer = await this.prisma.organizer.create({
-        data: {
-          name: [ ...dto.organizerName ],
-          email: dto.organizerEmail,
-          accountName: dto.accountName,
-          accountNumber: dto.accountNumber,
-          bankName: dto.bankName,
-          recipientCode,
-          phone: dto.phone,
-          userId,
-          instagram: dto.instagram,
-          twitter: dto.twitter,
-          website: dto.website,
-          whatsapp: dto.whatsapp
-        }
+  async updateEvent(
+    dto: UpdateEventDto,
+    eventId: number,
+    poster?: string,
+    media?: string[]
+  ): Promise<Event> {
+    try {
+      const event = await this.prisma.event.update({
+        where: { id: eventId },
+        data: { ...dto, poster, media },
+        include: { users: true }
       });
 
-      // Create and store event details
-      const event = await this.prisma.event.create({
-        data: {
-          organizerId: organizer.id,
-          title: dto.title,
-          category: dto.category,
-          description: dto.description,
-          date: dto.date,
-          startTime: dto.startTime,
-          endTime: dto.endTime,
-          ageRestriction: dto.ageRestriction,
-          venue: dto.venue,
-          address: dto.address,
-          capacity: dto.capacity,
-          numberOfShares: 0,
-          poster,
-          media,
-          revenue: 0
-        }
-      });
+      // Notify attendees if there are any important changes in event details
+      if (dto.address || dto.venue || dto.date || dto.endTime || dto.startTime) {
+        await this.eventsQueue.add('event-update', { event });
+      }
 
       return event;
     } catch (error) {
       throw error;
+    }
+  }
+
+  async getEventDetails(eventId: number): Promise<Event> {
+    return this.prisma.event.findUnique({
+      where: { id: eventId }
+    });
+  }
+
+  async cancelEvent(eventId: number): Promise<void> {
+    try {
+      const event = await this.prisma.event.update({
+        where: { id: eventId },
+        data: {
+          status: 'CANCELLED',
+          revenue: 0
+        },
+        include: {
+          tickets: true,
+          users: true
+        }
+      });
+
+      // Notify attendees of event cancellation
+      await this.eventsQueue.add('cancel-event', { event });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async addTicketTier(dto: addTicketTierDto, eventId: number): Promise<void> {
+    try {
+      const tier = await this.prisma.ticketTier.create({
+        data: {
+          name: dto.name,
+          price: dto.price,
+          totalNumberOfTickets: dto.totalNumberOfTickets,
+          discount: dto.discount,
+          benefits: dto.benefits,
+          eventId
+        }
+      });
+
+      if (dto.discount) {
+        await this.prisma.ticketTier.update({
+          where: { id: tier.id },
+          data: {
+            discountPrice: dto.disocuntPrice,
+            discountExpiration: dto.discountExpiration,
+            discountStatus: 'ACTIVE',
+            numberOfDiscountTickets: dto.numberOfDiscountTickets
+          }
+        });
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async removeDiscount(eventId: number, tierName: string): Promise<void> {
+    try {
+      const event = await this.prisma.event.findUnique({
+        where: { id: eventId },
+        include: { ticketTiers: true }
+      });
+
+      for (let tier of event.ticketTiers) {
+        if (tier.name === tierName) {
+          await this.prisma.ticketTier.update({
+            where: { id: tier.id },
+            data: {
+              discount: false,
+              discountPrice: null,
+              discountExpiration: null,
+              discountStatus: null,
+              numberOfDiscountTickets: null
+            }
+          });
+        }
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async findNearbyEvents(latitude: number, longitude: number): Promise<Event[]> {
+    const redis: RedisClientType = await initializeRedis(
+      Secrets.REDIS_URL,
+      Secrets.GEOLOCATION_STORE_INDEX,
+      'Geolocation Search'
+    );
+
+    try {
+      const events = await redis.geoRadius('events', { latitude, longitude }, 5, 'km');
+
+      const nearbyEvents = await Promise.all(
+        events.map(async (member) => {
+          const eventId = member.split('-')[1];
+          return await this.prisma.event.findUnique({
+            where: { id: +eventId }
+          });
+        })
+      );
+  
+      return nearbyEvents.filter(event => event !== null);
+    } catch (error) {
+      throw error;
+    } finally {
+      await redis.disconnect();
     }
   }
 }

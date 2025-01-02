@@ -12,6 +12,7 @@ import { initializeRedis } from "../config/redis-conf";
 import { Secrets } from "../env";
 import { generateTicketPDF } from "../util/document";
 import { EmailAttachment } from "../types";
+import { RedisClientType } from "redis";
 
 @Injectable()
 @Processor('payments-queue')
@@ -44,6 +45,11 @@ export class PaymentsProcessor {
       let split: number;
       let price: number;
       let pdfs: EmailAttachment[] = [];
+
+      let discountPrice: null | number = null;
+      if (discount) {
+        discountPrice = amount / quantity
+      };
 
       if (eventType === 'charge.success') {
         // Notify the client of payment status via WebSocket connection
@@ -113,6 +119,7 @@ export class PaymentsProcessor {
               accessKey,
               price,
               tier: ticketTier,
+              discountPrice,
               attendee: userId,
               eventId
             },
@@ -183,7 +190,7 @@ export class PaymentsProcessor {
           await this.payments.deleteTransferRecipient(recipientCode);
 
           // Notify the attendee of the ticket refund
-          const content = `Ticket refund has been completed for the cancelled event: ${eventTitle}. Thank you for your patience.`;
+          const content = `Ticket refund has been completed for the cancelled event: ${eventTitle}. Thanks for your patience.`;
           await sendEmail(user, reason, content);
         }
 
@@ -196,7 +203,7 @@ export class PaymentsProcessor {
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} has been reversed.\n`)
 
         // Initialize Redis instance for storing number of transfer retries
-        const redis = await initializeRedis(
+        const redis: RedisClientType = await initializeRedis(
           Secrets.REDIS_URL,
           Secrets.TRANSFER_RETRIES_STORE_INDEX,
           'Transfer Retries'

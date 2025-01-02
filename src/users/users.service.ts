@@ -7,14 +7,26 @@ import { Event, Ticket, User } from '@prisma/client';
 export class UserService {
   constructor(private prisma: DbService) { };
 
-  async updateProfile(userId: number, dto: updateProfileDto): Promise<User> {
+  async updateProfile(userId: number, dto: updateProfileDto, filePath?: string): Promise<User> {
     try {
-      const user = await this.prisma.user.update({
-        where: { id: userId },
-        data: { ...dto }
-      })
+      let user: User;
 
-      delete user.password
+      if (filePath) {
+        user = await this.prisma.user.update({
+          where: { id: userId },
+          data: { 
+            ...dto,
+            profileImage: filePath
+          }
+        });
+      } else {
+        user = await this.prisma.user.update({
+          where: { id: userId },
+          data: { ...dto }
+        });
+      }
+
+      delete user.password;
       return user;
     } catch (error) {
       throw error;

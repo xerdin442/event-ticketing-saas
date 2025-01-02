@@ -25,10 +25,6 @@ export class updateProfileDto {
 
   @IsOptional()
   @IsString()
-  profileImage?: string
-
-  @IsOptional()
-  @IsString()
   twoFASecret?: string
 
   @IsOptional()

@@ -58,7 +58,7 @@ export class TasksService {
           });
 
           // Notify the organizer that the event is sold out
-          await this.mailQueue.add('sold_out', {
+          await this.mailQueue.add('sold-out', {
             eventTitle: event.title,
             name: event.organizer.name,
             email: event.organizer.email
