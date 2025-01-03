@@ -19,7 +19,7 @@ import logger from '../common/logger';
 @UseGuards(AuthGuard('jwt'))
 @Controller('events/:eventId/tickets')
 export class TicketsController {
-  private readonly context: string = TicketsService.name;
+  private readonly context: string = TicketsController.name;
 
   constructor(private readonly ticketsService: TicketsService) { };
 

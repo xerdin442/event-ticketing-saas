@@ -17,8 +17,11 @@ export class DbService extends PrismaClient {
 
   async cleanDb() {
     return this.$transaction([
-      this.bookmark.deleteMany(),
-      this.user.deleteMany()
+      this.event.deleteMany(),
+      this.user.deleteMany(),
+      this.ticket.deleteMany(),
+      this.organizer.deleteMany(),
+      this.ticketTier.deleteMany()
     ])
     .then(() => logger.info(`[${this.context}] Database cleaned up for tests.\n`))
     .catch(error => logger.error(`[${this.context}] An error occurred while cleaning database. Error: ${error.message}.\n`));

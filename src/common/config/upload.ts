@@ -18,7 +18,7 @@ class UploadConfig {
     });
   };
 
-  storage(folder: string, resource_type: 'image' | 'raw' | 'video'): CloudinaryStorage {
+  storage(folder: string, resource_type: 'image' | 'raw' | 'video' | 'auto'): CloudinaryStorage {
     const public_id = new Date().toISOString().replace(/:/g, '-') + '-' + randomUUID().replace(/-/g, '');
     const storage = new CloudinaryStorage({
       cloudinary: v2,
@@ -29,7 +29,18 @@ class UploadConfig {
   };
 
   fileFilter(req: Request, file: Express.Multer.File, callback: FileFilterCallback): void {
-    const allowedMimetypes: string[] = ['image/png', 'image/heic', 'image/jpeg', 'image/webp', 'image/heif', 'application/pdf'];
+    const allowedMimetypes: string[] = [
+      'image/png',
+      'image/heic',
+      'image/jpeg',
+      'image/webp',
+      'image/heif',
+      'application/pdf',
+      'video/mp4',
+      'video/quicktime',
+      'video/x-msvideo',
+      'video/x-matroska'
+    ];    
 
     if (allowedMimetypes.includes(file.mimetype)) {
       callback(null, true);

@@ -22,7 +22,7 @@ export class EventsService {
     dto: CreateEventDto,
     userId: number,
     poster: string,
-    media: string[]
+    media?: string[]
   ): Promise<Event> {
     try {
       // Verify organizer's account details before creating transfer recipient for revenue splits
@@ -175,17 +175,17 @@ export class EventsService {
     }
   }
 
-  async removeDiscount(eventId: number, tierName: string): Promise<void> {
+  async removeDiscount(eventId: number, tier: string): Promise<void> {
     try {
       const event = await this.prisma.event.findUnique({
         where: { id: eventId },
         include: { ticketTiers: true }
       });
 
-      for (let tier of event.ticketTiers) {
-        if (tier.name === tierName) {
+      for (let ticketTier of event.ticketTiers) {
+        if (ticketTier.name === tier) {
           await this.prisma.ticketTier.update({
-            where: { id: tier.id },
+            where: { id: ticketTier.id },
             data: {
               discount: false,
               discountPrice: null,

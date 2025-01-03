@@ -6,7 +6,7 @@ import { initializeRedis } from "../config/redis-conf";
 import { Secrets } from "../env";
 import logger from "../logger";
 import { sendEmail } from "../config/mail";
-import { Ticket, User } from "@prisma/client";
+import { Ticket } from "@prisma/client";
 import { DbService } from "../../db/db.service";
 import { PaymentsService } from "../../payments/payments.service";
 import { randomUUID } from "crypto";
@@ -36,9 +36,9 @@ export class EventsProcessor {
         { longitude, latitude, member: `${event.title}-${event.id}` }
       ]);
 
-      logger.info(`[${this.context}] Location coordinates added to Redis store. Event: ${event.title}`)
+      logger.info(`[${this.context}] Location coordinates added to Redis store. Event: ${event.title}.\n`)
     } catch (error) {
-      logger.info(`[${this.context}] An error occurred while adding location coordinates to Redis store. Event: ${event.title}`)
+      logger.error(`[${this.context}] An error occurred while adding location coordinates to Redis store. Error: ${error.message}.\n`)
       throw error;
     } finally {
       await redis.disconnect();
@@ -46,24 +46,29 @@ export class EventsProcessor {
   }
 
   @Process('event-update')
-  updateEvent(job: Job) {
-    const { event } = job.data;
-    const subject = 'Event Update'
-    const content = `Hello, there has been a change in the details of the event: ${event.title}
-      Venue: ${event.venue}
-      Address: ${event.address}
-      Time: ${event.startTime} - ${event.endTime}
-      Date: ${event.date}
-
-      We sincerely apologize for any inconveniences caused by these changes.
-
-      Best regards,
-      ${event.organizer.name.join(' X ')}
-      `
-
-    event.users.forEach(async (user: User) => {
-      await sendEmail(user, subject, content)
-    });
+  async updateEvent(job: Job) {
+    try {
+      const { event } = job.data;
+      const subject = 'Event Update'
+      const content = `Hello, there has been a change in the details of the event: ${event.title}
+        Venue: ${event.venue}
+        Address: ${event.address}
+        Time: ${event.startTime} - ${event.endTime}
+        Date: ${event.date}
+  
+        We sincerely apologize for any inconveniences caused by these changes.
+  
+        Best regards,
+        ${event.organizer.name.join(' X ')}
+        `
+  
+      for (const user of event.users) {
+        await sendEmail(user, subject, content);
+      }
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while completing update of event details. Error: ${error.message}.\n`)
+      throw error;
+    }
   }
 
   @Process('cancel-event')
@@ -127,9 +132,9 @@ export class EventsProcessor {
         );
       }
 
-      logger.info(`[${this.context}] Event cancellation process completed for ${event.title}`);
+      logger.info(`[${this.context}] Event cancellation process completed for ${event.title}.\n`);
     } catch (error) {
-      logger.error(`[${this.context}] An error occurred while completing event cancellation process. Error: ${error.message}`);
+      logger.error(`[${this.context}] An error occurred while completing event cancellation process. Error: ${error.message}.\n`);
       throw error;
     }
   }

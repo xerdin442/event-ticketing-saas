@@ -3,8 +3,7 @@ import { Cron } from "@nestjs/schedule";
 import logger from "../common/logger";
 import { DbService } from "../db/db.service";
 import { PaymentsService } from "../payments/payments.service";
-import { InjectQueue } from "@nestjs/bull";
-import { Queue } from "bull";
+import { sendEmail } from "../common/config/mail";
 
 @Injectable()
 export class TasksService {
@@ -12,8 +11,7 @@ export class TasksService {
 
   constructor(
     private readonly prisma: DbService,
-    private readonly payments: PaymentsService,
-    @InjectQueue('mail-queue') private readonly mailQueue: Queue
+    private readonly payments: PaymentsService
   ) { };
 
   @Cron("0 */15 * * * *")
@@ -57,12 +55,10 @@ export class TasksService {
             data: { status: "SOLD_OUT" }
           });
 
-          // Notify the organizer that the event is sold out
-          await this.mailQueue.add('sold-out', {
-            eventTitle: event.title,
-            name: event.organizer.name,
-            email: event.organizer.email
-          });
+          // Notify the event organizer of the event's sold out status
+          const subject = 'SOLD OUT!'
+          const content = `Congratulations, your event titled: ${event.title} is sold out!`
+          await sendEmail(event.organizer, subject, content);
         }
 
         logger.info(`[${this.context}] Status of all events updated successfully.\n`);
