@@ -145,19 +145,20 @@ export class PaymentsService {
     );
 
     try {
-      // Use the retry key to check if the transfer has already been retried.
       await redis.select(Secrets.TRANSFER_RETRIES_STORE_INDEX);
       
+      // Use the retry key to check if the transfer has already been retried
       const checkRetry = await redis.get(retryKey);
       if (checkRetry) {
-        // If transfer has already been retried, store details of the failed transfer
+        // If transfer has already been retried, store details of the failed transfer for 30 days
         await redis.select(Secrets.FAILED_TRANSFERS_STORE_INDEX);
-        await redis.set(user.email, JSON.stringify({
+        await redis.setEx(user.email, 2592000, JSON.stringify({
           bankName: user.bankName,
           accountNumber: user.accountNumber,
           accontName: user.accountName,
           reason,
-          amount
+          amount,
+          date: new Date().toISOString()
         }));
         logger.warn(`[${this.context}] ${reason}: Transfer retry already attempted for ${user.email}. Marked and stored as a failed transfer.\n`);
 

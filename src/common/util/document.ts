@@ -3,7 +3,8 @@ import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import { Event, Ticket, User } from '@prisma/client';
 import logger from '../logger';
-import { EmailAttachment } from '../types';
+import { EmailAttachment, FailedTransfer } from '../types';
+import { randomUUID } from 'crypto';
 
 export const generateTicketPDF = (
   ticket: Ticket,
@@ -12,12 +13,14 @@ export const generateTicketPDF = (
   event: Event
 ): Promise<EmailAttachment> => {
   return new Promise((resolve, reject) => {
+    const context = generateTicketPDF.name;
+
     try {
       const doc = new PDFDocument();
       const outputFile = `ticket-${new Date().toISOString().replace(/:/g, '-')}-${ticket.id}`;
 
       // Create new file to stream document content
-      const pdfPath = path.join(__dirname, '..', '..', 'tickets', 'docs', `${outputFile}.pdf`);
+      const pdfPath = path.join(__dirname, '..', 'docs', `${outputFile}.pdf`);
       fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
       const writestream = fs.createWriteStream(pdfPath);
       doc.pipe(writestream);
@@ -45,12 +48,12 @@ export const generateTicketPDF = (
       doc.end();
 
       writestream.on('error', (error) => {
-        logger.error(`[${generateTicketPDF.name}] Failed to generate ticket PDF for ${user.email} attending ${event.title}`);
+        logger.error(`[${context}] Failed to generate ticket PDF. Error: ${error.message}\n`);
         reject(error);
       });
 
       writestream.on('finish', () => {
-        logger.info(`[${generateTicketPDF.name}] Ticket PDF generated for ${user.email} attending ${event.title}`);
+        logger.info(`[${context}] Ticket PDF generated for ${user.email} attending ${event.title}\n`);
         resolve({
           name: outputFile,
           content: pdfPath
@@ -60,4 +63,67 @@ export const generateTicketPDF = (
       reject(error);
     }
   });
+}
+
+export const generateFailedTransferRecords = async (transfers: FailedTransfer[]): Promise<EmailAttachment> => {
+  const context = generateFailedTransferRecords.name;
+
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument();
+      const outputFile = `transfers-${new Date().toISOString().replace(/:/g, '-')}-${randomUUID().split('-')[2]}`;
+
+      // Create new file to stream document content
+      const pdfPath = path.join(__dirname, '..', 'docs', `${outputFile}.pdf`);
+      fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
+      const writestream = fs.createWriteStream(pdfPath);
+      doc.pipe(writestream);
+
+      // Title
+      doc.fontSize(20).fillColor('#333').text(`Failed Transfers - ${new Date().toISOString()}`, { align: 'center' });
+      doc.moveDown();
+
+      for (let transfer of transfers) {
+        const { accontName, accountNumber, bankName, amount, reason, date } = transfer.details;
+
+        doc.fontSize(14).fillColor('black').text(`Email: ${transfer.email}`);
+        doc.text(`Amount: ${amount}`);
+        doc.text(`Account Name: ${accontName}`);
+        doc.text(`Account Number: ${accountNumber}`);
+        doc.text(`Bank: ${bankName}`);
+        doc.text(`Reason: ${reason}`);
+        doc.text(`Date: ${date}`);
+        doc.moveDown();
+      }
+
+      doc.end();
+
+      writestream.on('error', (error) => {
+        logger.error(`[${context}] Failed to compile failed transfers. Error: ${error.message}\n`);
+        reject(error);
+      });
+
+      writestream.on('finish', () => {
+        logger.info(`[${context}] Records for failed transfers generated successfully.\n`);
+        resolve({
+          name: outputFile,
+          content: pdfPath
+        });
+      });
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+export const deleteFile = async (file: string) => {
+  const context = deleteFile.name;
+
+  try {
+    await fs.promises.unlink(file);
+    logger.info(`[${context}] File deleted successfully.\n`);
+  } catch (error) {
+    logger.error(`[${context}] An error occured while deleting file. Error: ${error.message}\n`)
+    throw error;
+  }
 }

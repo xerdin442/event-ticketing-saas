@@ -8,7 +8,7 @@ import { randomUUID } from "crypto";
 import * as qrcode from "qrcode";
 import { sendEmail } from "../config/mail";
 import logger from "../logger";
-import { generateTicketPDF } from "../util/document";
+import { deleteFile, generateTicketPDF } from "../util/document";
 import { EmailAttachment } from "../types";
 
 @Injectable()
@@ -24,32 +24,32 @@ export class PaymentsProcessor {
 
   @Process('transaction')
   async finalizeTransaction(job: Job) {
+    const { eventType, metadata } = job.data;
+    const { userId, eventId, discount, ticketTier, amount, quantity } = metadata;
+
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        ticketTiers: true,
+        organizer: true
+      }
+    });
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId }
+    });
+    const userRefundRecipientCode = await this.payments.createTransferRecipient({
+      accountName: user.accountName,
+      accountNumber: user.accountNumber,
+      bankName: user.bankName
+    });
+
+    let split: number;
+    let price: number;
+    let pdfs: EmailAttachment[] = [];
+    let discountPrice: null | number = null;
+
     try {
-      const { eventType, metadata } = job.data;
-      const { userId, eventId, discount, ticketTier, amount, quantity } = metadata;
-
-      const event = await this.prisma.event.findUnique({
-        where: { id: eventId },
-        include: {
-          ticketTiers: true,
-          organizer: true
-        }
-      });
-
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId }
-      });
-      const userRefundRecipientCode = await this.payments.createTransferRecipient({
-        accountName: user.accountName,
-        accountNumber: user.accountNumber,
-        bankName: user.bankName
-      });
-
-      let split: number;
-      let price: number;
-      let pdfs: EmailAttachment[] = [];
-
-      let discountPrice: null | number = null;
       if (discount) {
         discountPrice = amount / quantity
       };
@@ -76,7 +76,7 @@ export class PaymentsProcessor {
                   const currentTime = new Date().getTime();
                   const expirationDate = new Date(tier.discountExpiration).getTime();
                   if (currentTime < expirationDate) {
-                    throw new Error(`Discount offer for ${tier.name} has expired. Please purchase regular tickets`);
+                    throw new Error(`Discount offer for ${tier.name} tickets has expired. Please purchase regular tickets`);
                   };
 
                   // Decrement the number of discount tickets and total number of tickets left in the tier
@@ -135,9 +135,6 @@ export class PaymentsProcessor {
                 `Transaction failed: ${error.message}. This is due to too many purchase requests being processed simultaneously on our server.
                   A refund of your initial purchase amount has been initiated. Please try again in a few minutes.`
               );
-            } finally {
-              // Delete the transfer recipient after processing the refund
-              await this.payments.deleteTransferRecipient(userRefundRecipientCode);
             };
           }
         };
@@ -237,6 +234,10 @@ export class PaymentsProcessor {
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing ticket purchase. Error: ${error.message}\n`);
       throw error;
+    } finally {
+      for (let pdf of pdfs) {
+        await deleteFile(pdf.content); // Delete tickets PDFs after use
+      }
     }
   }
 
@@ -258,6 +259,9 @@ export class PaymentsProcessor {
           // Notify the attendee of the ticket refund
           const content = `Ticket refund has been completed for the cancelled event: ${eventTitle}. Thanks for your patience.`;
           await sendEmail(user, reason, content);
+        } else if (reason === 'Transaction Refund') {
+          // Remove user as a transfer recipient after refunding amount for failed purchase
+          await this.payments.deleteTransferRecipient(recipientCode);
         }
 
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} was successful!\n`)

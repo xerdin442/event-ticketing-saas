@@ -32,3 +32,8 @@ export type EmailAttachment = {
   name: string
   content: string
 }
+
+export type FailedTransfer = {
+  email: string
+  details: any
+}

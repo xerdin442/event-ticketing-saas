@@ -1,9 +1,14 @@
 import { Injectable } from "@nestjs/common";
-import { Cron } from "@nestjs/schedule";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import logger from "../common/logger";
 import { DbService } from "../db/db.service";
 import { PaymentsService } from "../payments/payments.service";
 import { sendEmail } from "../common/config/mail";
+import { RedisClientType } from "redis";
+import { initializeRedis } from "../common/config/redis-conf";
+import { Secrets } from "../common/env";
+import { EmailAttachment, FailedTransfer } from "../common/types";
+import { deleteFile, generateFailedTransferRecords } from "../common/util/document";
 
 @Injectable()
 export class TasksService {
@@ -98,6 +103,46 @@ export class TasksService {
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while updating discount status of event tickets. Error: ${error.message}\n`);
       throw error;
+    }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async processFailedTransfers(): Promise<void> {
+    let record: EmailAttachment;
+    const redis: RedisClientType = await initializeRedis(
+      Secrets.REDIS_URL,
+      'Transfer Management',
+      Secrets.FAILED_TRANSFERS_STORE_INDEX
+    );
+
+    try {
+      const keys = await redis.keys('*');
+      if (keys) {
+        // Extract the transfer details for each user email
+        const transfers: FailedTransfer[] = await Promise.all(
+          keys.map(async (key) => {
+            const value = await redis.get(key);
+            return { email: key, details: JSON.parse(value) };
+          })
+        );
+
+        record = await generateFailedTransferRecords(transfers);
+        const subject = 'Failed Transfers'
+        const content = 'Hello, these are failed transfers that occured in the past 24 hours. The details are attached to this email.'
+        await sendEmail(Secrets.APP_EMAIL, subject, content, [ record ]);
+
+        logger.info(`[${this.context}] Details of failed transfers sent to platform email for further processing.\n`);
+        return;
+      }
+
+      logger.info(`[${this.context}] No failed transfers found.\n`);
+      return;
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred during daily processing of failed transfers. Error: ${error.message}\n`);
+      throw error;
+    } finally {
+      await redis.disconnect();
+      await deleteFile(record.content);
     }
   }
 }

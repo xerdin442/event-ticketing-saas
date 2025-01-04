@@ -84,6 +84,9 @@ export class EventsProcessor {
         })
       });
 
+      // Remove organizer as a transfer recipient after event cancellation
+      await this.payments.deleteTransferRecipient(event.organizer.recipientCode);
+
       for (let user of event.users) {
         // Send email to attendees to inform them of the cancellation
         const subject = 'Event Cancellation'

@@ -15,7 +15,7 @@ export class PaymentsGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (email) {
       this.clients[email] = client;
 
-      logger.info(`[${this.context}] Client connected to the payments gateway: ${email}\n`)
+      logger.info(`[${this.context}] Client connected to payments gateway: ${email}\n`)
       return;
     } else {
       throw new BadGatewayException('An error occurred while connecting to payment gateway');
@@ -28,7 +28,7 @@ export class PaymentsGateway implements OnGatewayConnection, OnGatewayDisconnect
     if (email) {
       delete this.clients[email]
 
-      logger.info(`[${this.context}] Client disconnected from the payments gateway: ${email}\n`);
+      logger.info(`[${this.context}] Client disconnected from payments gateway: ${email}\n`);
       return;
     } else {
       throw new BadGatewayException('An error occurred while disconnecting from payment gateway');
