@@ -3,6 +3,9 @@ import axios from "axios";
 import { AccountDetails, BankData } from '../common/types';
 import { Secrets } from '../common/env';
 import logger from '../common/logger';
+import { RedisClientType } from 'redis';
+import { initializeRedis } from '../common/config/redis-conf';
+import { User } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
@@ -133,24 +136,66 @@ export class PaymentsService {
     }
   }
 
+  async retryTransfer(data: any, user: User, retryKey: string): Promise<void> {
+    const { metadata, reason, recipientCode, amount } = data;
+
+    const redis: RedisClientType = await initializeRedis(
+      Secrets.REDIS_URL,
+      'Transfer Management'
+    );
+
+    try {
+      // Use the retry key to check if the transfer has already been retried.
+      await redis.select(Secrets.TRANSFER_RETRIES_STORE_INDEX);
+      
+      const checkRetry = await redis.get(retryKey);
+      if (checkRetry) {
+        // If transfer has already been retried, store details of the failed transfer
+        await redis.select(Secrets.FAILED_TRANSFERS_STORE_INDEX);
+        await redis.set(user.email, JSON.stringify({
+          bankName: user.bankName,
+          accountNumber: user.accountNumber,
+          accontName: user.accountName,
+          reason,
+          amount
+        }));
+        logger.warn(`[${this.context}] ${reason}: Transfer retry already attempted for ${user.email}. Marked and stored as a failed transfer.\n`);
+
+        return;
+      };
+
+      // Retry the transfer and store the retry key for 24 hours to prevent multiple retries
+      await this.initiateTransfer(recipientCode, amount, reason, metadata);
+      await redis.setEx(retryKey, 86400, JSON.stringify({ status: 'used' }));
+
+      logger.info(`[${this.context}] ${reason}: Transfer retry to ${user.email} initiated.\n`);
+      return;
+    } catch (error) {
+      logger.error(`[${this.context}] ${reason}: An error occurred while processing transfer retry. Error: ${error.message}\n`);
+      throw error;
+    } finally {
+      await redis.disconnect();
+    }
+  }
+
   async initializeTransaction(email: string, amount: number, metadata: Record<string, any>)
     : Promise<string> {
-      try {
-        const url = 'https://api.paystack.co/transaction/initialize'
-        const transaction = await axios.post(url,
-          { amount, email, metadata },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${Secrets.PAYSTACK_SECRET_KEY}`
-            }
+    try {
+      const url = 'https://api.paystack.co/transaction/initialize'
+      const transaction = await axios.post(url,
+        { amount, email, metadata },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Secrets.PAYSTACK_SECRET_KEY}`
           }
-        )
-    
-        return transaction.data.data.authorization_url
-      } catch (error) {
-        logger.error(`[${this.context}] An error occurred while initializing transaction. Error: ${error.message}\n`);
-        throw error;
-      }
+        }
+      )
+
+      return transaction.data.data.authorization_url
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while initializing transaction. Error: ${error.message}\n`);
+      throw error;
+    }
   }
 }

@@ -45,27 +45,10 @@ export class TicketsService {
             if (currentTime < expirationDate && tier.numberOfDiscountTickets >= dto.quantity) {
               // Calculate the ticket purchase amount using the discount price
               amount = tier.discountPrice * dto.quantity;
-
-              // Decrement the number of discount tickets and total number of tickets left in the tier
-              await this.prisma.ticketTier.update({
-                where: { id: tier.id },
-                data: {
-                  numberOfDiscountTickets: { decrement: dto.quantity },
-                  totalNumberOfTickets: { decrement: dto.quantity }
-                }
-              });
             }
           } else {
             // Calculate the ticket purchase amount using the original price
             amount = tier.price * dto.quantity;
-
-            // Decrement the total number of tickets left in the tier
-            await this.prisma.ticketTier.update({
-              where: { id: tier.id },
-              data: {
-                totalNumberOfTickets: { decrement: dto.quantity }
-              }
-            });
           }
         } else {
           throw new BadRequestException(`Insufficient ${tier.name} tickets. Check out other ticket tiers`);

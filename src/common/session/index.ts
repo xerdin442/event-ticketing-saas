@@ -13,8 +13,8 @@ export class SessionService implements OnModuleInit {
   async onModuleInit() {
     this.redis = await initializeRedis(
       Secrets.REDIS_URL,
+      this.context,
       Secrets.SESSION_STORE_INDEX,
-      this.context
     );
   }
   

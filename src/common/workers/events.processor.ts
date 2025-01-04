@@ -27,8 +27,8 @@ export class EventsProcessor {
 
     const redis: RedisClientType = await initializeRedis(
       Secrets.REDIS_URL,
+      'Geolocation Search',
       Secrets.GEOLOCATION_STORE_INDEX,
-      'Geolocation Search'
     );
 
     try {

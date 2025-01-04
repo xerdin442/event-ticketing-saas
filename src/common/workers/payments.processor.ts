@@ -3,16 +3,13 @@ import { Injectable } from "@nestjs/common";
 import { Job } from "bull";
 import { PaymentsGateway } from "../../payments/payments.gateway";
 import { DbService } from "../../db/db.service";
-import { PaymentsService } from "src/payments/payments.service";
+import { PaymentsService } from "../../payments/payments.service";
 import { randomUUID } from "crypto";
 import * as qrcode from "qrcode";
 import { sendEmail } from "../config/mail";
 import logger from "../logger";
-import { initializeRedis } from "../config/redis-conf";
-import { Secrets } from "../env";
 import { generateTicketPDF } from "../util/document";
 import { EmailAttachment } from "../types";
-import { RedisClientType } from "redis";
 
 @Injectable()
 @Processor('payments-queue')
@@ -38,8 +35,14 @@ export class PaymentsProcessor {
           organizer: true
         }
       });
+
       const user = await this.prisma.user.findUnique({
         where: { id: userId }
+      });
+      const userRefundRecipientCode = await this.payments.createTransferRecipient({
+        accountName: user.accountName,
+        accountNumber: user.accountNumber,
+        bankName: user.bankName
       });
 
       let split: number;
@@ -52,39 +55,101 @@ export class PaymentsProcessor {
       };
 
       if (eventType === 'charge.success') {
-        // Notify the client of payment status via WebSocket connection
-        this.gateway.sendPaymentStatus(user.email, 'success', 'Payment successful!');
-
         for (let tier of event.ticketTiers) {
           if (tier.name === ticketTier) {
             price = tier.price;
 
-            // Check the number of discount tickets left and update status of the discount offer
-            if (tier.numberOfDiscountTickets === 0) {
-              await this.prisma.ticketTier.update({
-                where: { id: tier.id },
-                data: { discountStatus: "ENDED" }
-              });
-            };
+            try {
+              await this.prisma.$transaction(async (tx) => {
+                // Check total number of tickets left
+                if (tier.totalNumberOfTickets < quantity) {
+                  throw new Error(`Insufficient ${tier.name} tickets`);
+                };
 
-            // Check the total number of tickets left and update status of the ticket tier
-            if (tier.totalNumberOfTickets === 0) {
-              await this.prisma.ticketTier.update({
-                where: { id: tier.id },
-                data: { soldOut: true }
-              });
-            };
+                if (discount) {
+                  // Check number of discount tickets left
+                  if (tier.numberOfDiscountTickets < quantity) {
+                    throw new Error(`Discount ${tier.name} tickets are sold out! Please purchase regular tickets`);
+                  };
 
-            // Calculate and subtract the platform fee from transaction amount based on ticket price
-            if (price <= 20000) {
-              split = amount * 0.925;
-            } else if (price > 20000 && price <= 100000) {
-              split = amount * 0.95;
-            } else if (price > 100000) {
-              split = amount * 0.975;
-            }
+                  // Check if the discount offer has expired
+                  const currentTime = new Date().getTime();
+                  const expirationDate = new Date(tier.discountExpiration).getTime();
+                  if (currentTime < expirationDate) {
+                    throw new Error(`Discount offer for ${tier.name} has expired. Please purchase regular tickets`);
+                  };
+
+                  // Decrement the number of discount tickets and total number of tickets left in the tier
+                  await tx.ticketTier.update({
+                    where: { id: tier.id },
+                    data: {
+                      numberOfDiscountTickets: { decrement: quantity },
+                      totalNumberOfTickets: { decrement: quantity }
+                    }
+                  });
+                } else {
+                  // Decrement the total number of tickets left in the tier
+                  await tx.ticketTier.update({
+                    where: { id: tier.id },
+                    data: {
+                      totalNumberOfTickets: { decrement: quantity }
+                    }
+                  });
+                };
+
+                // Check the number of discount tickets left and update status of the discount offer
+                if (tier.numberOfDiscountTickets === 0) {
+                  await tx.ticketTier.update({
+                    where: { id: tier.id },
+                    data: { discountStatus: "ENDED" }
+                  });
+                };
+
+                // Check the total number of tickets left and update status of the ticket tier
+                if (tier.totalNumberOfTickets === 0) {
+                  await tx.ticketTier.update({
+                    where: { id: tier.id },
+                    data: { soldOut: true }
+                  });
+                };
+              });
+            } catch (error) {
+              // Initiate transfer of transaction refund
+              await this.payments.initiateTransfer(
+                userRefundRecipientCode,
+                amount,
+                'Transaction Refund',
+                {
+                  userId,
+                  eventTitle: event.title,
+                  retryKey: randomUUID().replace(/-/g, '')
+                }
+              );
+
+              logger.warn(`[${this.context}] Ticket purchase processing failed. Transaction refund to ${user.email} initiated.\n`);
+
+              // Notify the user of the payment status
+              return this.gateway.sendPaymentStatus(
+                user.email,
+                'refund',
+                `Transaction failed: ${error.message}. This is due to too many purchase requests being processed simultaneously on our server.
+                  A refund of your initial purchase amount has been initiated. Please try again in a few minutes.`
+              );
+            } finally {
+              // Delete the transfer recipient after processing the refund
+              await this.payments.deleteTransferRecipient(userRefundRecipientCode);
+            };
           }
-        }
+        };
+
+        // Calculate and subtract the platform fee from transaction amount based on ticket price
+        if (price <= 20000) {
+          split = amount * 0.925;  // 7.5%
+        } else if (price > 20000 && price <= 100000) {
+          split = amount * 0.95;  // 5.0%
+        } else if (price > 100000) {
+          split = amount * 0.975;  //2.5%
+        };
 
         // Intitiate transfer of event organizer's split
         await this.payments.initiateTransfer(
@@ -133,7 +198,7 @@ export class PaymentsProcessor {
           const ticketPDF = await generateTicketPDF(ticket, qrcodeImage, ticket.user, ticket.event);
           pdfs.push(ticketPDF);
         };
-        
+
         // Send an email with the ticket PDFs to the attendee
         const subject = 'Ticket Purchase'
         const content = `You are purchased a ticket for the event: ${event.title}.
@@ -141,11 +206,10 @@ export class PaymentsProcessor {
         await sendEmail(user, subject, content, pdfs);
 
         logger.info(`[${this.context}] Ticket purchase completed by ${user.email}.\n`);
-        return;
-      } else if (eventType === 'charge.failed') {
-        // Notify the client of payment status via WebSocket connection
-        this.gateway.sendPaymentStatus(user.email, 'failed', 'Payment unsuccessful!');
 
+        // Notify the client of payment status via WebSocket connection
+        return this.gateway.sendPaymentStatus(user.email, 'success', 'Payment successful!');
+      } else if (eventType === 'charge.failed') {
         // Update details of ticket tier if ticket purchase failed
         for (let tier of event.ticketTiers) {
           if (tier.name === ticketTier) {
@@ -166,17 +230,19 @@ export class PaymentsProcessor {
         };
 
         logger.info(`[${this.context}] Ticket purchase failed: Email: ${user.email}\n`);
-        return;
+
+        // Notify the client of payment status via WebSocket connection
+        return this.gateway.sendPaymentStatus(user.email, 'failed', 'Payment unsuccessful!');;
       }
     } catch (error) {
-      logger.error(`[${this.context}] An error occured while processing ticket purchase, Job ID: ${job.id}. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occured while processing ticket purchase. Error: ${error.message}\n`);
       throw error;
     }
   }
 
   @Process('transfer')
   async finalizeTransfer(job: Job) {
-    const { eventType, metadata, reason, recipientCode, amount } = job.data;
+    const { eventType, metadata, reason, recipientCode } = job.data;
     const { userId, eventTitle, retryKey } = metadata;
 
     const user = await this.prisma.user.findUnique({
@@ -196,40 +262,15 @@ export class PaymentsProcessor {
 
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} was successful!\n`)
         return;
-      } else if (eventType === 'transfer.failed') {
-        logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} failed!\n`)
+      } else if (eventType === 'transfer.failed' || eventType === 'transfer.reversed') {
+        logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} failed or reversed.\n`);
+
+        // Retry transfer after 30 minutes
+        setTimeout(async () => {
+          await this.payments.retryTransfer(job.data, user, retryKey);
+        }, 30 * 60 * 1000);
+
         return;
-      } else if (eventType === 'transfer.reversed') {
-        logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} has been reversed.\n`)
-
-        // Initialize Redis instance for storing number of transfer retries
-        const redis: RedisClientType = await initializeRedis(
-          Secrets.REDIS_URL,
-          Secrets.TRANSFER_RETRIES_STORE_INDEX,
-          'Transfer Retries'
-        );
-
-        /* Use the retry key to check if the transfer has already been retried.
-        If not, retry the transfer after 20mins and store the status of the retry key */
-        const checkRetry = await redis.get(retryKey);
-        if (checkRetry) {
-          logger.info(`[${this.context}] ${reason}: Transfer retry already attempted for ${user.email}.`);
-          return;
-        } else {
-          setTimeout(async () => {
-            try {
-              await this.payments.initiateTransfer(recipientCode, amount, reason, metadata);
-              await redis.setEx(retryKey, 86400, JSON.stringify({ status: 'USED' }));    
-
-              logger.info(`[${this.context}] ${reason}: Transfer retry to ${user.email} has been successfully initiated.\n`);
-              return;
-            } catch (error) {
-              throw error;
-            } finally {
-              await redis.disconnect();
-            }
-          }, 20 * 60 * 1000);
-        }
       }
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing ${reason} transfer to ${user.email}. Error: ${error.message}\n`);

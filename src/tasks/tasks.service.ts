@@ -60,10 +60,10 @@ export class TasksService {
           const content = `Congratulations, your event titled: ${event.title} is sold out!`
           await sendEmail(event.organizer, subject, content);
         }
+      };
 
-        logger.info(`[${this.context}] Status of all events updated successfully.\n`);
-        return;
-      }
+      logger.info(`[${this.context}] Status of all events updated successfully.\n`);
+      return;
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while updating event status. Error: ${error.message}\n`);
       throw error;
