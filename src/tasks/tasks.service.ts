@@ -9,6 +9,7 @@ import { initializeRedis } from "../common/config/redis-conf";
 import { Secrets } from "../common/env";
 import { EmailAttachment, FailedTransfer } from "../common/types";
 import { deleteFile, generateFailedTransferRecords } from "../common/util/document";
+import { randomUUID } from "crypto";
 
 @Injectable()
 export class TasksService {
@@ -52,8 +53,17 @@ export class TasksService {
             data: { status: "COMPLETED" }
           });
 
-          // Remove the organizer as a transfer recipient when the event is complete
-          await this.payments.deleteTransferRecipient(event.organizer.recipientCode);
+          // Intitiate transfer of the event revenue
+          await this.payments.initiateTransfer(
+            event.organizer.recipientCode,
+            event.revenue * 100,
+            'Revenue Split',
+            {
+              userId: event.organizer.userId,
+              eventTitle: event.title,
+              retryKey: randomUUID().replace(/-/g, '')
+            }
+          );
         } else if (event.ticketTiers.every(tier => tier.soldOut === true)) {
           await this.prisma.event.update({
             where: { id: event.id },
@@ -64,6 +74,18 @@ export class TasksService {
           const subject = 'SOLD OUT!'
           const content = `Congratulations, your event titled: ${event.title} is sold out!`
           await sendEmail(event.organizer, subject, content);
+
+          // Intitiate transfer of the event revenue
+          await this.payments.initiateTransfer(
+            event.organizer.recipientCode,
+            event.revenue * 100,
+            'Revenue Split',
+            {
+              userId: event.organizer.userId,
+              eventTitle: event.title,
+              retryKey: randomUUID().replace(/-/g, '')
+            }
+          );
         }
       };
 
@@ -129,7 +151,7 @@ export class TasksService {
         record = await generateFailedTransferRecords(transfers);
         const subject = 'Failed Transfers'
         const content = 'Hello, these are failed transfers that occured in the past 24 hours. The details are attached to this email.'
-        await sendEmail(Secrets.APP_EMAIL, subject, content, [ record ]);
+        await sendEmail(Secrets.APP_EMAIL, subject, content, [record]);
 
         logger.info(`[${this.context}] Details of failed transfers sent to platform email for further processing.\n`);
         return;

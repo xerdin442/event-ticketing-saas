@@ -6,7 +6,6 @@ import { initializeRedis } from "../config/redis-conf";
 import { Secrets } from "../env";
 import logger from "../logger";
 import { sendEmail } from "../config/mail";
-import { Ticket } from "@prisma/client";
 import { DbService } from "../../db/db.service";
 import { PaymentsService } from "../../payments/payments.service";
 import { randomUUID } from "crypto";
@@ -23,7 +22,7 @@ export class EventsProcessor {
 
   @Process('geolocation-store')
   async addToGeolocationStore(job: Job) {
-    const { longitude, latitude, event } = job.data;
+    const { longitude, latitude, eventId } = job.data;
 
     const redis: RedisClientType = await initializeRedis(
       Secrets.REDIS_URL,
@@ -33,10 +32,10 @@ export class EventsProcessor {
 
     try {
       await redis.geoAdd('events', [
-        { longitude, latitude, member: `${event.title}-${event.id}` }
+        { longitude, latitude, member: `ID:${eventId}` }
       ]);
 
-      logger.info(`[${this.context}] Location coordinates added to Redis store. Event: ${event.title}.\n`)
+      logger.info(`[${this.context}] Location coordinates added to Redis store.\n`)
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while adding location coordinates to Redis store. Error: ${error.message}.\n`)
       throw error;
@@ -77,11 +76,9 @@ export class EventsProcessor {
       const { event } = job.data;
 
       // Update the status of all the tickets for this event
-      event.tickets.forEach(async (ticket: Ticket) => {
-        await this.prisma.ticket.update({
-          where: { id: ticket.id },
-          data: { status: "CANCELLED" }
-        })
+      await this.prisma.ticket.updateMany({
+        where: { eventId: event.id },
+        data: { status: "CANCELLED" }
       });
 
       // Remove organizer as a transfer recipient after event cancellation
@@ -113,14 +110,9 @@ export class EventsProcessor {
         });
 
         // Calculate the refund amount in kobo
-        let refund: number = 0;
-        tickets.forEach(ticket => {
-          if (ticket.discountPrice) {
-            refund += ticket.discountPrice * 100
-          } else {
-            refund += ticket.price * 100
-          }
-        });
+        const refund = tickets.reduce((total, ticket) => {
+          return total + (ticket.discountPrice ? ticket.discountPrice : ticket.price) * 100;
+        }, 0);
 
         // Initiate transfer of ticket refund
         await this.payments.initiateTransfer(

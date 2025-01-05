@@ -148,18 +148,6 @@ export class PaymentsProcessor {
           split = amount * 0.975;  //2.5%
         };
 
-        // Intitiate transfer of event organizer's split
-        await this.payments.initiateTransfer(
-          event.organizer.recipientCode,
-          split * 100,
-          'Revenue Split',
-          {
-            userId,
-            eventTitle: event.title,
-            retryKey: randomUUID().replace(/-/g, '')
-          }
-        );
-
         // Add the organizer's split to the event's total revenue and the user to the attendee list
         await this.prisma.event.update({
           where: { id: eventId },
@@ -244,7 +232,7 @@ export class PaymentsProcessor {
   @Process('transfer')
   async finalizeTransfer(job: Job) {
     const { eventType, metadata, reason, recipientCode } = job.data;
-    const { userId, eventTitle, retryKey } = metadata;
+    const { userId, eventTitle } = metadata;
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId }
@@ -253,25 +241,30 @@ export class PaymentsProcessor {
     try {
       if (eventType === 'transfer.success') {
         if (reason === 'Ticket Refund') {
-          // Remove the attendee as a transfer recipient after the refund is complete
-          await this.payments.deleteTransferRecipient(recipientCode);
-
           // Notify the attendee of the ticket refund
           const content = `Ticket refund has been completed for the cancelled event: ${eventTitle}. Thanks for your patience.`;
           await sendEmail(user, reason, content);
-        } else if (reason === 'Transaction Refund') {
-          // Remove user as a transfer recipient after refunding amount for failed purchase
-          await this.payments.deleteTransferRecipient(recipientCode);
+        } else if (reason === 'Revenue Split') {
+          // Notify the attendee of the ticket refund
+          const content = `Congratulations on the success of your event: ${eventTitle}. Transfer of your event revenue has been initiated.
+            Thank you for choosing our platform!`;
+          await sendEmail(user, reason, content);
         }
+
+        await this.payments.deleteTransferRecipient(recipientCode); // Delete recipient after transfer success
 
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} was successful!\n`)
         return;
       } else if (eventType === 'transfer.failed' || eventType === 'transfer.reversed') {
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} failed or reversed.\n`);
 
-        // Retry transfer after 30 minutes
+        // Initiate transfer retry after 30 minutes
         setTimeout(async () => {
-          await this.payments.retryTransfer(job.data, user, retryKey);
+          try {
+            await this.payments.retryTransfer(job.data, user);
+          } catch (error) {
+            throw error;
+          }
         }, 30 * 60 * 1000);
 
         return;

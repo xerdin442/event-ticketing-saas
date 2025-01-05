@@ -83,7 +83,7 @@ export class EventsService {
         await this.eventsQueue.add('geolocation-store', {
           longitude: +lon,
           latitude: +lat,
-          event
+          eventId: event.id
         });
 
         return event;
@@ -204,16 +204,15 @@ export class EventsService {
   async findNearbyEvents(latitude: number, longitude: number): Promise<Event[]> {
     const redis: RedisClientType = await initializeRedis(
       Secrets.REDIS_URL,
+      'Geolocation Search',
       Secrets.GEOLOCATION_STORE_INDEX,
-      'Geolocation Search'
     );
 
     try {
       const events = await redis.geoRadius('events', { latitude, longitude }, 5, 'km');
-
       const nearbyEvents = await Promise.all(
-        events.map(async (member) => {
-          const eventId = member.split('-')[1];
+        events.map(async (event) => {
+          const eventId = event.split(':')[1];
           return await this.prisma.event.findUnique({
             where: { id: +eventId }
           });

@@ -136,8 +136,10 @@ export class PaymentsService {
     }
   }
 
-  async retryTransfer(data: any, user: User, retryKey: string): Promise<void> {
+  async retryTransfer(data: any, user: User): Promise<void> {
     const { metadata, reason, recipientCode, amount } = data;
+    const { retryKey } = metadata;
+    const MAX_RETRIES = 2;
 
     const redis: RedisClientType = await initializeRedis(
       Secrets.REDIS_URL,
@@ -146,28 +148,43 @@ export class PaymentsService {
 
     try {
       await redis.select(Secrets.TRANSFER_RETRIES_STORE_INDEX);
-      
+
       // Use the retry key to check if the transfer has already been retried
       const checkRetry = await redis.get(retryKey);
       if (checkRetry) {
-        // If transfer has already been retried, store details of the failed transfer for 30 days
-        await redis.select(Secrets.FAILED_TRANSFERS_STORE_INDEX);
-        await redis.setEx(user.email, 2592000, JSON.stringify({
-          bankName: user.bankName,
-          accountNumber: user.accountNumber,
-          accontName: user.accountName,
-          reason,
-          amount,
-          date: new Date().toISOString()
-        }));
-        logger.warn(`[${this.context}] ${reason}: Transfer retry already attempted for ${user.email}. Marked and stored as a failed transfer.\n`);
+        const retries = JSON.parse(checkRetry).retries;
+        if (retries < MAX_RETRIES) {
+          // Retry transfer for the last time
+          await this.initiateTransfer(recipientCode, amount, reason, metadata);
 
-        return;
+          // Update number of retries for this transfer
+          const ttl = await redis.ttl(retryKey);
+          await redis.set(retryKey, JSON.stringify({ retries: retries + 1 }), { EX: ttl });
+
+          logger.info(`[${this.context}] ${reason}: Final transfer retry to ${user.email} initiated.\n`);
+          return;          
+        } else if (retries === MAX_RETRIES) {
+          // If retries are exhausted, store details of the failed transfer for 30 days
+          await redis.select(Secrets.FAILED_TRANSFERS_STORE_INDEX);
+          await redis.setEx(user.email, 2592000, JSON.stringify({
+            bankName: user.bankName,
+            accountNumber: user.accountNumber,
+            accountName: user.accountName,
+            reason,
+            amount,
+            date: new Date().toISOString()
+          }));
+
+          await this.deleteTransferRecipient(recipientCode); // Delete recipient after failed transfer
+
+          logger.warn(`[${this.context}] ${reason}: Retries exhausted. Transfer has been marked and stored as a failed transfer.\n`);
+          return;
+        }
       };
 
-      // Retry the transfer and store the retry key for 24 hours to prevent multiple retries
+      // Initiate first retry attempt and store the retry key to track the number of retries
       await this.initiateTransfer(recipientCode, amount, reason, metadata);
-      await redis.setEx(retryKey, 86400, JSON.stringify({ status: 'used' }));
+      await redis.setEx(retryKey, 86400, JSON.stringify({ retries: 1 }));
 
       logger.info(`[${this.context}] ${reason}: Transfer retry to ${user.email} initiated.\n`);
       return;

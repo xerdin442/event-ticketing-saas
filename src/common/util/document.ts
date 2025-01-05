@@ -20,7 +20,7 @@ export const generateTicketPDF = (
       const outputFile = `ticket-${new Date().toISOString().replace(/:/g, '-')}-${ticket.id}`;
 
       // Create new file to stream document content
-      const pdfPath = path.join(__dirname, '..', 'docs', `${outputFile}.pdf`);
+      const pdfPath = path.join(__dirname, '..', 'docs', 'tickets', `${outputFile}.pdf`);
       fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
       const writestream = fs.createWriteStream(pdfPath);
       doc.pipe(writestream);
@@ -65,7 +65,7 @@ export const generateTicketPDF = (
   });
 }
 
-export const generateFailedTransferRecords = async (transfers: FailedTransfer[]): Promise<EmailAttachment> => {
+export const generateFailedTransferRecords = (transfers: FailedTransfer[]): Promise<EmailAttachment> => {
   const context = generateFailedTransferRecords.name;
 
   return new Promise((resolve, reject) => {
@@ -74,7 +74,7 @@ export const generateFailedTransferRecords = async (transfers: FailedTransfer[])
       const outputFile = `transfers-${new Date().toISOString().replace(/:/g, '-')}-${randomUUID().split('-')[2]}`;
 
       // Create new file to stream document content
-      const pdfPath = path.join(__dirname, '..', 'docs', `${outputFile}.pdf`);
+      const pdfPath = path.join(__dirname, '..', 'docs', 'transfers', `${outputFile}.pdf`);
       fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
       const writestream = fs.createWriteStream(pdfPath);
       doc.pipe(writestream);
