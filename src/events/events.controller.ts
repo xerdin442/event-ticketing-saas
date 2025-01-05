@@ -57,6 +57,7 @@ export class EventsController {
   }
 
   @Patch(':eventId/update')
+  @UseGuards(EventOrganizerGuard)
   @UseInterceptors(
     AnyFilesInterceptor({
       fileFilter: UploadService.fileFilter,

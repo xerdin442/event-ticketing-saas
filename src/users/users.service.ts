@@ -14,7 +14,7 @@ export class UserService {
       if (filePath) {
         user = await this.prisma.user.update({
           where: { id: userId },
-          data: { 
+          data: {
             ...dto,
             profileImage: filePath
           }
@@ -45,28 +45,27 @@ export class UserService {
 
   async getAllEvents(role: string, userId: number): Promise<Event[]> {
     try {
-      let events: Event[];
+      switch (role) {
+        case 'organizer':
+          // Get the details of all events where the user is the organizer
+          return await this.prisma.event.findMany({
+            where: { organizerId: userId }
+          });
 
-      if (role === 'organizer') {
-        // Get the details of all events where the user is the organizer
-        events = await this.prisma.event.findMany({
-          where: { organizerId: userId }
-        });
-      } else if (role === 'attendee') {
-        // Get all events where the user is an attendee, including the tickets purchased by the user
-        events = await this.prisma.event.findMany({
-          where: {
-            tickets: {
-              some: { attendee: userId }
-            }
-          },
-          include: { tickets: true }
-        });
-      } else {
-        throw new BadRequestException('Invalid query parameter provided');
-      };
+        case 'attendee':
+          // Get all events where the user is an attendee, including the tickets purchased by the user
+          return await this.prisma.event.findMany({
+            where: {
+              tickets: {
+                some: { attendee: userId }
+              }
+            },
+            include: { tickets: true }
+          });
 
-      return events;
+        default:
+          throw new BadRequestException('Invalid value for role parameter. Expected "organizer" or "attendee".');
+      }
     } catch (error) {
       throw error;
     }

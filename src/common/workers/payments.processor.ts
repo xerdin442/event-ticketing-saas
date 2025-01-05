@@ -75,7 +75,7 @@ export class PaymentsProcessor {
                   // Check if the discount offer has expired
                   const currentTime = new Date().getTime();
                   const expirationDate = new Date(tier.discountExpiration).getTime();
-                  if (currentTime < expirationDate) {
+                  if (currentTime > expirationDate) {
                     throw new Error(`Discount offer for ${tier.name} tickets has expired. Please purchase regular tickets`);
                   };
 
