@@ -163,8 +163,8 @@ export class TasksService {
       logger.error(`[${this.context}] An error occurred during daily processing of failed transfers. Error: ${error.message}\n`);
       throw error;
     } finally {
+      if (record) await deleteFile(record.content);
       await redis.disconnect();
-      await deleteFile(record.content);
     }
   }
 }

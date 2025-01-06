@@ -66,7 +66,7 @@ export class UserController {
     }
   }
 
-  @Get('events/?role')
+  @Get('events')
   async getAllEvents(
     @Query('role') role: string,
     @GetUser() user: User

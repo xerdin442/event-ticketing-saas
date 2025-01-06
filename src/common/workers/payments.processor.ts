@@ -10,6 +10,8 @@ import { sendEmail } from "../config/mail";
 import logger from "../logger";
 import { deleteFile, generateTicketPDF } from "../util/document";
 import { EmailAttachment } from "../types";
+import { InjectMetric } from "@willsoto/nestjs-prometheus";
+import { Counter } from "prom-client";
 
 @Injectable()
 @Processor('payments-queue')
@@ -19,7 +21,9 @@ export class PaymentsProcessor {
   constructor(
     private readonly gateway: PaymentsGateway,
     private readonly prisma: DbService,
-    private readonly payments: PaymentsService
+    private readonly payments: PaymentsService,
+    @InjectMetric('transaction_refunds') private readonly transactionRefundCounter: Counter,
+    @InjectMetric('unsuccessful_transfers') private readonly unsuccessfulTransfersCounter: Counter
   ) { };
 
   @Process('transaction')
@@ -126,6 +130,7 @@ export class PaymentsProcessor {
                 }
               );
 
+              this.transactionRefundCounter.inc(); // Update the transaction refunds count
               logger.warn(`[${this.context}] Ticket purchase processing failed. Transaction refund to ${user.email} initiated.\n`);
 
               // Notify the user of the payment status
@@ -245,7 +250,7 @@ export class PaymentsProcessor {
           const content = `Ticket refund has been completed for the cancelled event: ${eventTitle}. Thanks for your patience.`;
           await sendEmail(user, reason, content);
         } else if (reason === 'Revenue Split') {
-          // Notify the attendee of the ticket refund
+          // Notify the organizer of the transfer of the revenue split
           const content = `Congratulations on the success of your event: ${eventTitle}. Transfer of your event revenue has been initiated.
             Thank you for choosing our platform!`;
           await sendEmail(user, reason, content);
@@ -256,6 +261,7 @@ export class PaymentsProcessor {
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} was successful!\n`)
         return;
       } else if (eventType === 'transfer.failed' || eventType === 'transfer.reversed') {
+        this.unsuccessfulTransfersCounter.inc();
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} failed or reversed.\n`);
 
         // Initiate transfer retry after 30 minutes

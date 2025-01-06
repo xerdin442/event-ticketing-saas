@@ -136,7 +136,7 @@ export class EventsController {
   }
 
   @HttpCode(HttpStatus.OK)
-  @Post(':eventId/tickets/add')
+  @Post(':eventId/tickets/remove-discount')
   @UseGuards(EventOrganizerGuard)
   async removeDiscount(
     @Param('eventId', ParseIntPipe) eventId: number,
