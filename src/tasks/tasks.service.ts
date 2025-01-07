@@ -8,7 +8,7 @@ import { RedisClientType } from "redis";
 import { initializeRedis } from "../common/config/redis-conf";
 import { Secrets } from "../common/env";
 import { EmailAttachment, FailedTransfer } from "../common/types";
-import { deleteFile, generateFailedTransferRecords } from "../common/util/document";
+import { generateFailedTransferRecords } from "../common/util/document";
 import { randomUUID } from "crypto";
 
 @Injectable()
@@ -130,7 +130,6 @@ export class TasksService {
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async processFailedTransfers(): Promise<void> {
-    let record: EmailAttachment;
     const redis: RedisClientType = await initializeRedis(
       Secrets.REDIS_URL,
       'Transfer Management',
@@ -139,7 +138,7 @@ export class TasksService {
 
     try {
       const keys = await redis.keys('*');
-      if (keys) {
+      if (keys.length > 0) {
         // Extract the transfer details for each user email
         const transfers: FailedTransfer[] = await Promise.all(
           keys.map(async (key) => {
@@ -148,10 +147,11 @@ export class TasksService {
           })
         );
 
-        record = await generateFailedTransferRecords(transfers);
+        const record: EmailAttachment = await generateFailedTransferRecords(transfers);
         const subject = 'Failed Transfers'
         const content = 'Hello, these are failed transfers that occured in the past 24 hours. The details are attached to this email.'
-        await sendEmail(Secrets.APP_EMAIL, subject, content, [record]);
+        const receiver = { firstName: 'Admin', email: Secrets.ADMIN_EMAIL };
+        await sendEmail(receiver, subject, content, [record]);
 
         logger.info(`[${this.context}] Details of failed transfers sent to platform email for further processing.\n`);
         return;
@@ -163,7 +163,6 @@ export class TasksService {
       logger.error(`[${this.context}] An error occurred during daily processing of failed transfers. Error: ${error.message}\n`);
       throw error;
     } finally {
-      if (record) await deleteFile(record.content);
       await redis.disconnect();
     }
   }

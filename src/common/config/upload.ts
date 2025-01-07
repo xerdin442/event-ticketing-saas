@@ -40,7 +40,7 @@ class UploadConfig {
       'video/quicktime',
       'video/x-msvideo',
       'video/x-matroska'
-    ];    
+    ];
 
     if (allowedMimetypes.includes(file.mimetype)) {
       callback(null, true);
@@ -57,10 +57,25 @@ class UploadConfig {
     v2.uploader.destroy(publicId, (error, result) => {
       if (error) {
         logger.error(`[${this.context}] Failed to delete file from Cloudinary. Error: ${error.message}`);
-      } else {
-        logger.info(`[${this.context}] File deleted from Cloudinary due to error in ${externalContext}`);
       }
     })
+  }
+
+  pdfUpload(name: string, location: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      v2.uploader.upload(location, {
+        folder: 'documents',
+        public_id: name,
+        resource_type: 'raw'
+      }, (error, result) => {
+        if (error) {
+          logger.error(`[${this.context}] Failed to upload PDF to Cloudinary. Error: ${error.message}\n`);
+          reject(error);
+        } else {
+          resolve(result?.secure_url);
+        }
+      });
+    });
   }
 }
 

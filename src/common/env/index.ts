@@ -20,6 +20,7 @@ export const Secrets = {
   BREVO_API_KEY: config.getOrThrow<string>('BREVO_API_KEY'),
   APP_NAME: config.getOrThrow<string>('APP_NAME'),
   APP_EMAIL: config.getOrThrow<string>('APP_EMAIL'),
+  ADMIN_EMAIL: config.getOrThrow<string>('ADMIN_EMAIL'),
   RATE_LIMITING_PER_SECOND: config.getOrThrow<number>('RATE_LIMITING_PER_SECOND'),
   RATE_LIMITING_PER_MINUTE: config.getOrThrow<number>('RATE_LIMITING_PER_MINUTE'),
   SESSION_STORE_INDEX: config.getOrThrow<number>('SESSION_STORE_INDEX'),

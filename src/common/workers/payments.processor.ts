@@ -8,7 +8,7 @@ import { randomUUID } from "crypto";
 import * as qrcode from "qrcode";
 import { sendEmail } from "../config/mail";
 import logger from "../logger";
-import { deleteFile, generateTicketPDF } from "../util/document";
+import { generateTicketPDF } from "../util/document";
 import { EmailAttachment } from "../types";
 import { InjectMetric } from "@willsoto/nestjs-prometheus";
 import { Counter } from "prom-client";
@@ -227,10 +227,6 @@ export class PaymentsProcessor {
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing ticket purchase. Error: ${error.message}\n`);
       throw error;
-    } finally {
-      for (let pdf of pdfs) {
-        await deleteFile(pdf.content); // Delete tickets PDFs after use
-      }
     }
   }
 

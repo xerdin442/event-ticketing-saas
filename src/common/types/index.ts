@@ -29,8 +29,8 @@ export type SessionData = {
 }
 
 export type EmailAttachment = {
+  url: string
   name: string
-  content: string
 }
 
 export type FailedTransfer = {
