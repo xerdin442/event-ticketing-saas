@@ -29,7 +29,7 @@ export type SessionData = {
 }
 
 export type EmailAttachment = {
-  url: string
+  content: string
   name: string
 }
 

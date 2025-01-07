@@ -4,7 +4,6 @@ import { Event, Ticket, User } from '@prisma/client';
 import logger from '../logger';
 import { EmailAttachment, FailedTransfer } from '../types';
 import { randomUUID } from 'crypto';
-import { UploadService } from '../config/upload';
 
 const deleteFile = async (file: string) => {
   const context = deleteFile.name;
@@ -61,12 +60,12 @@ export const generateTicketPDF = (
       });
 
       writestream.on('finish', async () => {
-        const url = await UploadService.pdfUpload(outputFile, pdfPath);
+        const content = fs.readFileSync(pdfPath).toString('base64'); // Extract file content
         await deleteFile(pdfPath); // Clean up temporary file storage
 
         resolve({
           name: outputFile,
-          url
+          content
         });
       }); 
     } catch (error) {
@@ -88,7 +87,7 @@ export const generateFailedTransferRecords = (transfers: FailedTransfer[]): Prom
 
       // Title
       doc.fontSize(20).fillColor('#333')
-        .text(`Failed Transfers - ${new Date().toDateString().replace(/\s/, '-')}`, { align: 'center' });
+        .text(`FAILED TRANSFERS: ${new Date().toDateString().replace(/\s/g, '-')}`, { align: 'center' });
       doc.moveDown();
 
       transfers.forEach(transfer => {
@@ -112,12 +111,12 @@ export const generateFailedTransferRecords = (transfers: FailedTransfer[]): Prom
       });
 
       writestream.on('finish', async () => {
-        const url = await UploadService.pdfUpload(outputFile, pdfPath);
+        const content = fs.readFileSync(pdfPath).toString('base64'); // Extract file content
         await deleteFile(pdfPath); // Clean up temporary file storage
 
         resolve({
           name: outputFile,
-          url
+          content
         });
       });
     } catch (error) {

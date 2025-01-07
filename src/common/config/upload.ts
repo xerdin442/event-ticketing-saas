@@ -60,23 +60,6 @@ class UploadConfig {
       }
     })
   }
-
-  pdfUpload(name: string, location: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      v2.uploader.upload(location, {
-        folder: 'documents',
-        public_id: name,
-        resource_type: 'raw'
-      }, (error, result) => {
-        if (error) {
-          logger.error(`[${this.context}] Failed to upload PDF to Cloudinary. Error: ${error.message}\n`);
-          reject(error);
-        } else {
-          resolve(result?.secure_url);
-        }
-      });
-    });
-  }
 }
 
 export const UploadService = new UploadConfig();
