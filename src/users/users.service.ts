@@ -53,14 +53,13 @@ export class UserService {
           });
 
         case 'attendee':
-          // Get all events where the user is an attendee, including the tickets purchased by the user
+          // Get all events where the user is an attendee
           return await this.prisma.event.findMany({
             where: {
-              tickets: {
-                some: { attendee: userId }
+              users: {
+                some: { id: userId }
               }
-            },
-            include: { tickets: true }
+            }
           });
 
         default:

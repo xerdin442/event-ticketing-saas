@@ -4,7 +4,8 @@ import { AppModule } from '../../src/app.module';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { DbService } from '../../src/db/db.service';
 import {
-  AuthDto,
+  CreateUserDto,
+  LoginDto,
   NewPasswordDto,
   PasswordResetDto,
   Verify2FADto,
@@ -12,12 +13,13 @@ import {
 } from "../../src/auth/dto";
 import { updateProfileDto } from '../../src/users/dto';
 import { SessionService } from '../../src/common/session';
+import { Secrets } from '../../src/common/env';
 
 describe('App e2e', () => {
   let app: INestApplication;
   let prisma: DbService;
   let session: SessionService;
-  
+
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -36,7 +38,7 @@ describe('App e2e', () => {
     // Cleaning database and session store before running tests
     prisma = app.get(DbService)
     await prisma.cleanDb();
-    
+
     session = app.get(SessionService)
     await session.clear();
 
@@ -48,14 +50,17 @@ describe('App e2e', () => {
   afterAll(() => { app.close() })
 
   describe('Auth', () => {
-    const dto: AuthDto = {
-      email: 'example@gmail.com',
-      password: 'Xerdin442!',
-      firstName: 'Xerdin',
-      lastName: null,
-    };
-
     describe('Signup', () => {
+      const dto: CreateUserDto = {
+        email: 'example@gmail.com',
+        password: 'password',
+        age: 21,
+        accountName: Secrets.ACCOUNT_NAME,
+        accountNumber: Secrets.ACCOUNT_NUMBER,
+        bankName: Secrets.BANK_NAME,
+        firstName: 'Xerdin',
+        lastName: 'Ludac'
+      }
       it('should throw if email is empty', () => {
         return pactum.spec()
           .post('/auth/signup')
@@ -64,7 +69,7 @@ describe('App e2e', () => {
           })
           .expectStatus(400)
       });
-  
+
       it('should throw if email is invalid', () => {
         return pactum.spec()
           .post('/auth/signup')
@@ -89,7 +94,7 @@ describe('App e2e', () => {
           .post('/auth/signup')
           .expectStatus(400)
       });
-  
+
       it('should signup', () => {
         return pactum.spec()
           .post('/auth/signup')
@@ -106,6 +111,11 @@ describe('App e2e', () => {
     });
 
     describe('Login', () => {
+      const dto: LoginDto = {
+        email: 'example@gmail.com',
+        password: 'password'
+      };
+      
       it('should throw if email is empty', () => {
         return pactum.spec()
           .post('/auth/login')
@@ -114,7 +124,7 @@ describe('App e2e', () => {
           })
           .expectStatus(400)
       });
-  
+
       it('should throw if email is invalid', () => {
         return pactum.spec()
           .post('/auth/login')
@@ -178,12 +188,12 @@ describe('App e2e', () => {
           })
           .expectStatus(200)
       });
-  
+
       it('should verify 2FA token', () => {
         const verifyDto: Verify2FADto = {
           token: '123456'
         };
-  
+
         return pactum.spec()
           .post('/auth/2fa/verify')
           .withHeaders({
@@ -192,7 +202,7 @@ describe('App e2e', () => {
           .withBody(verifyDto)
           .expectStatus(400)
       });
-  
+
       it('should disable two factor authentication', () => {
         return pactum.spec()
           .post('/auth/2fa/disable')
@@ -214,15 +224,15 @@ describe('App e2e', () => {
           .withBody(dto)
           .expectStatus(200)
       });
-  
-      it('should re-send password reset OTP to user email', () => {  
+
+      it('should re-send password reset OTP to user email', () => {
         return pactum.spec()
           .post('/auth/password/resend-otp')
           .expectStatus(200)
       });
-  
+
       it('should verify password reset OTP', () => {
-        const dto: VerifyOTPDto = { 
+        const dto: VerifyOTPDto = {
           otp: '1234'
         };
 

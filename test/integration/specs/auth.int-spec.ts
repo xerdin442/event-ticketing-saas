@@ -3,14 +3,17 @@ import { AppModule } from "../../../src/app.module";
 import { DbService } from "../../../src/db/db.service";
 import { AuthService } from "../../../src/auth/auth.service";
 import {
-  AuthDto,
+  CreateUserDto,
+  LoginDto,
   NewPasswordDto,
   PasswordResetDto,
   Verify2FADto,
   VerifyOTPDto
 } from "../../../src/auth/dto";
 import { ConfigService } from "@nestjs/config";
-import { SessionData, SessionService } from "../../../src/common/session";
+import { SessionService } from "../../../src/common/session";
+import { SessionData } from "../../../src/common/types";
+import { Secrets } from "../../../src/common/env";
 
 describe('Auth Service', () => {
   let prisma: DbService;
@@ -20,11 +23,6 @@ describe('Auth Service', () => {
   let userId: number;
   let otp: string;
   let data: SessionData = {};
-
-  const authDto: AuthDto = {
-    email: 'example@gmail.com',
-    password: 'password'
-  };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -46,15 +44,30 @@ describe('Auth Service', () => {
   });
 
   describe('Signup', () => {
+    const dto: CreateUserDto = {
+      email: 'example@gmail.com',
+      password: 'password',
+      age: 21,
+      accountName: Secrets.ACCOUNT_NAME,
+      accountNumber: Secrets.ACCOUNT_NUMBER,
+      bankName: Secrets.BANK_NAME,
+      firstName: 'Xerdin',
+      lastName: 'Ludac'
+    }
     it('should signup a new user', async () => {
-      const { user } = await authService.signup(authDto, config.get<string>('DEFAULT_IMAGE'));
+      const { user } = await authService.signup(dto);
       userId = user.id;
     });
   });
 
   describe('Login', () => {
+    const dto: LoginDto = {
+      email: 'example@gmail.com',
+      password: 'password'
+    };
+
     it('should login existing user', async () => {
-      await authService.login(authDto);
+      await authService.login(dto);
     })
   });
 
@@ -99,7 +112,7 @@ describe('Auth Service', () => {
   describe('Verify Password OTP', () => {
     it('should verify password reset OTP', async () => {
       const dto: VerifyOTPDto = { otp };
-      authService.verifyOTP(dto, data);
+      await authService.verifyOTP(dto, data);
     })
   });
 
@@ -115,7 +128,7 @@ describe('Auth Service', () => {
 
   describe('Logout', () => {
     it('should logout of current session', async () => {
-      await authService.logout(authDto.email);
+      await authService.logout('example@gmail.com');
     })
   });
 })

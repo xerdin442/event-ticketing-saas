@@ -88,10 +88,11 @@ export class EventsController {
   @Get(':eventId')
   async getEventDetails(
     @GetUser() user: User,
-    @Param('eventId', ParseIntPipe) eventId: number
+    @Param('eventId', ParseIntPipe) eventId: number,
+    @Query('role') role: string
   ): Promise<{ event: Event }> {
     try {
-      const event = await this.eventsService.getEventDetails(eventId);
+      const event = await this.eventsService.getEventDetails(role, eventId);
       logger.info(`[${this.context}] Event details retrieved by ${user.email}.\n`);
 
       return { event };

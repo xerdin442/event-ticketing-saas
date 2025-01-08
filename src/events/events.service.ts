@@ -119,10 +119,20 @@ export class EventsService {
     }
   }
 
-  async getEventDetails(eventId: number): Promise<Event> {
-    return this.prisma.event.findUnique({
-      where: { id: eventId }
-    });
+  async getEventDetails(role: string, eventId: number): Promise<Event> {
+    switch (role) {
+      case 'attendee':
+        return this.prisma.event.findUnique({
+          where: { id: eventId }
+        });
+      case 'organizer':
+        return this.prisma.event.findUnique({
+          where: { id: eventId },
+          include: { organizer: true }
+        });
+      default:
+        throw new BadRequestException('Invalid value for role parameter. Expected "organizer" or "attendee".');
+    }
   }
 
   async cancelEvent(eventId: number): Promise<void> {

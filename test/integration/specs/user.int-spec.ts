@@ -34,6 +34,12 @@ describe('User Service', () => {
         data: {
           email: 'example@gmail.com',
           password: 'password',
+          age: 21,
+          accountName: config.get<string>('ACCOUNT_NAME'),
+          accountNumber: config.get<string>('ACCOUNT_NUMBER'),
+          bankName: config.get<string>('BANK_NAME'),
+          firstName: 'Xerdin',
+          lastName: 'Ludac',
           profileImage: config.get<string>('DEFAULT_IMAGE')
         }
       })
@@ -47,6 +53,18 @@ describe('User Service', () => {
       };
       
       await userService.updateProfile(userId, dto)
+    })
+  });
+
+  describe('Get All Events', () => {
+    it('should return all events based on the role', async () => { 
+      await userService.getAllEvents('organizer', userId)
+    })
+  });
+
+  describe('Get All Tickets', () => {
+    it('should return all user tickets', async () => { 
+      await userService.getAllTickets(userId)
     })
   });
 

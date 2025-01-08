@@ -29,5 +29,8 @@ export const Secrets = {
   GEOLOCATION_STORE_INDEX: config.getOrThrow<number>('GEOLOCATION_STORE_INDEX'),
   IDEMPOTENCY_KEYS_STORE_INDEX: config.getOrThrow<number>('IDEMPOTENCY_KEYS_STORE_INDEX'),
   FAILED_TRANSFERS_STORE_INDEX: config.getOrThrow<number>('FAILED_TRANSFERS_STORE_INDEX'),
-  PAYSTACK_SECRET_KEY: config.getOrThrow<string>('PAYSTACK_SECRET_KEY')
+  PAYSTACK_SECRET_KEY: config.getOrThrow<string>('PAYSTACK_SECRET_KEY'),
+  ACCOUNT_NUMBER: process.env.ACCOUNT_NUMBER as string,
+  ACCOUNT_NAME: process.env.ACCOUNT_NAME as string,
+  BANK_NAME: process.env.BANK_NAME as string,
 }
