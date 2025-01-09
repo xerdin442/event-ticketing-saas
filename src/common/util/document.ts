@@ -91,9 +91,10 @@ export const generateFailedTransferRecords = (transfers: FailedTransfer[]): Prom
       doc.moveDown();
 
       transfers.forEach(transfer => {
-        const { accontName, accountNumber, bankName, amount, reason, date } = transfer.details;
+        const { transferCode, accontName, accountNumber, bankName, amount, reason, date } = transfer.details;
 
         doc.fontSize(14).fillColor('black').text(`Email: ${transfer.email}`);
+        doc.text(`Paystack Transfer Code: ${transferCode}`);
         doc.text(`Amount: ${amount}`);
         doc.text(`Account Name: ${accontName}`);
         doc.text(`Account Number: ${accountNumber}`);

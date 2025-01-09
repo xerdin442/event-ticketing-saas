@@ -56,10 +56,12 @@ export class PaymentsController {
         if (event.includes('transfer')) {
           await this.paymentsQueue.add('transfer', {
             eventType: event,
+            transferCode: data.transfer_code,
             metadata: data.recipient.metadata,
             recipientCode: data.recipient.recipient_code,
             reason: data.reason,
-            amount: data.amount
+            amount: data.amount,
+            date: data.updated_at
           });
         };
 

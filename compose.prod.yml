@@ -7,4 +7,4 @@ services:
     environment:
       - NODE_ENV=production
     command: >
-      sh -c "npm run deploy && npm run start:prod"
+      sh -c "npm run migrate && npm run start:prod"

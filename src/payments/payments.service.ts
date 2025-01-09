@@ -137,7 +137,7 @@ export class PaymentsService {
   }
 
   async retryTransfer(data: any, user: User): Promise<void> {
-    const { metadata, reason, recipientCode, amount } = data;
+    const { metadata, reason, recipientCode, amount, transferCode, date } = data;
     const { retryKey } = metadata;
     const MAX_RETRIES = 2;
 
@@ -167,12 +167,13 @@ export class PaymentsService {
           // If retries are exhausted, store details of the failed transfer for 30 days
           await redis.select(Secrets.FAILED_TRANSFERS_STORE_INDEX);
           await redis.setEx(user.email, 2592000, JSON.stringify({
+            transferCode,
             bankName: user.bankName,
             accountNumber: user.accountNumber,
             accountName: user.accountName,
             reason,
             amount,
-            date: new Date().toISOString()
+            date
           }));
 
           await this.deleteTransferRecipient(recipientCode); // Delete recipient after failed transfer
