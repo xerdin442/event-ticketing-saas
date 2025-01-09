@@ -9,13 +9,15 @@ import { Queue } from 'bull';
 import { RedisClientType } from 'redis';
 import { initializeRedis } from '../common/config/redis-conf';
 import { Secrets } from '../common/env';
+import { TasksService } from '../tasks/tasks.service';
 
 @Injectable()
 export class EventsService {
   constructor(
     private readonly prisma: DbService,
     private readonly payments: PaymentsService,
-    @InjectQueue('events-queue') private readonly eventsQueue: Queue
+    @InjectQueue('events-queue') private readonly eventsQueue: Queue,
+    private readonly tasks: TasksService
   ) { };
 
   async createEvent(
@@ -86,6 +88,18 @@ export class EventsService {
           eventId: event.id
         });
 
+        // Set auto updates of event status
+        this.tasks.updateOngoingEvents(
+          event.id, 
+          `event-${event.id}-ongoing-update`,
+          new Date(event.startTime).getTime() + 3000
+        );
+        this.tasks.updateCompletedEvents(
+          event.id, 
+          `event-${event.id}-completed-update`,
+          new Date(event.endTime).getTime() + 3000
+        );
+
         return event;
       } else {
         throw new BadRequestException('Failed to generate coordinates for venue and address');
@@ -110,6 +124,30 @@ export class EventsService {
 
       // Notify attendees if there are any important changes in event details
       if (dto.address || dto.venue || dto.date || dto.endTime || dto.startTime) {
+        if (dto.startTime) {
+          const name = `event-${event.id}-ongoing-update`
+          this.tasks.deleteTimeout(name);
+
+          // Reset timeout for event status update
+          this.tasks.updateOngoingEvents(
+            event.id, 
+            name,
+            new Date(event.startTime).getTime() + 3000
+          );
+        };
+
+        if (dto.endTime) {
+          const name = `event-${event.id}-completed-update`
+          this.tasks.deleteTimeout(name);
+
+          // Reset timeout for event status update
+          this.tasks.updateCompletedEvents(
+            event.id, 
+            name,
+            new Date(event.endTime).getTime() + 3000
+          );
+        };
+
         await this.eventsQueue.add('event-update', { event });
       }
 
@@ -149,6 +187,10 @@ export class EventsService {
         }
       });
 
+      // Clear event status update timeouts
+      this.tasks.deleteTimeout(`event-${event.id}-completed-update`);
+      this.tasks.deleteTimeout(`event-${event.id}-ongoing-update`);
+
       // Notify attendees of event cancellation
       await this.eventsQueue.add('cancel-event', { event });
     } catch (error) {
@@ -179,6 +221,13 @@ export class EventsService {
             numberOfDiscountTickets: dto.numberOfDiscountTickets
           }
         });
+
+        // Set auto update of discount status based on the expiration date
+        this.tasks.updateDiscountExpiration(
+          tier.id,
+          `tier-${tier.id}-discount-update`,
+          new Date(tier.discountExpiration).getTime()
+        );
       };
     } catch (error) {
       throw error;
@@ -204,6 +253,9 @@ export class EventsService {
               numberOfDiscountTickets: null
             }
           });
+
+          // Delete discount status update timeout
+          this.tasks.deleteTimeout(`tier-${ticketTier.id}-discount-update`);
         }
       };
     } catch (error) {

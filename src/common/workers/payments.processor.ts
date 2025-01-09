@@ -164,6 +164,31 @@ export class PaymentsProcessor {
           }
         });
 
+        // Check if all the event tickets are sold out
+        if (event.ticketTiers.every(tier => tier.soldOut === true)) {
+          await this.prisma.event.update({
+            where: { id: event.id },
+            data: { status: "SOLD_OUT" }
+          });
+
+          // Notify the event organizer of the event's sold out status
+          const subject = 'SOLD OUT!'
+          const content = `Congratulations, your event titled: ${event.title} is sold out!`
+          await sendEmail(event.organizer, subject, content);
+
+          // Intitiate transfer of the event revenue
+          await this.payments.initiateTransfer(
+            event.organizer.recipientCode,
+            event.revenue * 100,
+            'Revenue Split',
+            {
+              userId: event.organizer.userId,
+              eventTitle: event.title,
+              retryKey: randomUUID().replace(/-/g, '')
+            }
+          );
+        };
+
         // Create the required number of tickets
         for (let i = 1; i <= quantity; i++) {
           const accessKey = randomUUID().split('-')[4]
