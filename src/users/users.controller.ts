@@ -40,10 +40,10 @@ export class UserController {
   async updateProfile(
     @GetUser() user: User,
     @Body() dto: updateProfileDto,
-    @UploadedFile() file: Express.Multer.File
+    @UploadedFile() file?: Express.Multer.File
   ): Promise<{ user: User }> {
     try {
-      const updatedUser = await this.userService.updateProfile(user.id, dto, file.path);
+      const updatedUser = await this.userService.updateProfile(user.id, dto, file?.path);
       logger.info(`[${this.context}] User profile updated by ${user.email}.\n`);
 
       return { user: updatedUser };

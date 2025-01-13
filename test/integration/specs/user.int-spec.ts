@@ -4,6 +4,7 @@ import { DbService } from "../../../src/db/db.service";
 import { UserService } from "../../../src/users/users.service";
 import { updateProfileDto } from "../../../src/users/dto";
 import { ConfigService } from "@nestjs/config";
+import { Secrets } from "../../../src/common/env";
 
 describe('User Service', () => {
   let prisma: DbService;
@@ -32,15 +33,15 @@ describe('User Service', () => {
     it('should create user', async () => {
       const user = await prisma.user.create({
         data: {
-          email: 'example@gmail.com',
+          email: 'hey@example.com',
           password: 'password',
           age: 21,
-          accountName: config.get<string>('ACCOUNT_NAME'),
-          accountNumber: config.get<string>('ACCOUNT_NUMBER'),
-          bankName: config.get<string>('BANK_NAME'),
+          accountName: Secrets.ACCOUNT_NAME,
+          accountNumber: Secrets.ACCOUNT_NUMBER,
+          bankName: Secrets.BANK_NAME,
           firstName: 'Xerdin',
           lastName: 'Ludac',
-          profileImage: config.get<string>('DEFAULT_IMAGE')
+          profileImage: Secrets.DEFAULT_IMAGE
         }
       })
 
@@ -51,25 +52,25 @@ describe('User Service', () => {
       const dto: updateProfileDto = {
         email: 'updatedemail@gmail.com'
       };
-      
+
       await userService.updateProfile(userId, dto)
     })
   });
 
   describe('Get All Events', () => {
-    it('should return all events based on the role', async () => { 
+    it('should return all events based on the role', async () => {
       await userService.getAllEvents('organizer', userId)
     })
   });
 
   describe('Get All Tickets', () => {
-    it('should return all user tickets', async () => { 
+    it('should return all user tickets', async () => {
       await userService.getAllTickets(userId)
     })
   });
 
   describe('Delete Account', () => {
-    it('should delete user profile', async () => { 
+    it('should delete user profile', async () => {
       await userService.deleteAccount(userId)
     })
   });

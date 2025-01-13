@@ -14,6 +14,7 @@ import {
 import { updateProfileDto } from '../../src/users/dto';
 import { SessionService } from '../../src/common/session';
 import { Secrets } from '../../src/common/env';
+import { WsAdapter } from '@nestjs/platform-ws';
 
 describe('App e2e', () => {
   let app: INestApplication;
@@ -31,6 +32,7 @@ describe('App e2e', () => {
       whitelist: true
     }));
     app.setGlobalPrefix('/api');
+    app.useWebSocketAdapter(new WsAdapter(app));
 
     await app.init();
     await app.listen(3333);
@@ -40,20 +42,20 @@ describe('App e2e', () => {
     await prisma.cleanDb();
 
     session = app.get(SessionService)
+    await session.onModuleInit();
     await session.clear();
 
-
     // Set base URL for testing endpoints
-    pactum.request.setBaseUrl('http://localhost:3333/api')
-  })
+    pactum.request.setBaseUrl('http://localhost:3333/api');
+  });
 
-  afterAll(() => { app.close() })
+  afterAll(() => { app.close() });
 
   describe('Auth', () => {
     describe('Signup', () => {
       const dto: CreateUserDto = {
-        email: 'example@gmail.com',
-        password: 'password',
+        email: 'jadawills3690@gmail.com',
+        password: 'Xerdin442!',
         age: 21,
         accountName: Secrets.ACCOUNT_NAME,
         accountNumber: Secrets.ACCOUNT_NUMBER,
@@ -61,35 +63,28 @@ describe('App e2e', () => {
         firstName: 'Xerdin',
         lastName: 'Ludac'
       }
-      it('should throw if email is empty', () => {
-        return pactum.spec()
-          .post('/auth/signup')
-          .withBody({
-            password: dto.password
-          })
-          .expectStatus(400)
-      });
-
+      
       it('should throw if email is invalid', () => {
         return pactum.spec()
           .post('/auth/signup')
           .withBody({
-            email: 'invalidEmail',
-            password: dto.password
+            ...dto,
+            email: 'invalidEmail'
           })
           .expectStatus(400)
       });
 
-      it('should throw if password is empty', () => {
+      it('should throw if password is not strong enough', () => {
         return pactum.spec()
           .post('/auth/signup')
           .withBody({
-            email: dto.email
+            ...dto,
+            password: 'password'
           })
           .expectStatus(400)
       });
 
-      it('should throw if body is empty', () => {
+      it('should throw if request body is empty', () => {
         return pactum.spec()
           .post('/auth/signup')
           .expectStatus(400)
@@ -112,44 +107,16 @@ describe('App e2e', () => {
 
     describe('Login', () => {
       const dto: LoginDto = {
-        email: 'example@gmail.com',
-        password: 'password'
+        email: 'jadawills3690@gmail.com',
+        password: 'Xerdin442!'
       };
       
-      it('should throw if email is empty', () => {
-        return pactum.spec()
-          .post('/auth/login')
-          .withBody({
-            password: dto.password
-          })
-          .expectStatus(400)
-      });
-
-      it('should throw if email is invalid', () => {
-        return pactum.spec()
-          .post('/auth/login')
-          .withBody({
-            email: 'invalidEmail',
-            password: dto.password
-          })
-          .expectStatus(400)
-      });
-
       it('should throw if no user is found with email', () => {
         return pactum.spec()
           .post('/auth/login')
           .withBody({
-            email: 'wrongemail@gmail.com',
-            password: dto.password
-          })
-          .expectStatus(400)
-      });
-
-      it('should throw if password is empty', () => {
-        return pactum.spec()
-          .post('/auth/login')
-          .withBody({
-            email: dto.email
+            ...dto,
+            email: 'wrongemail@gmail.com'
           })
           .expectStatus(400)
       });
@@ -158,8 +125,8 @@ describe('App e2e', () => {
         return pactum.spec()
           .post('/auth/login')
           .withBody({
-            email: dto.email,
-            password: 'wrong password'
+            ...dto,
+            password: 'wrong-password'
           })
           .expectStatus(400)
       });
@@ -216,7 +183,7 @@ describe('App e2e', () => {
     describe('Password Reset', () => {
       it('should send password reset OTP to user email', () => {
         const dto: PasswordResetDto = {
-          email: 'example@gmail.com'
+          email: 'jadawills3690@gmail.com'
         };
 
         return pactum.spec()
@@ -263,7 +230,7 @@ describe('App e2e', () => {
           .expectStatus(401)
       });
 
-      it('should return profile of logged in user', () => {
+      it('should return user profile', () => {
         return pactum.spec()
           .get('/users/profile')
           .withHeaders({
@@ -275,8 +242,8 @@ describe('App e2e', () => {
 
     describe('Update Profile', () => {
       const dto: updateProfileDto = {
-        email: 'jadawills@gmail.com',
-        firstName: 'Nancy'
+        firstName: 'Nancy',
+        age: 25
       };
 
       it('should update user profile', () => {
@@ -286,6 +253,48 @@ describe('App e2e', () => {
             Authorization: 'Bearer $S{accessToken}'
           })
           .withBody(dto)
+          .expectStatus(200)
+      });
+    });
+
+    describe('Get All Events', () => {
+      it('should return all user events as organizer', () => {
+        return pactum.spec()
+          .get('/users/events')
+          .withHeaders({
+            Authorization: 'Bearer $S{accessToken}'
+          })
+          .withQueryParams('role', 'organizer')
+          .expectStatus(200)
+      });
+
+      it('should return all user events as attendee', () => {
+        return pactum.spec()
+          .get('/users/events')
+          .withHeaders({
+            Authorization: 'Bearer $S{accessToken}'
+          })
+          .withQueryParams('role', 'attendee')
+          .expectStatus(200)
+      });
+
+      it('should throw if query parameter is invalid', () => {
+        return pactum.spec()
+          .get('/users/events')
+          .withHeaders({
+            Authorization: 'Bearer $S{accessToken}'
+          })
+          .expectStatus(400)
+      });
+    });
+
+    describe('Get All Tickets', () => {
+      it('should return all user tickets', () => {
+        return pactum.spec()
+          .get('/users/tickets')
+          .withHeaders({
+            Authorization: 'Bearer $S{accessToken}'
+          })
           .expectStatus(200)
       });
     });

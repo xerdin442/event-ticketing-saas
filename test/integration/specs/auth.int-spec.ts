@@ -10,7 +10,6 @@ import {
   Verify2FADto,
   VerifyOTPDto
 } from "../../../src/auth/dto";
-import { ConfigService } from "@nestjs/config";
 import { SessionService } from "../../../src/common/session";
 import { SessionData } from "../../../src/common/types";
 import { Secrets } from "../../../src/common/env";
@@ -18,7 +17,6 @@ import { Secrets } from "../../../src/common/env";
 describe('Auth Service', () => {
   let prisma: DbService;
   let authService: AuthService;
-  let config: ConfigService;
   let session: SessionService;
   let userId: number;
   let otp: string;
@@ -33,14 +31,14 @@ describe('Auth Service', () => {
     const app = moduleRef.createNestApplication();
 
     // Cleaning database and session store before running tests
-    prisma = app.get(DbService)
+    prisma = app.get(DbService);
     await prisma.cleanDb();
 
-    session = app.get(SessionService)
+    session = app.get(SessionService);
+    await session.onModuleInit();
     await session.clear();
 
     authService = app.get(AuthService);
-    config = app.get(ConfigService)
   });
 
   describe('Signup', () => {

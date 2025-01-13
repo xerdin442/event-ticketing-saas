@@ -41,10 +41,10 @@ export class AuthController {
   }))
   async signup(
     @Body() dto: CreateUserDto,
-    @UploadedFile() file: Express.Multer.File
+    @UploadedFile() file?: Express.Multer.File
   ): Promise<{ user: User, token: string }> {
     try {
-      const response = await this.authService.signup(dto, file.path);
+      const response = await this.authService.signup(dto, file?.path);
       logger.info(`[${this.context}] User signup successful. Email: ${dto.email}\n`);
       
       return response;
@@ -136,17 +136,12 @@ export class AuthController {
       const verified = await this.authService.verify2FA(user.id, dto);
 
       if (verified) {
-        logger.info(`[${this.context}] 2FA token verified successfully. Email: ${user.email}\n`);
-
         return { message: '2FA token verified successfully' };
       } else {
-        logger.error(`[${this.context}] Invalid 2FA token could not be verified. Email: ${user.email}\n`);
-
         throw new BadRequestException('Invalid token');
       }
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while verifying 2FA token. Error: ${error.message}\n`);
-
       throw error;
     }
   }

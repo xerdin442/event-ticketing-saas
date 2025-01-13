@@ -190,7 +190,7 @@ export class AuthService {
 
         // Send the OTP via email
         await this.mailQueue.add('otp', {
-          email: data.email,
+          user,
           otp: data.otp
         })
 
@@ -213,9 +213,13 @@ export class AuthService {
         data.otpExpiration = Date.now() + (60 * 60 * 1000);
         await this.sessionService.set(data.email, data);
 
+        const user = await this.prisma.user.findUnique({
+          where: { email: session.email }
+        })
+
         // Send another email with the new OTP
         await this.mailQueue.add('otp', {
-          email: data.email,
+          user,
           otp: data.otp
         })
 
