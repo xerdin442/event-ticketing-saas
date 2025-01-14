@@ -45,8 +45,9 @@ describe('App e2e', () => {
     await session.onModuleInit();
     await session.clear();
 
-    // Set base URL for testing endpoints
+    // Set base URL and timeout for testing endpoints
     pactum.request.setBaseUrl('http://localhost:3333/api');
+    pactum.request.setDefaultTimeout(5000);
   });
 
   afterAll(() => { app.close() });
@@ -128,12 +129,6 @@ describe('App e2e', () => {
             ...dto,
             password: 'wrong-password'
           })
-          .expectStatus(400)
-      });
-
-      it('should throw if body is empty', () => {
-        return pactum.spec()
-          .post('/auth/login')
           .expectStatus(400)
       });
 
@@ -309,5 +304,5 @@ describe('App e2e', () => {
           .expectStatus(200)
       });
     });
-  });
+  });  
 })

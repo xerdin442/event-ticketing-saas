@@ -3,14 +3,12 @@ import { AppModule } from "../../../src/app.module";
 import { DbService } from "../../../src/db/db.service";
 import { UserService } from "../../../src/users/users.service";
 import { updateProfileDto } from "../../../src/users/dto";
-import { ConfigService } from "@nestjs/config";
 import { Secrets } from "../../../src/common/env";
 
 describe('User Service', () => {
   let prisma: DbService;
   let userService: UserService;
   let userId: number;
-  let config: ConfigService;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -25,8 +23,7 @@ describe('User Service', () => {
     await prisma.cleanDb();
 
     // Instantiate user service
-    userService = app.get(UserService)
-    config = app.get(ConfigService)
+    userService = app.get(UserService);
   });
 
   describe('Update Profile', () => {
@@ -43,7 +40,7 @@ describe('User Service', () => {
           lastName: 'Ludac',
           profileImage: Secrets.DEFAULT_IMAGE
         }
-      })
+      });
 
       userId = user.id;
     });

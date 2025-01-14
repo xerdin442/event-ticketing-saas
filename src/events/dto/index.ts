@@ -179,7 +179,7 @@ export class addTicketTierDto {
 
   @IsNumber()
   @IsOptional()
-  disocuntPrice?: number;
+  discountPrice?: number;
 
   @IsDate()
   @IsOptional()

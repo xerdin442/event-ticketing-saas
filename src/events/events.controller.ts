@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
@@ -38,7 +39,7 @@ export class EventsController {
     })
   )
   async createEvent(
-    dto: CreateEventDto,
+    @Body() dto: CreateEventDto,
     @GetUser() user: User,
     @UploadedFiles() files: Express.Multer.File[]
   ): Promise<{ event: Event }> {
@@ -66,7 +67,7 @@ export class EventsController {
     })
   )
   async updateEvent(
-    dto: UpdateEventDto,
+    @Body() dto: UpdateEventDto,
     @GetUser() user: User,
     @Param('eventId', ParseIntPipe) eventId: number,
     @UploadedFiles() files: Express.Multer.File[]
@@ -124,7 +125,7 @@ export class EventsController {
   @Post(':eventId/tickets/add')
   @UseGuards(EventOrganizerGuard)
   async addTicketTier(
-    dto: addTicketTierDto,
+    @Body() dto: addTicketTierDto,
     @Param('eventId', ParseIntPipe) eventId: number
   ): Promise<{ message: string }> {
     try {

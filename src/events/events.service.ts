@@ -92,12 +92,12 @@ export class EventsService {
         this.tasks.updateOngoingEvents(
           event.id, 
           `event-${event.id}-ongoing-update`,
-          new Date(event.startTime).getTime() + 3000
+          new Date(event.startTime).getTime() - new Date().getTime() + 1500
         );
         this.tasks.updateCompletedEvents(
           event.id, 
           `event-${event.id}-completed-update`,
-          new Date(event.endTime).getTime() + 3000
+          new Date(event.endTime).getTime() - new Date().getTime() + 1500
         );
 
         return event;
@@ -122,7 +122,6 @@ export class EventsService {
         include: { users: true }
       });
 
-      // Notify attendees if there are any important changes in event details
       if (dto.address || dto.venue || dto.date || dto.endTime || dto.startTime) {
         if (dto.startTime) {
           const name = `event-${event.id}-ongoing-update`
@@ -130,9 +129,9 @@ export class EventsService {
 
           // Reset timeout for event status update
           this.tasks.updateOngoingEvents(
-            event.id, 
+            event.id,
             name,
-            new Date(event.startTime).getTime() + 3000
+            new Date(event.startTime).getTime() - new Date().getTime() + 1500
           );
         };
 
@@ -144,10 +143,11 @@ export class EventsService {
           this.tasks.updateCompletedEvents(
             event.id, 
             name,
-            new Date(event.endTime).getTime() + 3000
+            new Date(event.endTime).getTime() - new Date().getTime() + 1500
           );
         };
 
+        // Notify attendees if there are any important changes in event details
         await this.eventsQueue.add('event-update', { event });
       }
 
@@ -200,25 +200,27 @@ export class EventsService {
 
   async addTicketTier(dto: addTicketTierDto, eventId: number): Promise<void> {
     try {
+      const { name, price, totalNumberOfTickets, discount, benefits, discountExpiration, discountPrice, numberOfDiscountTickets } = dto;
+      
       const tier = await this.prisma.ticketTier.create({
         data: {
-          name: dto.name,
-          price: dto.price,
-          totalNumberOfTickets: dto.totalNumberOfTickets,
-          discount: dto.discount,
-          benefits: dto.benefits,
+          name,
+          price,
+          totalNumberOfTickets,
+          discount,
+          benefits,
           eventId
         }
       });
 
-      if (dto.discount) {
+      if (discount) {
         await this.prisma.ticketTier.update({
           where: { id: tier.id },
           data: {
-            discountPrice: dto.disocuntPrice,
-            discountExpiration: dto.discountExpiration,
+            discountPrice,
+            discountExpiration,
             discountStatus: 'ACTIVE',
-            numberOfDiscountTickets: dto.numberOfDiscountTickets
+            numberOfDiscountTickets
           }
         });
 
@@ -226,7 +228,7 @@ export class EventsService {
         this.tasks.updateDiscountExpiration(
           tier.id,
           `tier-${tier.id}-discount-update`,
-          new Date(tier.discountExpiration).getTime()
+          new Date(tier.discountExpiration).getTime() - new Date().getTime()
         );
       };
     } catch (error) {
