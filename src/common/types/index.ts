@@ -34,6 +34,25 @@ export type EmailAttachment = {
 }
 
 export type FailedTransfer = {
-  email: string
+  transferCode: string
   details: any
+}
+
+export type CloudinaryResource = {
+  asset_id: string
+  public_id: string
+  format: string
+  version: number
+  resource_type: string
+  type: string
+  created_at: string
+  bytes: number
+  width?: number
+  height?: number
+  asset_folder: string
+  display_name: string
+  url: string
+  secure_url: string
+  tags?: string[]
+  next_cursor?: string
 }

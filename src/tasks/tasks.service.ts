@@ -14,6 +14,7 @@ import { Secrets } from "../common/env";
 import { EmailAttachment, FailedTransfer } from "../common/types";
 import { generateFailedTransferRecords } from "../common/util/document";
 import { randomUUID } from "crypto";
+import { UploadService } from "../common/config/upload";
 
 @Injectable()
 export class TasksService {
@@ -109,7 +110,7 @@ export class TasksService {
         const transfers: FailedTransfer[] = await Promise.all(
           keys.map(async (key) => {
             const value = await redis.get(key);
-            return { email: key, details: JSON.parse(value) };
+            return { transferCode: key, details: JSON.parse(value) };
           })
         );
 
@@ -130,6 +131,47 @@ export class TasksService {
       throw error;
     } finally {
       await redis.disconnect();
+    }
+  }
+
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  async deleteUnusedCloudinaryResources(): Promise<void> {
+    let localResources: string[] = [];
+    let unusedResources: string[] = [];
+
+    const extractPublicId = (link: string): string => {
+      return link.split('/').slice(-2).join('/').replace(/\.[^/.]+$/, "")
+    };
+
+    try {
+      // Extract the public IDs of all user profile images
+      const users = await this.prisma.user.findMany({ select: { profileImage: true } });
+      users.forEach(user => localResources.push(extractPublicId(user.profileImage)));
+      
+      // Extract the public IDs of all event posters and additional media
+      const events = await this.prisma.event.findMany({ select: { poster: true, media: true } })
+      events.forEach(event => {
+        localResources.push(extractPublicId(event.poster));
+        const media = event.media.map(media => extractPublicId(media));
+        localResources = localResources.concat(media);
+      });
+
+      // Fetch all resources uploaded to Cloudinary
+      const cloudResources = await UploadService.getAllResources();
+      
+      // Filter and delete all unused resources
+      for (let resource of cloudResources) {
+        if (!localResources.includes(resource)) {
+          unusedResources.push(resource)
+        };
+      };
+      await UploadService.deleteResources(unusedResources);
+
+      logger.info(`[${this.context}] Cloudinary storage cleaned up successfully.\n`);
+      return;
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while deleting unused Cloudinary resources. Error: ${error.message}\n`);
+      throw error;
     }
   }
 }

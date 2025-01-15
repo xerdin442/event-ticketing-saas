@@ -46,7 +46,7 @@ export class AuthService {
       const hash = await argon.hash(password)
       const user = await this.prisma.user.create({
         data: {
-          age,
+          age: +age,
           email,
           password: hash,
           profileImage: filePath || Secrets.DEFAULT_IMAGE,

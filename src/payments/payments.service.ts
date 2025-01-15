@@ -166,8 +166,8 @@ export class PaymentsService {
         } else if (retries === MAX_RETRIES) {
           // If retries are exhausted, store details of the failed transfer for 30 days
           await redis.select(Secrets.FAILED_TRANSFERS_STORE_INDEX);
-          await redis.setEx(user.email, 2592000, JSON.stringify({
-            transferCode,
+          await redis.setEx(transferCode, 2592000, JSON.stringify({
+            email: user.email,
             bankName: user.bankName,
             accountNumber: user.accountNumber,
             accountName: user.accountName,

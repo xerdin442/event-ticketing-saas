@@ -49,10 +49,6 @@ export class AuthController {
       
       return response;
     } catch (error) {
-      if (file) {
-        UploadService.deleteFile(file.path, 'Signup');
-      }
-
       logger.error(`[${this.context}] An error occurred during user signup. Error: ${error.message}\n`);
       throw error;
     }

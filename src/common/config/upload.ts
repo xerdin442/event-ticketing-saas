@@ -2,12 +2,13 @@ import { v2 } from "cloudinary";
 import { Request } from "express";
 import { FileFilterCallback } from "multer";
 import { CloudinaryStorage } from "@fluidjs/multer-cloudinary";
-import logger from "../logger";
 import { Secrets } from "../env";
 import { randomUUID } from "crypto";
+import { CloudinaryResource } from "../types";
+import logger from "../logger";
 
 class UploadConfig {
-  private context = UploadConfig.name;
+  private readonly context: string = UploadConfig.name;
 
   constructor() {
     v2.config({
@@ -49,16 +50,39 @@ class UploadConfig {
     }
   }
 
-  deleteFile(filePath: string, externalContext: string) {
-    // Extract the public ID of the image from the file path
-    const publicId = filePath.split('/').slice(-2).join('/').replace(/\.[^/.]+$/, "");
+  async deleteResources(resources: string[]): Promise<void> {
+    try {
+      await v2.api.delete_resources(resources);
+      return;
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while deleting Cloudinary resource. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
 
-    // Delete the uploaded image from Cloudinary
-    v2.uploader.destroy(publicId, (error, result) => {
-      if (error) {
-        logger.error(`[${this.context}] Failed to delete file from Cloudinary. Error: ${error.message}`);
-      }
-    })
+  async getAllResources(): Promise<string[]> {
+    let allLinks: string[] = [];
+    let nextCursor: string | undefined = undefined;
+  
+    try {
+      do {
+        const result = await v2.api.resources({
+          max_results: 500,
+          next_cursor: nextCursor,
+        });
+  
+        // Extract links from the current batch
+        const links = result.resources.map((resource: CloudinaryResource) => resource.public_id);
+        allLinks = [...allLinks, ...links];
+  
+        nextCursor = result.next_cursor;  // Update the cursor for the next request
+      } while (nextCursor);  // Continue until there's no more resource
+  
+      return allLinks;
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while fetching resources from Cloudinary. Error: ${error.message}\n`);
+      throw error;
+    }
   }
 }
 
