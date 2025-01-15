@@ -88,16 +88,19 @@ export class EventsService {
           eventId: event.id
         });
 
-        // Set auto updates of event status
+        // Set automatic status updates, 1.5 seconds after the start and end of the event
+        const ongoingTimeout = Math.max(0, new Date(event.startTime).getTime() - new Date().getTime() + 1500);
+        const completedTimeout = Math.max(0, new Date(event.endTime).getTime() - new Date().getTime() + 1500);
+
         this.tasks.updateOngoingEvents(
-          event.id, 
+          event.id,
           `event-${event.id}-ongoing-update`,
-          new Date(event.startTime).getTime() - new Date().getTime() + 1500
+          ongoingTimeout
         );
         this.tasks.updateCompletedEvents(
-          event.id, 
+          event.id,
           `event-${event.id}-completed-update`,
-          new Date(event.endTime).getTime() - new Date().getTime() + 1500
+          completedTimeout
         );
 
         return event;
@@ -126,24 +129,26 @@ export class EventsService {
         if (dto.startTime) {
           const name = `event-${event.id}-ongoing-update`
           this.tasks.deleteTimeout(name);
+          const ongoingTimeout = Math.max(0, new Date(event.startTime).getTime() - new Date().getTime() + 1500);
 
           // Reset timeout for event status update
           this.tasks.updateOngoingEvents(
             event.id,
             name,
-            new Date(event.startTime).getTime() - new Date().getTime() + 1500
+            ongoingTimeout
           );
         };
 
         if (dto.endTime) {
           const name = `event-${event.id}-completed-update`
           this.tasks.deleteTimeout(name);
+          const completedTimeout = Math.max(0, new Date(event.endTime).getTime() - new Date().getTime() + 1500);
 
           // Reset timeout for event status update
           this.tasks.updateCompletedEvents(
-            event.id, 
+            event.id,
             name,
-            new Date(event.endTime).getTime() - new Date().getTime() + 1500
+            completedTimeout
           );
         };
 
@@ -201,7 +206,7 @@ export class EventsService {
   async addTicketTier(dto: addTicketTierDto, eventId: number): Promise<void> {
     try {
       const { name, price, totalNumberOfTickets, discount, benefits, discountExpiration, discountPrice, numberOfDiscountTickets } = dto;
-      
+
       const tier = await this.prisma.ticketTier.create({
         data: {
           name,
@@ -225,10 +230,11 @@ export class EventsService {
         });
 
         // Set auto update of discount status based on the expiration date
+        const discountTimeout = Math.max(0, new Date(tier.discountExpiration).getTime() - new Date().getTime());
         this.tasks.updateDiscountExpiration(
           tier.id,
           `tier-${tier.id}-discount-update`,
-          new Date(tier.discountExpiration).getTime() - new Date().getTime()
+          discountTimeout
         );
       };
     } catch (error) {
@@ -282,7 +288,7 @@ export class EventsService {
           });
         })
       );
-  
+
       return nearbyEvents.filter(event => event !== null);
     } catch (error) {
       throw error;
