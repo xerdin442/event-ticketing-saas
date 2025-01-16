@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './users/users.module';
 import { DbModule } from './db/db.module';
@@ -6,13 +6,14 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { APP_GUARD } from '@nestjs/core';
 import { BullModule } from '@nestjs/bull';
-import { PrometheusModule } from '@willsoto/nestjs-prometheus';
 import { Secrets } from './common/env';
 import { EventsModule } from './events/events.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { PaymentsModule } from './payments/payments.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TasksModule } from './tasks/tasks.module';
+import { MetricsModule } from './metrics/metrics.module';
+import { MetricsMiddleware } from './metrics/metrics.middleware';
 
 @Module({
   imports: [
@@ -31,10 +32,6 @@ import { TasksModule } from './tasks/tasks.module';
         password: Secrets.REDIS_PASSWORD
       }
     }),
-    PrometheusModule.register({
-      global: true,
-      defaultLabels: { app: Secrets.APP_NAME }
-    }),
     ThrottlerModule.forRoot([{
       name: 'Seconds',
       ttl: 1000,
@@ -46,6 +43,7 @@ import { TasksModule } from './tasks/tasks.module';
     }]),
     ScheduleModule.forRoot(),
     TasksModule,
+    MetricsModule,
   ],
 
   providers: [{
@@ -53,4 +51,9 @@ import { TasksModule } from './tasks/tasks.module';
     useClass: ThrottlerGuard
   }]
 })
-export class AppModule { }
+
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(MetricsMiddleware).forRoutes('*');
+  }
+}

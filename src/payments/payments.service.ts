@@ -53,13 +53,18 @@ export class PaymentsService {
         headers: { 'Authorization': `Bearer ${Secrets.PAYSTACK_SECRET_KEY}` }
       });
 
-      if (verification.data.data.account_name !== details.accountName.toUpperCase()) {
-        throw new BadRequestException('Failed to verify account details. Kindly input your account name in the correct order')
+      if (verification.status !== 200 || verification.data.data.account_name !== details.accountName.toUpperCase()) {
+        throw new BadRequestException('Please check the spelling or order of your account name. The names should be ordered as it was during your account opening at the bank')
       };
 
       return;
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while verifying account details. Error: ${error.message}\n`);
+
+      if (axios.isAxiosError(error)) {
+        throw new BadRequestException('Failed to verify account details. Please check your account number and try again')
+      };
+
       throw error;
     }
   }

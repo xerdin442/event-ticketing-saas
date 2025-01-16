@@ -18,10 +18,10 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { SessionData } from '../common/types';
 import { SessionService } from '../common/session';
-import { InjectMetric } from '@willsoto/nestjs-prometheus';
-import { Gauge } from 'prom-client';
 import { Secrets } from '../common/env';
 import { PaymentsService } from '../payments/payments.service';
+import { sanitizeUserOutput } from '../common/util/helper';
+import { MetricsService } from '../metrics/metrics.service';
 
 @Injectable()
 export class AuthService {
@@ -30,8 +30,8 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly sessionService: SessionService,
     private readonly payments: PaymentsService,
-    @InjectQueue('mail-queue') private readonly mailQueue: Queue,
-    @InjectMetric('two_fa_enabled_users') public twoFactorAuthMetric: Gauge
+    private readonly metrics: MetricsService,
+    @InjectQueue('mail-queue') private readonly mailQueue: Queue
   ) { }
 
   async signup(dto: CreateUserDto, filePath?: string)
@@ -64,7 +64,10 @@ export class AuthService {
       // Send an onboarding email to the new user
       await this.mailQueue.add('signup', { email, firstName });
 
-      return { user, token: await this.jwt.signAsync(payload) };
+      return { 
+        user: sanitizeUserOutput(user),
+        token: await this.jwt.signAsync(payload)
+      };
     } catch (error) {
       if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
@@ -132,7 +135,7 @@ export class AuthService {
         }
       });
 
-      this.twoFactorAuthMetric.inc(); // Update metrics value
+      this.metrics.updateTwoFactorAuthMetric('inc'); // Update metrics value
 
       // Create a QRcode image with the generated secret
       return await qrcode.toDataURL(secret.otpauth_url, { errorCorrectionLevel: 'high' });
@@ -151,7 +154,7 @@ export class AuthService {
         }
       });
 
-      this.twoFactorAuthMetric.dec(); // Update metrics value
+      this.metrics.updateTwoFactorAuthMetric('dec'); // Update metrics value
       return;
     } catch (error) {
       throw error;

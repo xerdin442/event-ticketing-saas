@@ -10,8 +10,7 @@ import { sendEmail } from "../config/mail";
 import logger from "../logger";
 import { generateTicketPDF } from "../util/document";
 import { EmailAttachment } from "../types";
-import { InjectMetric } from "@willsoto/nestjs-prometheus";
-import { Counter } from "prom-client";
+import { MetricsService } from "../../metrics/metrics.service";
 
 @Injectable()
 @Processor('payments-queue')
@@ -22,8 +21,7 @@ export class PaymentsProcessor {
     private readonly gateway: PaymentsGateway,
     private readonly prisma: DbService,
     private readonly payments: PaymentsService,
-    @InjectMetric('transaction_refunds') private readonly transactionRefundCounter: Counter,
-    @InjectMetric('unsuccessful_transfers') private readonly unsuccessfulTransfersCounter: Counter
+    private readonly metrics: MetricsService
   ) { };
 
   @Process('transaction')
@@ -130,7 +128,7 @@ export class PaymentsProcessor {
                 }
               );
 
-              this.transactionRefundCounter.inc(); // Update the transaction refunds count
+              this.metrics.incrementTransactionRefunds(); // Update the transaction refunds count
               logger.warn(`[${this.context}] Ticket purchase processing failed. Transaction refund to ${user.email} initiated.\n`);
 
               // Notify the user of the payment status
@@ -282,7 +280,7 @@ export class PaymentsProcessor {
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} was successful!\n`)
         return;
       } else if (eventType === 'transfer.failed' || eventType === 'transfer.reversed') {
-        this.unsuccessfulTransfersCounter.inc();
+        this.metrics.incrementUnsuccessfulTransfers();  // Update number of unsuccessful transfers
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} failed or reversed.\n`);
 
         // Initiate transfer retry after 30 minutes

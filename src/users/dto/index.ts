@@ -1,15 +1,13 @@
 import {
-  IsBoolean,
   IsEmail,
-  IsNumber,
   IsOptional,
   IsString
 } from "class-validator";
 
 export class updateProfileDto {
-  @IsNumber()
+  @IsString()
   @IsOptional()
-  age?: number;
+  age?: string;
 
   @IsEmail()
   @IsOptional()
@@ -22,14 +20,6 @@ export class updateProfileDto {
   @IsOptional()
   @IsString()
   lastName?: string
-
-  @IsOptional()
-  @IsString()
-  twoFASecret?: string
-
-  @IsOptional()
-  @IsBoolean()
-  twoFAEnabled?: boolean
 
   @IsOptional()
   @IsString()

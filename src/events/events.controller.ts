@@ -16,7 +16,7 @@ import {
 import { EventsService } from './events.service';
 import { AuthGuard } from '@nestjs/passport';
 import { addTicketTierDto, CreateEventDto, UpdateEventDto } from './dto';
-import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { UploadService } from '../common/config/upload';
 import { GetUser } from '../custom/decorators';
 import { Event, User } from '@prisma/client';
@@ -32,7 +32,10 @@ export class EventsController {
 
   @Post('create')
   @UseInterceptors(
-    AnyFilesInterceptor({
+    FileFieldsInterceptor([
+      { name: 'media', maxCount: 8 },
+      { name: 'poster', maxCount: 1 }
+    ], {
       fileFilter: UploadService.fileFilter,
       limits: { fileSize: 5 * 1024 * 1024 }, // Limit each file to 5MB
       storage: UploadService.storage('events', 'auto')
@@ -41,13 +44,11 @@ export class EventsController {
   async createEvent(
     @Body() dto: CreateEventDto,
     @GetUser() user: User,
-    @UploadedFiles() files: Express.Multer.File[]
+    @UploadedFiles() files: { poster: Express.Multer.File, mediaFiles?: Express.Multer.File[] }
   ): Promise<{ event: Event }> {
     try {
-      const poster = files.find(file => file.fieldname === 'poster').path;
-      const media = files.filter(file => file.fieldname === 'media').map(file => file.path);
-
-      const event = await this.eventsService.createEvent(dto, user.id, poster, media);
+      const media = files.mediaFiles?.map(file => file.path);
+      const event = await this.eventsService.createEvent(dto, user.id, files.poster.path, media);
       logger.info(`[${this.context}] ${user.email} created a new event: ${event.title}.\n`);
 
       return { event };
@@ -60,7 +61,10 @@ export class EventsController {
   @Patch(':eventId/update')
   @UseGuards(EventOrganizerGuard)
   @UseInterceptors(
-    AnyFilesInterceptor({
+    FileFieldsInterceptor([
+      { name: 'media', maxCount: 8 },
+      { name: 'poster', maxCount: 1 }
+    ], {
       fileFilter: UploadService.fileFilter,
       limits: { fileSize: 5 * 1024 * 1024 }, // Limit each file to 5MB
       storage: UploadService.storage('events', 'auto')
@@ -70,13 +74,11 @@ export class EventsController {
     @Body() dto: UpdateEventDto,
     @GetUser() user: User,
     @Param('eventId', ParseIntPipe) eventId: number,
-    @UploadedFiles() files: Express.Multer.File[]
+    @UploadedFiles() files: { poster?: Express.Multer.File, mediaFiles?: Express.Multer.File[] }
   ): Promise<{ event: Event }> {
     try {
-      const poster = files.find(file => file.fieldname === 'poster').path;
-      const media = files.filter(file => file.fieldname === 'media').map(file => file.path);
-
-      const event = await this.eventsService.updateEvent(dto, eventId, poster, media);
+      const media = files.mediaFiles?.map(file => file.path);
+      const event = await this.eventsService.updateEvent(dto, eventId, files.poster?.path, media);
       logger.info(`[${this.context}] Event details updated by ${user.email}.\n`);
 
       return { event };

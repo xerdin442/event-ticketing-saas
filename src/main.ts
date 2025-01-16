@@ -15,7 +15,8 @@ async function bootstrap() {
   app.setGlobalPrefix('/api');
   app.useWebSocketAdapter(new WsAdapter(app));
   app.useGlobalPipes(new ValidationPipe({
-    whitelist: true
+    whitelist: true,
+    transform: true
   }));
   
   await app.listen(port, '0.0.0.0');

@@ -82,7 +82,7 @@ export class TasksService {
         });
       } catch (error) {
         logger.error(`[${this.context}] An error occurred while updating discount status of event tickets. Error: ${error.message}\n`);
-        throw error;        
+        throw error;
       }
     }, timeout);
     this.scheduler.addTimeout(name, disountUpdate);
@@ -134,7 +134,7 @@ export class TasksService {
     }
   }
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_WEEK)
   async deleteUnusedCloudinaryResources(): Promise<void> {
     let localResources: string[] = [];
     let unusedResources: string[] = [];
@@ -147,7 +147,7 @@ export class TasksService {
       // Extract the public IDs of all user profile images
       const users = await this.prisma.user.findMany({ select: { profileImage: true } });
       users.forEach(user => localResources.push(extractPublicId(user.profileImage)));
-      
+
       // Extract the public IDs of all event posters and additional media
       const events = await this.prisma.event.findMany({ select: { poster: true, media: true } })
       events.forEach(event => {
@@ -158,16 +158,22 @@ export class TasksService {
 
       // Fetch all resources uploaded to Cloudinary
       const cloudResources = await UploadService.getAllResources();
-      
+
       // Filter and delete all unused resources
       for (let resource of cloudResources) {
         if (!localResources.includes(resource)) {
           unusedResources.push(resource)
         };
       };
-      await UploadService.deleteResources(unusedResources);
 
-      logger.info(`[${this.context}] Cloudinary storage cleaned up successfully.\n`);
+      if (unusedResources.length > 0) {
+        await UploadService.deleteResources(unusedResources);
+
+        logger.info(`[${this.context}] Cloudinary storage cleaned up successfully.\n`);
+        return;
+      };
+
+      logger.info(`[${this.context}] No unused resources found in Cloudinary.\n`);
       return;
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while deleting unused Cloudinary resources. Error: ${error.message}\n`);

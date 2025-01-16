@@ -4,7 +4,7 @@ import { PaymentsController } from './payments.controller';
 import { PaymentsGateway } from './payments.gateway';
 import { BullModule } from '@nestjs/bull';
 import { PaymentsProcessor } from '../common/workers/payments.processor';
-import { makeCounterProvider } from '@willsoto/nestjs-prometheus';
+import { MetricsService } from '../metrics/metrics.service';
 
 @Global()
 @Module({
@@ -22,14 +22,7 @@ import { makeCounterProvider } from '@willsoto/nestjs-prometheus';
     PaymentsService,
     PaymentsGateway,
     PaymentsProcessor,
-    makeCounterProvider({
-      name: 'unsuccessful_transfers',
-      help: 'Total number of unsuccessful transfers'
-    }),
-    makeCounterProvider({
-      name: 'transaction_refunds',
-      help: 'Total number of transaction refunds'
-    })
+    MetricsService
   ]
 })
 export class PaymentsModule { }

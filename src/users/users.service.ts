@@ -2,32 +2,43 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { updateProfileDto } from './dto';
 import { Event, Ticket, User } from '@prisma/client';
+import { PaymentsService } from '../payments/payments.service';
+import { sanitizeUserOutput } from '../common/util/helper';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: DbService) { };
+  constructor(
+    private prisma: DbService,
+    private readonly payments: PaymentsService
+  ) { };
 
   async updateProfile(userId: number, dto: updateProfileDto, filePath?: string): Promise<User> {
     try {
       let user: User;
+      const { accountName, accountNumber, bankName } = dto;
+
+      // Verify new account details
+      if (accountNumber) {
+        await this.payments.verifyAccountDetails({ accountName, accountNumber, bankName });
+      }
 
       if (filePath) {
         user = await this.prisma.user.update({
           where: { id: userId },
           data: {
             ...dto,
+            age: +dto.age,
             profileImage: filePath
           }
         });
       } else {
         user = await this.prisma.user.update({
           where: { id: userId },
-          data: { ...dto }
+          data: { ...dto, age: +dto.age }
         });
       }
 
-      delete user.password;
-      return user;
+      return sanitizeUserOutput(user);
     } catch (error) {
       throw error;
     }

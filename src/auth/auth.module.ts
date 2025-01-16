@@ -6,9 +6,9 @@ import { JwtStrategy } from '../common/strategy/jwt-strategy';
 import { BullModule } from '@nestjs/bull';
 import { MailProcessor } from '../common/workers/mail.processor';
 import { SessionService } from '../common/session';
-import { makeGaugeProvider } from '@willsoto/nestjs-prometheus';
 import { Secrets } from '../common/env';
 import { PaymentsService } from '../payments/payments.service';
+import { MetricsService } from '../metrics/metrics.service';
 
 @Module({
   imports: [
@@ -27,10 +27,7 @@ import { PaymentsService } from '../payments/payments.service';
     MailProcessor,
     SessionService,
     PaymentsService,
-    makeGaugeProvider({
-      name: 'two_fa_enabled_users',
-      help: 'Total number of users that enabled 2FA'
-    })
+    MetricsService
   ]
 })
 export class AuthModule {}
