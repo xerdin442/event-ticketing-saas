@@ -1,10 +1,8 @@
 import { EventCategory } from "@prisma/client";
 import { 
-  IsString,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
-  IsDate,
+  IsString,
   IsBoolean,
 } from "class-validator";
 
@@ -21,21 +19,21 @@ export class CreateEventDto {
   @IsNotEmpty()
   category: EventCategory;
 
-  @IsDate()
+  @IsString()
   @IsNotEmpty()
-  date: Date;
+  date: string;
 
-  @IsDate()
+  @IsString()
   @IsNotEmpty()
-  startTime: Date; 
+  startTime: string; 
 
-  @IsDate()
+  @IsString()
   @IsNotEmpty()
-  endTime: Date;
+  endTime: string;
 
-  @IsNumber()
+  @IsString()
   @IsOptional()
-  ageRestriction?: number
+  ageRestriction?: string
   
   @IsString()
   @IsNotEmpty()
@@ -45,13 +43,9 @@ export class CreateEventDto {
   @IsNotEmpty()
   address: string;
 
-  @IsNumber()
+  @IsString()
   @IsNotEmpty()
-  capacity: number;
-
-  @IsNumber()
-  @IsNotEmpty()
-  revenue: number
+  capacity: string;
 
   @IsString()
   @IsNotEmpty()
@@ -107,21 +101,21 @@ export class UpdateEventDto {
   @IsOptional()
   category?: EventCategory;
 
-  @IsDate()
+  @IsString()
   @IsOptional()
-  date?: Date;
+  date?: string;
 
-  @IsDate()
+  @IsString()
   @IsOptional()
-  startTime?: Date; 
+  startTime?: string; 
 
-  @IsDate()
+  @IsString()
   @IsOptional()
-  endTime?: Date;
+  endTime?: string;
 
-  @IsNumber()
+  @IsString()
   @IsOptional()
-  ageRestriction?: number
+  ageRestriction?: string
   
   @IsString()
   @IsOptional()
@@ -131,9 +125,9 @@ export class UpdateEventDto {
   @IsOptional()
   address?: string;
 
-  @IsNumber()
+  @IsString()
   @IsOptional()
-  capacity?: number;
+  capacity?: string;
 
   @IsString()
   @IsOptional()
@@ -143,7 +137,7 @@ export class UpdateEventDto {
   @IsOptional()
   organizerEmail?: string;
 
-  @IsNotEmpty()
+  @IsString()
   @IsOptional()
   phone?: string;
 
@@ -169,31 +163,31 @@ export class addTicketTierDto {
   @IsNotEmpty()
   name: string;
 
-  @IsNumber()
+  @IsString()
   @IsNotEmpty()
-  price: number;
+  price: string;
 
   @IsBoolean()
   @IsNotEmpty()
   discount: boolean;
 
-  @IsNumber()
+  @IsString()
   @IsOptional()
-  discountPrice?: number;
+  discountPrice?: string;
 
-  @IsDate()
+  @IsString()
   @IsOptional()
-  discountExpiration?: Date;
+  discountExpiration?: string;
   
-  @IsNumber()
+  @IsString()
   @IsOptional()
-  numberOfDiscountTickets?: number;
+  numberOfDiscountTickets?: string;
 
   @IsString()
   @IsOptional()
   benefits?: string;
   
-  @IsNumber()
+  @IsString()
   @IsNotEmpty()
-  totalNumberOfTickets: number;
+  totalNumberOfTickets: string;
 }

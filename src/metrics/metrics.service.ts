@@ -5,7 +5,6 @@ import { Secrets } from '../common/env';
 @Injectable()
 export class MetricsService {
   private readonly registry: Registry;
-  public readonly requestCounter: Counter<string>;
   public readonly twoFactorAuthMetric: Gauge<string>;
   public readonly unsuccessfulTransfersCounter: Counter<string>;
   public readonly transactionRefundCounter: Counter;
@@ -13,13 +12,6 @@ export class MetricsService {
   constructor() {
     this.registry = new Registry();
     this.registry.setDefaultLabels({ app: Secrets.APP_NAME });
-
-    this.requestCounter = new Counter({
-      name: 'http_requests_total',
-      help: 'Total number of HTTP requests',
-      labelNames: ['method', 'path', 'status'],
-      registers: [this.registry]
-    });
 
     this.twoFactorAuthMetric = new Gauge({
       name: 'two_fa_enabled_users',
@@ -44,19 +36,15 @@ export class MetricsService {
     return await this.registry.getMetricsAsJSON();
   }
 
-  incrementRequestCounter(method: string, path: string, status: string) {
-    this.requestCounter.inc({ method, path, status });
-  }
-
-  updateTwoFactorAuthMetric(action: 'dec' | 'inc') {
+  updateTwoFactorAuthMetric(action: 'dec' | 'inc'): void {
     action === 'dec' ? this.twoFactorAuthMetric.dec() : this.twoFactorAuthMetric.inc();
   }
 
-  incrementTransactionRefunds() {
+  incrementTransactionRefunds(): void {
     this.transactionRefundCounter.inc();
   }
 
-  incrementUnsuccessfulTransfers() {
+  incrementUnsuccessfulTransfers(): void {
     this.unsuccessfulTransfersCounter.inc();
   }
 }

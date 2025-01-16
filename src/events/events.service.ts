@@ -44,7 +44,7 @@ export class EventsService {
         // Create organizer profile for the user
         const organizer = await this.prisma.organizer.create({
           data: {
-            name: [...dto.organizerName],
+            name: dto.organizerName,
             email: dto.organizerEmail,
             accountName: dto.accountName,
             accountNumber: dto.accountNumber,
@@ -69,10 +69,10 @@ export class EventsService {
             date: dto.date,
             startTime: dto.startTime,
             endTime: dto.endTime,
-            ageRestriction: dto.ageRestriction,
+            ageRestriction: +dto.ageRestriction,
             venue: dto.venue,
             address: dto.address,
-            capacity: dto.capacity,
+            capacity: +dto.capacity,
             numberOfShares: 0,
             poster,
             media,
@@ -121,7 +121,12 @@ export class EventsService {
     try {
       const event = await this.prisma.event.update({
         where: { id: eventId },
-        data: { ...dto, poster, media },
+        data: {
+          ...dto,
+          capacity: +dto.capacity,
+          ageRestriction: +dto.ageRestriction,
+          poster,
+          media },
         include: { users: true }
       });
 
@@ -210,8 +215,8 @@ export class EventsService {
       const tier = await this.prisma.ticketTier.create({
         data: {
           name,
-          price,
-          totalNumberOfTickets,
+          price: +price,
+          totalNumberOfTickets: +totalNumberOfTickets,
           discount,
           benefits,
           eventId
@@ -222,10 +227,10 @@ export class EventsService {
         await this.prisma.ticketTier.update({
           where: { id: tier.id },
           data: {
-            discountPrice,
+            discountPrice: +discountPrice,
             discountExpiration,
             discountStatus: 'ACTIVE',
-            numberOfDiscountTickets
+            numberOfDiscountTickets: +numberOfDiscountTickets
           }
         });
 

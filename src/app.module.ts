@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './users/users.module';
 import { DbModule } from './db/db.module';
@@ -13,7 +13,6 @@ import { PaymentsModule } from './payments/payments.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TasksModule } from './tasks/tasks.module';
 import { MetricsModule } from './metrics/metrics.module';
-import { MetricsMiddleware } from './metrics/metrics.middleware';
 
 @Module({
   imports: [
@@ -51,9 +50,4 @@ import { MetricsMiddleware } from './metrics/metrics.middleware';
     useClass: ThrottlerGuard
   }]
 })
-
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(MetricsMiddleware).forRoutes('*');
-  }
-}
+export class AppModule { }
