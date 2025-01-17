@@ -49,7 +49,7 @@ export class CreateEventDto {
 
   @IsString()
   @IsNotEmpty()
-  organizerName: string[];
+  organizerName: string;
 
   @IsString()
   @IsNotEmpty()
@@ -131,7 +131,7 @@ export class UpdateEventDto {
 
   @IsString()
   @IsOptional()
-  organizerName?: string[];
+  organizerName?: string;
 
   @IsString()
   @IsOptional()

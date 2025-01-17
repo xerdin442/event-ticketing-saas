@@ -53,16 +53,16 @@ export class TasksService {
         });
 
         // Intitiate transfer of the event revenue
-        await this.payments.initiateTransfer(
-          event.organizer.recipientCode,
-          event.revenue * 100,
-          'Revenue Split',
-          {
-            userId: event.organizer.userId,
-            eventTitle: event.title,
-            retryKey: randomUUID().replace(/-/g, '')
-          }
-        );
+        // await this.payments.initiateTransfer(
+        //   event.organizer.recipientCode,
+        //   event.revenue * 100,
+        //   'Revenue Split',
+        //   {
+        //     userId: event.organizer.userId,
+        //     eventTitle: event.title,
+        //     retryKey: randomUUID().replace(/-/g, '')
+        //   }
+        // );
       } catch (error) {
         logger.error(`[${this.context}] An error occurred while updating event status. Error: ${error.message}\n`);
         throw error;
@@ -91,6 +91,8 @@ export class TasksService {
   }
 
   deleteTimeout(name: string): void {
+    if (!this.scheduler.getTimeout(name)) return;
+    
     this.scheduler.deleteTimeout(name);
     return;
   }
@@ -148,13 +150,9 @@ export class TasksService {
       const users = await this.prisma.user.findMany({ select: { profileImage: true } });
       users.forEach(user => localResources.push(extractPublicId(user.profileImage)));
 
-      // Extract the public IDs of all event posters and additional media
-      const events = await this.prisma.event.findMany({ select: { poster: true, media: true } })
-      events.forEach(event => {
-        localResources.push(extractPublicId(event.poster));
-        const media = event.media.map(media => extractPublicId(media));
-        localResources = localResources.concat(media);
-      });
+      // Extract the public IDs of all event posters
+      const events = await this.prisma.event.findMany({ select: { poster: true } });
+      events.forEach(event => localResources.push(extractPublicId(event.poster)));
 
       // Fetch all resources uploaded to Cloudinary
       const cloudResources = await UploadService.getAllResources();

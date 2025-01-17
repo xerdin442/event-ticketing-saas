@@ -117,16 +117,16 @@ export class PaymentsProcessor {
               });
             } catch (error) {
               // Initiate transfer of transaction refund
-              await this.payments.initiateTransfer(
-                userRefundRecipientCode,
-                amount,
-                'Transaction Refund',
-                {
-                  userId,
-                  eventTitle: event.title,
-                  retryKey: randomUUID().replace(/-/g, '')
-                }
-              );
+              // await this.payments.initiateTransfer(
+              //   userRefundRecipientCode,
+              //   amount,
+              //   'Transaction Refund',
+              //   {
+              //     userId,
+              //     eventTitle: event.title,
+              //     retryKey: randomUUID().replace(/-/g, '')
+              //   }
+              // );
 
               this.metrics.incrementTransactionRefunds(); // Update the transaction refunds count
               logger.warn(`[${this.context}] Ticket purchase processing failed. Transaction refund to ${user.email} initiated.\n`);
@@ -175,16 +175,16 @@ export class PaymentsProcessor {
           await sendEmail(event.organizer, subject, content);
 
           // Intitiate transfer of the event revenue
-          await this.payments.initiateTransfer(
-            event.organizer.recipientCode,
-            event.revenue * 100,
-            'Revenue Split',
-            {
-              userId: event.organizer.userId,
-              eventTitle: event.title,
-              retryKey: randomUUID().replace(/-/g, '')
-            }
-          );
+          // await this.payments.initiateTransfer(
+          //   event.organizer.recipientCode,
+          //   event.revenue * 100,
+          //   'Revenue Split',
+          //   {
+          //     userId: event.organizer.userId,
+          //     eventTitle: event.title,
+          //     retryKey: randomUUID().replace(/-/g, '')
+          //   }
+          // );
         };
 
         // Create the required number of tickets

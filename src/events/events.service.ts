@@ -23,8 +23,7 @@ export class EventsService {
   async createEvent(
     dto: CreateEventDto,
     userId: number,
-    poster: string,
-    media?: string[]
+    poster: string
   ): Promise<Event> {
     try {
       // Verify organizer's account details before creating transfer recipient for revenue splits
@@ -37,54 +36,61 @@ export class EventsService {
       const recipientCode = await this.payments.createTransferRecipient(details);
 
       // Encode event location in URL format and generate coordinates
-      const location = `${dto.venue}+${dto.address}`.replace(/,/g, '').replace(/\s/g, '+');
-      const response = await axios.get(`https://nominatim.openstreetmap.org/search?q=${location}&format=json`);
-
-      if (response.status === 200) {
-        // Create organizer profile for the user
-        const organizer = await this.prisma.organizer.create({
-          data: {
-            name: dto.organizerName,
-            email: dto.organizerEmail,
-            accountName: dto.accountName,
-            accountNumber: dto.accountNumber,
-            bankName: dto.bankName,
-            recipientCode,
-            phone: dto.phone,
-            userId,
-            instagram: dto.instagram,
-            twitter: dto.twitter,
-            website: dto.website,
-            whatsapp: dto.whatsapp
+      const location = `${dto.venue}+${dto.address}`.replace(/(,|-)/g, '').replace(/\s/g, '+');
+      const response = await axios.get(
+        `https://nominatim.openstreetmap.org/search?q=${location}&format=json`, {
+          headers: {
+            'User-Agent': `${Secrets.APP_NAME} ${Secrets.APP_EMAIL}`
           }
         });
 
-        // Create and store event details
-        const event = await this.prisma.event.create({
-          data: {
-            organizerId: organizer.id,
-            title: dto.title,
-            category: dto.category,
-            description: dto.description,
-            date: dto.date,
-            startTime: dto.startTime,
-            endTime: dto.endTime,
-            ageRestriction: +dto.ageRestriction,
-            venue: dto.venue,
-            address: dto.address,
-            capacity: +dto.capacity,
-            numberOfShares: 0,
-            poster,
-            media,
-            revenue: 0
-          }
+      if (response.status === 200 && response.data[0].length > 0) {
+        let event: Event;
+
+        // Create organizer profile and store event details
+        await this.prisma.$transaction(async (tx) => {
+          const organizer = await tx.organizer.create({
+            data: {
+              name: dto.organizerName,
+              email: dto.organizerEmail,
+              accountName: dto.accountName,
+              accountNumber: dto.accountNumber,
+              bankName: dto.bankName,
+              recipientCode,
+              phone: dto.phone,
+              userId,
+              instagram: dto.instagram,
+              twitter: dto.twitter,
+              website: dto.website,
+              whatsapp: dto.whatsapp
+            }
+          });
+
+          event = await tx.event.create({
+            data: {
+              organizerId: organizer.id,
+              title: dto.title,
+              category: dto.category,
+              description: dto.description,
+              date: dto.date,
+              startTime: dto.startTime,
+              endTime: dto.endTime,
+              ageRestriction: +dto.ageRestriction,
+              venue: dto.venue,
+              address: dto.address,
+              capacity: +dto.capacity,
+              numberOfShares: 0,
+              poster,
+              revenue: 0
+            }
+          });
         });
 
         // Add coordinates to Redis geolocation store
-        const { lat, lon } = response.data;
+        const { lat, lon } = response.data[0];
         await this.eventsQueue.add('geolocation-store', {
-          longitude: +lon,
-          latitude: +lat,
+          longitude: lon as string,
+          latitude: lat as string,
           eventId: event.id
         });
 
@@ -94,12 +100,12 @@ export class EventsService {
 
         this.tasks.updateOngoingEvents(
           event.id,
-          `event-${event.id}-ongoing-update`,
+          `event_${event.id}_ongoing_update`,
           ongoingTimeout
         );
         this.tasks.updateCompletedEvents(
           event.id,
-          `event-${event.id}-completed-update`,
+          `event_${event.id}_completed_update`,
           completedTimeout
         );
 
@@ -115,24 +121,30 @@ export class EventsService {
   async updateEvent(
     dto: UpdateEventDto,
     eventId: number,
-    poster?: string,
-    media?: string[]
+    poster?: string
   ): Promise<Event> {
     try {
+      const filteredData = Object.entries(dto).reduce((acc, [key, value]) => {
+        if (value !== undefined) acc[key] = value;
+        return acc;
+      }, {});
+
+      const updateData: any = {
+        ...filteredData,
+        ...(dto.capacity !== undefined && { capacity: +dto.capacity }),
+        ...(dto.ageRestriction !== undefined && { ageRestriction: +dto.ageRestriction }),
+        ...(poster && { poster })
+      };
+      
       const event = await this.prisma.event.update({
         where: { id: eventId },
-        data: {
-          ...dto,
-          capacity: +dto.capacity,
-          ageRestriction: +dto.ageRestriction,
-          poster,
-          media },
+        data: { ...updateData },
         include: { users: true }
       });
 
       if (dto.address || dto.venue || dto.date || dto.endTime || dto.startTime) {
         if (dto.startTime) {
-          const name = `event-${event.id}-ongoing-update`
+          const name = `event_${event.id}_ongoing_update`
           this.tasks.deleteTimeout(name);
           const ongoingTimeout = Math.max(0, new Date(event.startTime).getTime() - new Date().getTime() + 1500);
 
@@ -145,7 +157,7 @@ export class EventsService {
         };
 
         if (dto.endTime) {
-          const name = `event-${event.id}-completed-update`
+          const name = `event_${event.id}_completed_update`
           this.tasks.deleteTimeout(name);
           const completedTimeout = Math.max(0, new Date(event.endTime).getTime() - new Date().getTime() + 1500);
 
@@ -198,8 +210,8 @@ export class EventsService {
       });
 
       // Clear event status update timeouts
-      this.tasks.deleteTimeout(`event-${event.id}-completed-update`);
-      this.tasks.deleteTimeout(`event-${event.id}-ongoing-update`);
+      this.tasks.deleteTimeout(`event_${event.id}_completed_update`);
+      this.tasks.deleteTimeout(`event_${event.id}_ongoing_update`);
 
       // Notify attendees of event cancellation
       await this.eventsQueue.add('cancel-event', { event });
@@ -238,7 +250,7 @@ export class EventsService {
         const discountTimeout = Math.max(0, new Date(tier.discountExpiration).getTime() - new Date().getTime());
         this.tasks.updateDiscountExpiration(
           tier.id,
-          `tier-${tier.id}-discount-update`,
+          `tier_${tier.id}_discount_update`,
           discountTimeout
         );
       };
@@ -268,7 +280,7 @@ export class EventsService {
           });
 
           // Delete discount status update timeout
-          this.tasks.deleteTimeout(`tier-${ticketTier.id}-discount-update`);
+          this.tasks.deleteTimeout(`tier_${ticketTier.id}_discount_update`);
         }
       };
     } catch (error) {
@@ -294,7 +306,8 @@ export class EventsService {
         })
       );
 
-      return nearbyEvents.filter(event => event !== null);
+      // Return upcoming events close to the user
+      return nearbyEvents.filter(event => event.status === 'UPCOMING');
     } catch (error) {
       throw error;
     } finally {

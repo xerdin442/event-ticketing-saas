@@ -14,7 +14,7 @@ export class EventOrganizerGuard implements CanActivate {
       const request = context.switchToHttp().getRequest();
       // Fetch the event and its organizer profile
       const event = await this.prisma.event.findUnique({
-        where: { id: request.params.eventId },
+        where: { id: +request.params.eventId },
         include: { organizer: true }
       });
 

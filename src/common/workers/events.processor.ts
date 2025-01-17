@@ -58,12 +58,18 @@ export class EventsProcessor {
         We sincerely apologize for any inconveniences caused by these changes.
   
         Best regards,
-        ${event.organizer.name.join(' X ')}
+        ${event.organizer.name}
         `
   
-      for (const user of event.users) {
-        await sendEmail(user, subject, content);
-      }
+        if (event.users.length > 0) {
+          for (const user of event.users) {
+            await sendEmail(user, subject, content);
+          }
+
+          return;
+        }
+
+        return;
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while completing update of event details. Error: ${error.message}.\n`)
       throw error;
@@ -84,47 +90,49 @@ export class EventsProcessor {
       // Remove organizer as a transfer recipient after event cancellation
       await this.payments.deleteTransferRecipient(event.organizer.recipientCode);
 
-      for (let user of event.users) {
-        // Send email to attendees to inform them of the cancellation
-        const subject = 'Event Cancellation'
-        const content = `The event: ${event.title} has been cancelled. We sincerely apologize for any inconveniences
-        caused by this cancellation. A refund for your tickets has been initiated. Thanks for your patience.
-        
-        Best regards,
-        ${event.organizer.name.join(' X ')}`;
-        await sendEmail(user, subject, content);
-
-        // Create a transfer recipient for the attendee to receive the refund
-        const recipientCode = await this.payments.createTransferRecipient({
-          accountName: user.accountName,
-          accountNumber: user.accountNumber,
-          bankName: user.bankName
-        });
-
-        // Get user tickets for this event
-        const tickets = await this.prisma.ticket.findMany({
-          where: {
-            eventId: event.id,
-            attendee: user.id
-          }
-        });
-
-        // Calculate the refund amount in kobo
-        const refund = tickets.reduce((total, ticket) => {
-          return total + (ticket.discountPrice ? ticket.discountPrice : ticket.price) * 100;
-        }, 0);
-
-        // Initiate transfer of ticket refund
-        await this.payments.initiateTransfer(
-          recipientCode,
-          refund,
-          'Ticket Refund',
-          {
-            userId: user.id,
-            eventTitle: event.title,
-            retryKey: randomUUID().replace(/-/g, '')
-          }
-        );
+      if (event.users.length > 0) {
+        for (let user of event.users) {
+          // Send email to attendees to inform them of the cancellation
+          const subject = 'Event Cancellation'
+          const content = `The event: ${event.title} has been cancelled. We sincerely apologize for any inconveniences
+          caused by this cancellation. A refund for your tickets has been initiated. Thanks for your patience.
+          
+          Best regards,
+          ${event.organizer.name}`;
+          await sendEmail(user, subject, content);
+  
+          // Create a transfer recipient for the attendee to receive the refund
+          const recipientCode = await this.payments.createTransferRecipient({
+            accountName: user.accountName,
+            accountNumber: user.accountNumber,
+            bankName: user.bankName
+          });
+  
+          // Get user tickets for this event
+          const tickets = await this.prisma.ticket.findMany({
+            where: {
+              eventId: event.id,
+              attendee: user.id
+            }
+          });
+  
+          // Calculate the refund amount in kobo
+          const refund = tickets.reduce((total, ticket) => {
+            return total + (ticket.discountPrice ? ticket.discountPrice : ticket.price) * 100;
+          }, 0);
+  
+          // Initiate transfer of ticket refund
+          // await this.payments.initiateTransfer(
+          //   recipientCode,
+          //   refund,
+          //   'Ticket Refund',
+          //   {
+          //     userId: user.id,
+          //     eventTitle: event.title,
+          //     retryKey: randomUUID().replace(/-/g, '')
+          //   }
+          // );
+        }
       }
 
       logger.info(`[${this.context}] Event cancellation process completed for ${event.title}.\n`);

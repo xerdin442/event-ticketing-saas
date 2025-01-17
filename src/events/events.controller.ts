@@ -1,22 +1,24 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
   Param,
+  ParseFloatPipe,
   ParseIntPipe,
   Patch,
   Post,
   Query,
-  UploadedFiles,
+  UploadedFile,
   UseGuards,
   UseInterceptors
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { AuthGuard } from '@nestjs/passport';
 import { addTicketTierDto, CreateEventDto, UpdateEventDto } from './dto';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from '../common/config/upload';
 import { GetUser } from '../custom/decorators';
 import { Event, User } from '@prisma/client';
@@ -32,10 +34,7 @@ export class EventsController {
 
   @Post('create')
   @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'media', maxCount: 8 },
-      { name: 'poster', maxCount: 1 }
-    ], {
+    FileInterceptor('poster', {
       fileFilter: UploadService.fileFilter,
       limits: { fileSize: 5 * 1024 * 1024 }, // Limit each file to 5MB
       storage: UploadService.storage('events', 'auto')
@@ -44,11 +43,14 @@ export class EventsController {
   async createEvent(
     @Body() dto: CreateEventDto,
     @GetUser() user: User,
-    @UploadedFiles() files: { poster: Express.Multer.File, mediaFiles?: Express.Multer.File[] }
+    @UploadedFile() poster: Express.Multer.File
   ): Promise<{ event: Event }> {
     try {
-      const media = files.mediaFiles?.map(file => file.path);
-      const event = await this.eventsService.createEvent(dto, user.id, files.poster.path, media);
+      if (!poster) {
+        throw new BadRequestException('Event poster image required!')
+      };
+
+      const event = await this.eventsService.createEvent(dto, user.id, poster.path);
       logger.info(`[${this.context}] ${user.email} created a new event: ${event.title}.\n`);
 
       return { event };
@@ -61,10 +63,7 @@ export class EventsController {
   @Patch(':eventId/update')
   @UseGuards(EventOrganizerGuard)
   @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'media', maxCount: 8 },
-      { name: 'poster', maxCount: 1 }
-    ], {
+    FileInterceptor('poster', {
       fileFilter: UploadService.fileFilter,
       limits: { fileSize: 5 * 1024 * 1024 }, // Limit each file to 5MB
       storage: UploadService.storage('events', 'auto')
@@ -74,11 +73,10 @@ export class EventsController {
     @Body() dto: UpdateEventDto,
     @GetUser() user: User,
     @Param('eventId', ParseIntPipe) eventId: number,
-    @UploadedFiles() files: { poster?: Express.Multer.File, mediaFiles?: Express.Multer.File[] }
+    @UploadedFile() poster?: Express.Multer.File
   ): Promise<{ event: Event }> {
     try {
-      const media = files.mediaFiles?.map(file => file.path);
-      const event = await this.eventsService.updateEvent(dto, eventId, files.poster?.path, media);
+      const event = await this.eventsService.updateEvent(dto, eventId, poster?.path);
       logger.info(`[${this.context}] Event details updated by ${user.email}.\n`);
 
       return { event };
@@ -157,8 +155,8 @@ export class EventsController {
 
   @Get('nearby')
   async findNearbyEvents(
-    @Query('latitude', ParseIntPipe) latitude: number,
-    @Query('longitude', ParseIntPipe) longitude: number
+    @Query('latitude', ParseFloatPipe) latitude: number,
+    @Query('longitude', ParseFloatPipe) longitude: number
   ): Promise<{ events: Event[] }> {
     try {
       const events = await this.eventsService.findNearbyEvents(latitude, longitude);

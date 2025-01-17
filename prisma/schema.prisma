@@ -89,7 +89,7 @@ model Ticket {
 model Organizer {
   id Int @id @default(autoincrement())
 
-  name          String[]
+  name          String
   email         String
   accountName   String
   accountNumber String   @unique
@@ -150,7 +150,6 @@ model Event {
   numberOfShares Int
   revenue        Float
   poster         String
-  media          String[]
 
   organizerId Int
   organizer   Organizer @relation(fields: [organizerId], references: [id])
