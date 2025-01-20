@@ -38,7 +38,7 @@ export class UserService {
           ...(filePath && { profileImage: filePath })
         }
       });
-      
+
       return sanitizeUserOutput(user);
     } catch (error) {
       throw error;
@@ -55,8 +55,26 @@ export class UserService {
     }
   }
 
+  async getOrganizerProfile(userId: number): Promise<Organizer> {
+    try {
+      return this.prisma.organizer.findUnique({
+        where: { userId }
+      })
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async createOrganizerProfile(userId: number, dto: CreateOrganizerProfileDto): Promise<Organizer> {
     try {
+      const organizer = await this.prisma.organizer.findUnique({
+        where: { userId }
+      });
+
+      if (organizer) {
+        throw new BadRequestException('This user already has an organizer profile');
+      };
+
       // Verify organizer's account details before creating transfer recipient for revenue splits
       const details = {
         accountName: dto.accountName,
@@ -112,7 +130,7 @@ export class UserService {
     } catch (error) {
       throw error;
     }
-  } 
+  }
 
   async getAllEvents(role: string, userId: number): Promise<Event[]> {
     try {

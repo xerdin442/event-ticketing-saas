@@ -14,12 +14,14 @@ export class EventOrganizerGuard implements CanActivate {
       const request = context.switchToHttp().getRequest();
       // Fetch the event and its organizer profile
       const event = await this.prisma.event.findUnique({
-        where: { id: +request.params.eventId },
-        include: { organizer: true }
+        where: { id: +request.params.eventId }
       });
+      const organizer = await this.prisma.organizer.findUnique({
+        where: { userId: request.user.id }
+      })
 
       // Check if user sending the request is the event organizer
-      if (event.organizer.id !== request.user.id) {
+      if (event.organizerId !== organizer.id) {
         throw new ForbiddenException('Only the organizer of this event can perform this operation');
       };
 

@@ -3,8 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
-  HttpStatus,
   Patch,
   Post,
   Query,
@@ -73,6 +71,19 @@ export class UserController {
     }
   }
 
+  @Get('organizer')
+  async getOrganizerProfile(@GetUser() user: User): Promise<{ organizer: Organizer }> {
+    try {
+      const organizer = await this.userService.getOrganizerProfile(user.id);
+      logger.info(`[${this.context}] Orgnaizer profile viewed by ${user.email}\n`);
+
+      return { organizer };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while retrieving organizer profile. Error: ${error.message}.\n`);
+      throw error;
+    }
+  }
+
   @Post('organizer/create')
   async createOrganizerProfile(
     @GetUser() user: User,
@@ -89,8 +100,7 @@ export class UserController {
     }
   }
 
-  @HttpCode(HttpStatus.OK)
-  @Post('organizer/update')
+  @Patch('organizer/update')
   async updateOrganizerProfile(
     @GetUser() user: User,
     @Body() dto: UpdateOrganizerProfileDto
