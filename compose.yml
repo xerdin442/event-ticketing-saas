@@ -1,6 +1,6 @@
 services:
   backend:
-    image: xerdin442/event-ticketing-saas:latest
+    image: ${BUILD_IMAGE}
     restart: always
     ports:
       - "3000:3000"

@@ -94,7 +94,7 @@ model Organizer {
   accountName   String
   accountNumber String   @unique
   bankName      String
-  recipientCode String?
+  recipientCode String
   phone         String
   whatsapp      String?
   twitter       String?
@@ -147,7 +147,6 @@ model Event {
   venue          String
   address        String
   capacity       Int
-  numberOfShares Int
   revenue        Float
   poster         String
 

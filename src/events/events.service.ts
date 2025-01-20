@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
-import { addTicketTierDto, CreateEventDto, UpdateEventDto } from './dto';
-import { PaymentsService } from '../payments/payments.service';
+import { AddTicketTierDto, CreateEventDto, UpdateEventDto } from './dto';
 import axios from 'axios';
 import { Event } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bull';
@@ -15,7 +14,6 @@ import { TasksService } from '../tasks/tasks.service';
 export class EventsService {
   constructor(
     private readonly prisma: DbService,
-    private readonly payments: PaymentsService,
     @InjectQueue('events-queue') private readonly eventsQueue: Queue,
     private readonly tasks: TasksService
   ) { };
@@ -26,64 +24,37 @@ export class EventsService {
     poster: string
   ): Promise<Event> {
     try {
-      // Verify organizer's account details before creating transfer recipient for revenue splits
-      const details = {
-        accountName: dto.accountName,
-        accountNumber: dto.accountNumber,
-        bankName: dto.bankName
-      };
-      await this.payments.verifyAccountDetails(details);
-      const recipientCode = await this.payments.createTransferRecipient(details);
-
       // Encode event location in URL format and generate coordinates
-      const location = `${dto.venue}+${dto.address}`.replace(/(,|-)/g, '').replace(/\s/g, '+');
+      const location = `${dto.venue}+${dto.address}`.replace(/(,)/g, '').replace(/\s/g, '+');
       const response = await axios.get(
         `https://nominatim.openstreetmap.org/search?q=${location}&format=json`, {
-          headers: {
-            'User-Agent': `${Secrets.APP_NAME} ${Secrets.APP_EMAIL}`
+        headers: {
+          'User-Agent': `${Secrets.APP_NAME}-${Secrets.APP_EMAIL}`
+        }
+      });
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { organizer: true }
+      });
+
+      if (response.status === 200 && response.data.length > 0) {
+        const event = await this.prisma.event.create({
+          data: {
+            organizerId: user.organizer.id,
+            title: dto.title,
+            category: dto.category,
+            description: dto.description,
+            date: dto.date,
+            startTime: dto.startTime,
+            endTime: dto.endTime,
+            ageRestriction: +dto.ageRestriction,
+            venue: dto.venue,
+            address: dto.address,
+            capacity: +dto.capacity,
+            poster,
+            revenue: 0
           }
-        });
-
-      if (response.status === 200 && response.data[0].length > 0) {
-        let event: Event;
-
-        // Create organizer profile and store event details
-        await this.prisma.$transaction(async (tx) => {
-          const organizer = await tx.organizer.create({
-            data: {
-              name: dto.organizerName,
-              email: dto.organizerEmail,
-              accountName: dto.accountName,
-              accountNumber: dto.accountNumber,
-              bankName: dto.bankName,
-              recipientCode,
-              phone: dto.phone,
-              userId,
-              instagram: dto.instagram,
-              twitter: dto.twitter,
-              website: dto.website,
-              whatsapp: dto.whatsapp
-            }
-          });
-
-          event = await tx.event.create({
-            data: {
-              organizerId: organizer.id,
-              title: dto.title,
-              category: dto.category,
-              description: dto.description,
-              date: dto.date,
-              startTime: dto.startTime,
-              endTime: dto.endTime,
-              ageRestriction: +dto.ageRestriction,
-              venue: dto.venue,
-              address: dto.address,
-              capacity: +dto.capacity,
-              numberOfShares: 0,
-              poster,
-              revenue: 0
-            }
-          });
         });
 
         // Add coordinates to Redis geolocation store
@@ -111,7 +82,7 @@ export class EventsService {
 
         return event;
       } else {
-        throw new BadRequestException('Failed to generate coordinates for venue and address');
+        throw new BadRequestException('Failed to generate coordinates for the event location. Please enter correct values for "venue" and "address"');
       };
     } catch (error) {
       throw error;
@@ -135,11 +106,14 @@ export class EventsService {
         ...(dto.ageRestriction !== undefined && { ageRestriction: +dto.ageRestriction }),
         ...(poster && { poster })
       };
-      
+
       const event = await this.prisma.event.update({
         where: { id: eventId },
         data: { ...updateData },
-        include: { users: true }
+        include: {
+          users: true,
+          organizer: true
+        }
       });
 
       if (dto.address || dto.venue || dto.date || dto.endTime || dto.startTime) {
@@ -173,6 +147,8 @@ export class EventsService {
         await this.eventsQueue.add('event-update', { event });
       }
 
+      delete event.organizer;
+      delete event.users;
       return event;
     } catch (error) {
       throw error;
@@ -205,7 +181,8 @@ export class EventsService {
         },
         include: {
           tickets: true,
-          users: true
+          users: true,
+          organizer: true
         }
       });
 
@@ -220,7 +197,7 @@ export class EventsService {
     }
   }
 
-  async addTicketTier(dto: addTicketTierDto, eventId: number): Promise<void> {
+  async addTicketTier(dto: AddTicketTierDto, eventId: number): Promise<void> {
     try {
       const { name, price, totalNumberOfTickets, discount, benefits, discountExpiration, discountPrice, numberOfDiscountTickets } = dto;
 
@@ -306,7 +283,7 @@ export class EventsService {
         })
       );
 
-      // Return upcoming events close to the user
+      // Fetch all upcoming events close to the user
       return nearbyEvents.filter(event => event.status === 'UPCOMING');
     } catch (error) {
       throw error;

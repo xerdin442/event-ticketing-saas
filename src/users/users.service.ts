@@ -1,7 +1,16 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
-import { updateProfileDto } from './dto';
-import { Event, Ticket, User } from '@prisma/client';
+import {
+  CreateOrganizerProfileDto,
+  UpdateOrganizerProfileDto,
+  UpdateProfileDto
+} from './dto';
+import {
+  Event,
+  Organizer,
+  Ticket,
+  User
+} from '@prisma/client';
 import { PaymentsService } from '../payments/payments.service';
 import { sanitizeUserOutput } from '../common/util/helper';
 
@@ -12,9 +21,8 @@ export class UserService {
     private readonly payments: PaymentsService
   ) { };
 
-  async updateProfile(userId: number, dto: updateProfileDto, filePath?: string): Promise<User> {
+  async updateProfile(userId: number, dto: UpdateProfileDto, filePath?: string): Promise<User> {
     try {
-      let user: User;
       const { accountName, accountNumber, bankName } = dto;
 
       // Verify new account details
@@ -22,22 +30,15 @@ export class UserService {
         await this.payments.verifyAccountDetails({ accountName, accountNumber, bankName });
       }
 
-      if (filePath) {
-        user = await this.prisma.user.update({
-          where: { id: userId },
-          data: {
-            ...dto,
-            age: +dto.age,
-            profileImage: filePath
-          }
-        });
-      } else {
-        user = await this.prisma.user.update({
-          where: { id: userId },
-          data: { ...dto, age: +dto.age }
-        });
-      }
-
+      const user = await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...dto,
+          ...(dto.age !== undefined && { age: +dto.age }),
+          ...(filePath && { profileImage: filePath })
+        }
+      });
+      
       return sanitizeUserOutput(user);
     } catch (error) {
       throw error;
@@ -53,6 +54,65 @@ export class UserService {
       throw error;
     }
   }
+
+  async createOrganizerProfile(userId: number, dto: CreateOrganizerProfileDto): Promise<Organizer> {
+    try {
+      // Verify organizer's account details before creating transfer recipient for revenue splits
+      const details = {
+        accountName: dto.accountName,
+        accountNumber: dto.accountNumber,
+        bankName: dto.bankName
+      };
+      await this.payments.verifyAccountDetails(details);
+      const recipientCode = await this.payments.createTransferRecipient(details);
+
+      return this.prisma.organizer.create({
+        data: {
+          ...dto,
+          recipientCode,
+          userId
+        }
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async updateOrganizerProfile(userId: number, dto: UpdateOrganizerProfileDto): Promise<Organizer> {
+    try {
+      let recipientCode: string;
+      // Verify updated account details and create a new transfer recipient for revenue splits
+      if (dto.accountNumber) {
+        const details = {
+          accountName: dto.accountName,
+          accountNumber: dto.accountNumber,
+          bankName: dto.bankName
+        };
+        await this.payments.verifyAccountDetails(details);
+        recipientCode = await this.payments.createTransferRecipient(details);
+      };
+
+      return this.prisma.organizer.update({
+        where: { userId },
+        data: {
+          ...dto,
+          recipientCode
+        }
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteOrganizerProfile(userId: number): Promise<void> {
+    try {
+      await this.prisma.organizer.delete({
+        where: { userId }
+      })
+    } catch (error) {
+      throw error;
+    }
+  } 
 
   async getAllEvents(role: string, userId: number): Promise<Event[]> {
     try {

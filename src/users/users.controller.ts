@@ -3,16 +3,23 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Patch,
+  Post,
   Query,
   UploadedFile,
   UseGuards,
   UseInterceptors
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { Event, Ticket, User } from '@prisma/client';
+import { Event, Organizer, Ticket, User } from '@prisma/client';
 import { GetUser } from '../custom/decorators';
-import { updateProfileDto } from './dto';
+import {
+  CreateOrganizerProfileDto,
+  UpdateOrganizerProfileDto,
+  UpdateProfileDto
+} from './dto';
 import { UserService } from './users.service';
 import logger from '../common/logger';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -39,7 +46,7 @@ export class UserController {
   }))
   async updateProfile(
     @GetUser() user: User,
-    @Body() dto: updateProfileDto,
+    @Body() dto: UpdateProfileDto,
     @UploadedFile() file?: Express.Multer.File
   ): Promise<{ user: User }> {
     try {
@@ -62,6 +69,52 @@ export class UserController {
       return { message: 'Account deleted successfully' };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while deleting user profile. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @Post('organizer/create')
+  async createOrganizerProfile(
+    @GetUser() user: User,
+    @Body() dto: CreateOrganizerProfileDto
+  ): Promise<{ organizer: Organizer }> {
+    try {
+      const organizer = await this.userService.createOrganizerProfile(user.id, dto);
+      logger.info(`[${this.context}] Organizer profile created by ${user.email}.\n`);
+
+      return { organizer };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while creating organizer profile. Error: ${error.message}.\n`);
+      throw error;
+    }
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('organizer/update')
+  async updateOrganizerProfile(
+    @GetUser() user: User,
+    @Body() dto: UpdateOrganizerProfileDto
+  ): Promise<{ organizer: Organizer }> {
+    try {
+      const organizer = await this.userService.updateOrganizerProfile(user.id, dto);
+      logger.info(`[${this.context}] Organizer profile updated by ${user.email}.\n`);
+
+      return { organizer };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while updating organizer profile. Error: ${error.message}.\n`);
+      throw error;
+    }
+  }
+
+  @Delete('organizer/delete')
+  async deleteOrganizerProfile(@GetUser() user: User): Promise<{ message: string }> {
+    try {
+      await this.userService.deleteOrganizerProfile(user.id);
+      logger.info(`[${this.context}] Organizer profile deleted by ${user.email}.\n`);
+
+      return { message: 'Organizer profile deleted successfully' };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while deleting organizer profile. Error: ${error.message}\n`);
       throw error;
     }
   }

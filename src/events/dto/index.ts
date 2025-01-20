@@ -46,46 +46,6 @@ export class CreateEventDto {
   @IsString()
   @IsNotEmpty()
   capacity: string;
-
-  @IsString()
-  @IsNotEmpty()
-  organizerName: string;
-
-  @IsString()
-  @IsNotEmpty()
-  organizerEmail: string;
-
-  @IsNotEmpty()
-  @IsString()
-  accountNumber: string;
-
-  @IsNotEmpty()
-  @IsString()
-  accountName: string;
-
-  @IsNotEmpty()
-  @IsString()
-  bankName: string;
-
-  @IsNotEmpty()
-  @IsString()
-  phone: string;
-
-  @IsString()
-  @IsOptional()
-  whatsapp?: string;
-
-  @IsString()
-  @IsOptional()
-  twitter?: string;
-
-  @IsString()
-  @IsOptional()
-  instagram?: string;
-
-  @IsString()
-  @IsOptional()
-  website?: string;
 }
 
 export class UpdateEventDto {
@@ -128,37 +88,9 @@ export class UpdateEventDto {
   @IsString()
   @IsOptional()
   capacity?: string;
-
-  @IsString()
-  @IsOptional()
-  organizerName?: string;
-
-  @IsString()
-  @IsOptional()
-  organizerEmail?: string;
-
-  @IsString()
-  @IsOptional()
-  phone?: string;
-
-  @IsString()
-  @IsOptional()
-  whatsapp?: string;
-
-  @IsString()
-  @IsOptional()
-  twitter?: string;
-
-  @IsString()
-  @IsOptional()
-  instagram?: string;
-
-  @IsString()
-  @IsOptional()
-  website?: string;
 }
 
-export class addTicketTierDto {
+export class AddTicketTierDto {
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -190,4 +122,14 @@ export class addTicketTierDto {
   @IsString()
   @IsNotEmpty()
   totalNumberOfTickets: string;
+}
+
+export class NearbyEventsDto {
+  @IsString({ message: 'Invalid "latitude" query parameter' })
+  @IsNotEmpty({ message: '"latitude" query parameter is required' })
+  latitude: string
+  
+  @IsString({ message: 'Invalid "longitude" query parameter' })
+  @IsNotEmpty({ message: '"longitude" query parameter is required' })
+  longitude: string
 }

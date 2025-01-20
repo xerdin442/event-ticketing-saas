@@ -35,6 +35,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       return user;
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while validating authorization token. Error: ${error.message}\n`)
+      throw error;
     }
   }
 }

@@ -1,12 +1,10 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
   Param,
-  ParseFloatPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -17,7 +15,12 @@ import {
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { AuthGuard } from '@nestjs/passport';
-import { addTicketTierDto, CreateEventDto, UpdateEventDto } from './dto';
+import {
+  AddTicketTierDto,
+  CreateEventDto,
+  NearbyEventsDto,
+  UpdateEventDto
+} from './dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from '../common/config/upload';
 import { GetUser } from '../custom/decorators';
@@ -46,10 +49,6 @@ export class EventsController {
     @UploadedFile() poster: Express.Multer.File
   ): Promise<{ event: Event }> {
     try {
-      if (!poster) {
-        throw new BadRequestException('Event poster image required!')
-      };
-
       const event = await this.eventsService.createEvent(dto, user.id, poster.path);
       logger.info(`[${this.context}] ${user.email} created a new event: ${event.title}.\n`);
 
@@ -125,7 +124,7 @@ export class EventsController {
   @Post(':eventId/tickets/add')
   @UseGuards(EventOrganizerGuard)
   async addTicketTier(
-    @Body() dto: addTicketTierDto,
+    @Body() dto: AddTicketTierDto,
     @Param('eventId', ParseIntPipe) eventId: number
   ): Promise<{ message: string }> {
     try {
@@ -154,12 +153,10 @@ export class EventsController {
   }
 
   @Get('nearby')
-  async findNearbyEvents(
-    @Query('latitude', ParseFloatPipe) latitude: number,
-    @Query('longitude', ParseFloatPipe) longitude: number
-  ): Promise<{ events: Event[] }> {
+  async findNearbyEvents(@Query() dto: NearbyEventsDto): Promise<{ events: Event[] }> {
     try {
-      const events = await this.eventsService.findNearbyEvents(latitude, longitude);
+      const { latitude, longitude } = dto;
+      const events = await this.eventsService.findNearbyEvents(parseFloat(latitude), parseFloat(longitude));
       return { events };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while retrieving nearby events. Error: ${error.message}\n`);
