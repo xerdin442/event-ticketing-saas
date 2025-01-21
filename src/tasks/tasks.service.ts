@@ -1,9 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import {
-  Cron,
-  CronExpression,
-  SchedulerRegistry
-} from "@nestjs/schedule";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import logger from "../common/logger";
 import { DbService } from "../db/db.service";
 import { PaymentsService } from "../payments/payments.service";
@@ -22,80 +18,8 @@ export class TasksService {
 
   constructor(
     private readonly prisma: DbService,
-    private readonly payments: PaymentsService,
-    private readonly scheduler: SchedulerRegistry
+    private readonly payments: PaymentsService
   ) { };
-
-  updateOngoingEvents(eventId: number, name: string, timeout: number): void {
-    const ongoingUpdate = setTimeout(async () => {
-      try {
-        await this.prisma.event.update({
-          where: { id: eventId },
-          data: { status: "ONGOING" }
-        });
-      } catch (error) {
-        logger.error(`[${this.context}] An error occurred while updating event status. Error: ${error.message}\n`);
-        throw error;
-      }
-    }, timeout);
-    this.scheduler.addTimeout(name, ongoingUpdate);
-
-    return;
-  }
-
-  updateCompletedEvents(eventId: number, name: string, timeout: number): void {
-    const completedUpdate = setTimeout(async () => {
-      try {
-        const event = await this.prisma.event.update({
-          where: { id: eventId },
-          data: { status: "COMPLETED" },
-          include: { organizer: true }
-        });
-
-        // Intitiate transfer of the event revenue
-        // await this.payments.initiateTransfer(
-        //   event.organizer.recipientCode,
-        //   event.revenue * 100,
-        //   'Revenue Split',
-        //   {
-        //     userId: event.organizer.userId,
-        //     eventTitle: event.title,
-        //     retryKey: randomUUID().replace(/-/g, '')
-        //   }
-        // );
-      } catch (error) {
-        logger.error(`[${this.context}] An error occurred while updating event status. Error: ${error.message}\n`);
-        throw error;
-      }
-    }, timeout);
-    this.scheduler.addTimeout(name, completedUpdate);
-
-    return;
-  }
-
-  updateDiscountExpiration(tierId: number, name: string, timeout: number): void {
-    const disountUpdate = setTimeout(async () => {
-      try {
-        await this.prisma.ticketTier.update({
-          where: { id: tierId },
-          data: { discountStatus: "ENDED" }
-        });
-      } catch (error) {
-        logger.error(`[${this.context}] An error occurred while updating discount status of event tickets. Error: ${error.message}\n`);
-        throw error;
-      }
-    }, timeout);
-    this.scheduler.addTimeout(name, disountUpdate);
-
-    return;
-  }
-
-  deleteTimeout(name: string): void {
-    if (!this.scheduler.getTimeout(name)) return;
-    
-    this.scheduler.deleteTimeout(name);
-    return;
-  }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async processFailedTransfers(): Promise<void> {
@@ -119,7 +43,7 @@ export class TasksService {
         const record: EmailAttachment = await generateFailedTransferRecords(transfers);
         const subject = 'Failed Transfers'
         const content = 'Hello, these are failed transfers that occured in the past 24 hours. The details are attached to this email.'
-        const receiver = { firstName: 'Admin', email: Secrets.ADMIN_EMAIL };
+        const receiver = { name: 'Admin', email: Secrets.ADMIN_EMAIL };
         await sendEmail(receiver, subject, content, [record]);
 
         logger.info(`[${this.context}] Details of failed transfers sent to platform email for further processing.\n`);

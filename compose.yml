@@ -32,6 +32,8 @@ services:
       - "6379:6379"
     networks:
       - backend-network
+    volumes:
+      - redis-data:/data
     command: [ "redis-server", "--requirepass", "${REDIS_PASSWORD}" ]
 
   prometheus:
@@ -73,6 +75,7 @@ services:
 
 volumes:
   db-data:
+  redis-data:
   metrics-data:
   grafana-data:
 

@@ -18,7 +18,7 @@ export class MailProcessor {
   
       await sendEmail(receiver, subject, content);
     } catch (error) {
-      logger.error(`[${this.context}] An error occured while processing "${job.name}", Job ID: ${job.id}. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occured while processing "${job.name}" email. Error: ${error.message}\n`);
       throw error;
     }
   }
@@ -32,7 +32,7 @@ export class MailProcessor {
   
       await sendEmail(user, subject, content);
     } catch (error) {
-      logger.error(`[${this.context}] An error occured while processing "${job.name}", Job ID: ${job.id}. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occured while processing "${job.name}" email. Error: ${error.message}\n`);
       throw error;
     }
   }

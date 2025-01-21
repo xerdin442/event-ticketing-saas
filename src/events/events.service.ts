@@ -8,14 +8,13 @@ import { Queue } from 'bull';
 import { RedisClientType } from 'redis';
 import { initializeRedis } from '../common/config/redis-conf';
 import { Secrets } from '../common/env';
-import { TasksService } from '../tasks/tasks.service';
 
 @Injectable()
 export class EventsService {
   constructor(
     private readonly prisma: DbService,
     @InjectQueue('events-queue') private readonly eventsQueue: Queue,
-    private readonly tasks: TasksService
+    @InjectQueue('tasks-queue') private readonly tasksQueue: Queue
   ) { };
 
   async createEvent(
@@ -66,18 +65,21 @@ export class EventsService {
         });
 
         // Set automatic status updates, 1.5 seconds after the start and end of the event
-        const ongoingTimeout = Math.max(0, new Date(event.startTime).getTime() - new Date().getTime() + 1500);
-        const completedTimeout = Math.max(0, new Date(event.endTime).getTime() - new Date().getTime() + 1500);
-
-        this.tasks.updateOngoingEvents(
-          event.id,
-          `event_${event.id}_ongoing_update`,
-          ongoingTimeout
+        await this.tasksQueue.add(
+          'ongoing-status-update',
+          { eventId: event.id },
+          {
+            jobId: `event-${event.id}-ongoing`,
+            delay: Math.max(0, new Date(event.startTime).getTime() - new Date().getTime() + 1500)
+          }
         );
-        this.tasks.updateCompletedEvents(
-          event.id,
-          `event_${event.id}_completed_update`,
-          completedTimeout
+        await this.tasksQueue.add(
+          'completed-status-update',
+          { eventId: event.id },
+          {
+            jobId: `event-${event.id}-completed`,
+            delay: Math.max(0, new Date(event.endTime).getTime() - new Date().getTime() + 1500)
+          }
         );
 
         return event;
@@ -95,21 +97,14 @@ export class EventsService {
     poster?: string
   ): Promise<Event> {
     try {
-      const filteredData = Object.entries(dto).reduce((acc, [key, value]) => {
-        if (value !== undefined) acc[key] = value;
-        return acc;
-      }, {});
-
-      const updateData: any = {
-        ...filteredData,
-        ...(dto.capacity !== undefined && { capacity: +dto.capacity }),
-        ...(dto.ageRestriction !== undefined && { ageRestriction: +dto.ageRestriction }),
-        ...(poster && { poster })
-      };
-
       const event = await this.prisma.event.update({
         where: { id: eventId },
-        data: { ...updateData },
+        data: {
+          ...dto,
+          ...(dto.capacity !== undefined && { capacity: +dto.capacity }),
+          ...(dto.ageRestriction !== undefined && { ageRestriction: +dto.ageRestriction }),
+          ...(poster && { poster })
+        },
         include: {
           users: true,
           organizer: true
@@ -118,28 +113,32 @@ export class EventsService {
 
       if (dto.address || dto.venue || dto.date || dto.endTime || dto.startTime) {
         if (dto.startTime) {
-          const name = `event_${event.id}_ongoing_update`
-          this.tasks.deleteTimeout(name);
-          const ongoingTimeout = Math.max(0, new Date(event.startTime).getTime() - new Date().getTime() + 1500);
+          const jobId = `event-${event.id}-ongoing`;
+          await this.tasksQueue.removeJobs(jobId);
 
           // Reset timeout for event status update
-          this.tasks.updateOngoingEvents(
-            event.id,
-            name,
-            ongoingTimeout
+          await this.tasksQueue.add(
+            'ongoing-status-update',
+            { eventId: event.id },
+            {
+              jobId,
+              delay: Math.max(0, new Date(event.startTime).getTime() - new Date().getTime() + 1500)
+            }
           );
         };
 
         if (dto.endTime) {
-          const name = `event_${event.id}_completed_update`
-          this.tasks.deleteTimeout(name);
-          const completedTimeout = Math.max(0, new Date(event.endTime).getTime() - new Date().getTime() + 1500);
+          const jobId = `event-${event.id}-completed`;
+          await this.tasksQueue.removeJobs(jobId);
 
           // Reset timeout for event status update
-          this.tasks.updateCompletedEvents(
-            event.id,
-            name,
-            completedTimeout
+          await this.tasksQueue.add(
+            'completed-status-update',
+            { eventId: event.id },
+            {
+              jobId,
+              delay: Math.max(0, new Date(event.endTime).getTime() - new Date().getTime() + 1500)
+            }
           );
         };
 
@@ -186,9 +185,8 @@ export class EventsService {
         }
       });
 
-      // Clear event status update timeouts
-      this.tasks.deleteTimeout(`event_${event.id}_completed_update`);
-      this.tasks.deleteTimeout(`event_${event.id}_ongoing_update`);
+      // Clear event status auto updates
+      await this.tasksQueue.removeJobs(`event-${event.id}-*`);
 
       // Notify attendees of event cancellation
       await this.eventsQueue.add('cancel-event', { event });
@@ -224,11 +222,13 @@ export class EventsService {
         });
 
         // Set auto update of discount status based on the expiration date
-        const discountTimeout = Math.max(0, new Date(tier.discountExpiration).getTime() - new Date().getTime());
-        this.tasks.updateDiscountExpiration(
-          tier.id,
-          `tier_${tier.id}_discount_update`,
-          discountTimeout
+        await this.tasksQueue.add(
+          'discount-status-update',
+          { tierId: tier.id },
+          {
+            jobId: `tier-${tier.id}-discount`,
+            delay: Math.max(0, new Date(tier.discountExpiration).getTime() - new Date().getTime())
+          }
         );
       };
     } catch (error) {
@@ -242,23 +242,28 @@ export class EventsService {
         where: { id: eventId },
         include: { ticketTiers: true }
       });
+      const ticketTier = event.ticketTiers.find(ticketTier => ticketTier.name === tier);
+      
+      if (!ticketTier) {
+        throw new BadRequestException(`No ticket tier named ${tier} in this event`);
+      };
 
-      for (let ticketTier of event.ticketTiers) {
-        if (ticketTier.name === tier) {
-          await this.prisma.ticketTier.update({
-            where: { id: ticketTier.id },
-            data: {
-              discount: false,
-              discountPrice: null,
-              discountExpiration: null,
-              discountStatus: null,
-              numberOfDiscountTickets: null
-            }
-          });
+      if (ticketTier.discount) {
+        await this.prisma.ticketTier.update({
+          where: { id: ticketTier.id },
+          data: {
+            discount: false,
+            discountPrice: null,
+            discountExpiration: null,
+            discountStatus: null,
+            numberOfDiscountTickets: null
+          }
+        });
 
-          // Delete discount status update timeout
-          this.tasks.deleteTimeout(`tier_${ticketTier.id}_discount_update`);
-        }
+        // Delete discount status auto update
+        await this.tasksQueue.removeJobs(`tier-${ticketTier.id}-discount`);
+      } else {
+        throw new BadRequestException('No discount offer available in this tier');
       };
     } catch (error) {
       throw error;
