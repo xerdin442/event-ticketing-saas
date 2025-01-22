@@ -1,6 +1,11 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
-import { AddTicketTierDto, CreateEventDto, UpdateEventDto } from './dto';
+import {
+  AddTicketTierDto,
+  CreateEventDto,
+  NearbyEventsDto,
+  UpdateEventDto
+} from './dto';
 import axios from 'axios';
 import { Event } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bull';
@@ -270,26 +275,30 @@ export class EventsService {
     }
   }
 
-  async findNearbyEvents(latitude: number, longitude: number): Promise<Event[]> {
+  async findNearbyEvents(dto: NearbyEventsDto): Promise<Event[]> {
     const redis: RedisClientType = await initializeRedis(
       Secrets.REDIS_URL,
       'Geolocation Search',
       Secrets.GEOLOCATION_STORE_INDEX,
     );
+    const { latitude, longitude } = dto;
 
     try {
       const events = await redis.geoRadius('events', { latitude, longitude }, 5, 'km');
+      // Fetch all upcoming events close to the user
       const nearbyEvents = await Promise.all(
         events.map(async (event) => {
           const eventId = event.split(':')[1];
           return await this.prisma.event.findUnique({
-            where: { id: +eventId }
+            where: {
+              id: +eventId,
+              status: "UPCOMING"
+            }
           });
         })
       );
 
-      // Fetch all upcoming events close to the user
-      return nearbyEvents.filter(event => event.status === 'UPCOMING');
+      return nearbyEvents;
     } catch (error) {
       throw error;
     } finally {

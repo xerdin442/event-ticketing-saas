@@ -97,7 +97,7 @@ export class EventsController {
 
       return { event };
     } catch (error) {
-      logger.error(`[${this.context}] An error occurred while upadting event details. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occurred while retrieving event details. Error: ${error.message}\n`);
       throw error;
     }
   }
@@ -155,9 +155,7 @@ export class EventsController {
   @Get('nearby')
   async findNearbyEvents(@Query() dto: NearbyEventsDto): Promise<{ events: Event[] }> {
     try {
-      const { latitude, longitude } = dto;
-      const events = await this.eventsService.findNearbyEvents(parseFloat(latitude), parseFloat(longitude));
-      return { events };
+      return { events: await this.eventsService.findNearbyEvents(dto) };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while retrieving nearby events. Error: ${error.message}\n`);
       throw error;
