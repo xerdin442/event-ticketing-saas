@@ -4,11 +4,7 @@ WORKDIR /usr/src/app
 
 COPY package.json .
 
-ARG NODE_ENV
-RUN if [ "$NODE_ENV" = "development" ]; \
-      then npm install -f; \
-      else npm install -f --only=production; \
-      fi
+RUN npm install
 
 COPY . .
 
