@@ -28,7 +28,7 @@ export class PaymentsProcessor {
   async finalizeTransaction(job: Job) {
     const { eventType, metadata } = job.data;
     const { discount, ticketTier } = metadata;
-    
+
     const eventId = parseInt(metadata.eventId);
     const userId = parseInt(metadata.userId);
     const amount = parseInt(metadata.amount);
@@ -134,7 +134,7 @@ export class PaymentsProcessor {
               // );
 
               this.metrics.incrementTransactionRefunds(); // Update the transaction refunds count
-              logger.warn(`[${this.context}] Ticket purchase processing failed. Transaction refund to ${user.email} initiated.\n`);
+              logger.warn(`[${this.context}] Ticket purchase processing failed. Transaction refund to ${user.email} initiated. Error: ${error.message}\n`);
 
               // Notify the user of the payment status
               return this.gateway.sendPaymentStatus(
@@ -245,7 +245,7 @@ export class PaymentsProcessor {
     const { userId, eventTitle } = metadata;
 
     const user = await this.prisma.user.findUnique({
-      where: { id: userId }
+      where: { id: +userId }
     });
 
     try {
