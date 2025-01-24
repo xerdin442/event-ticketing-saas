@@ -27,7 +27,12 @@ export class PaymentsProcessor {
   @Process('transaction')
   async finalizeTransaction(job: Job) {
     const { eventType, metadata } = job.data;
-    const { userId, eventId, discount, ticketTier, amount, quantity } = metadata;
+    const { discount, ticketTier } = metadata;
+    
+    const eventId = parseInt(metadata.eventId);
+    const userId = parseInt(metadata.userId);
+    const amount = parseInt(metadata.amount);
+    const quantity = parseInt(metadata.quantity);
 
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },

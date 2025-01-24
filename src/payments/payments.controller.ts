@@ -48,7 +48,6 @@ export class PaymentsController {
       if (hash === req.headers['x-paystack-signature']) {
         // Listen for status of transactions for ticket purchases
         if (event.includes('charge')) {
-          console.log('Transaction job created')
           await this.paymentsQueue.add('transaction', {
             eventType: event,
             metadata: data.metadata
