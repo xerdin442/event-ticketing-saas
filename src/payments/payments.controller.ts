@@ -40,12 +40,14 @@ export class PaymentsController {
   @Post('callback')
   async paymentCallback(@Req() req: Request) {
     try {
+      console.log('Paystack callback reached...')
       const hash = crypto.createHmac('sha512', Secrets.PAYSTACK_SECRET_KEY)
         .update(JSON.stringify(req.body)).digest('hex');
 
       const { event, data } = req.body;
 
       if (hash === req.headers['x-paystack-signature']) {
+        console.log('Paystack header found...')
         // Listen for status of transactions for ticket purchases
         if (event.includes('charge')) {
           await this.paymentsQueue.add('transaction', {
