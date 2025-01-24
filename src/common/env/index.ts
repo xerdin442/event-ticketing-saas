@@ -5,8 +5,6 @@ const config = new ConfigService();
 export const Secrets = {
   NODE_ENV: process.env.NODE_ENV as string,
   PORT: config.getOrThrow<number>('PORT'),
-  DATABASE_PASSWORD: config.getOrThrow<string>('DATABASE_PASSWORD'),
-  DATABASE_NAME: config.getOrThrow<string>('DATABASE_NAME'),
   DATABASE_URL: config.getOrThrow<string>('DATABASE_URL'),
   JWT_SECRET: config.getOrThrow<string>('JWT_SECRET'),
   CLOUD_NAME: config.getOrThrow<string>('CLOUD_NAME'),
