@@ -1,15 +1,16 @@
 import {
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Post,
   Req,
-  Res,
   UseGuards
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { PaymentsService } from './payments.service';
 import logger from '../common/logger';
-import { Request, Response } from 'express';
+import { Request } from 'express';
 import crypto from 'crypto';
 import { Secrets } from '../common/env';
 import { InjectQueue } from '@nestjs/bull';
@@ -35,8 +36,9 @@ export class PaymentsController {
     }
   }
 
+  @HttpCode(HttpStatus.OK)
   @Post('callback')
-  async paymentCallback(@Req() req: Request, @Res() res: Response) {
+  async paymentCallback(@Req() req: Request) {
     try {
       const hash = crypto.createHmac('sha512', Secrets.PAYSTACK_SECRET_KEY)
         .update(JSON.stringify(req.body)).digest('hex');
@@ -65,7 +67,7 @@ export class PaymentsController {
           });
         };
 
-        return res.sendStatus(200); // Send a 200 OK response to the Paystack server
+        return; // Send a 200 OK response to the Paystack server if all checks are complete
       };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while listening on webhook URL. Error: ${error.message}\n`);

@@ -223,25 +223,6 @@ export class PaymentsProcessor {
         // Notify the client of payment status via WebSocket connection
         return this.gateway.sendPaymentStatus(user.email, 'success', 'Payment successful!');
       } else if (eventType === 'charge.failed') {
-        // Update details of ticket tier if ticket purchase failed
-        for (let tier of event.ticketTiers) {
-          if (tier.name === ticketTier) {
-            if (discount) {
-              // Update number of discount tickets if it was a discount purchase
-              await this.prisma.ticketTier.update({
-                where: { id: tier.id },
-                data: { numberOfDiscountTickets: { increment: quantity } }
-              });
-            }
-
-            // Update total number of tickets in the tier
-            await this.prisma.ticketTier.update({
-              where: { id: tier.id },
-              data: { totalNumberOfTickets: { increment: quantity } }
-            });
-          }
-        };
-
         logger.info(`[${this.context}] Ticket purchase failed: Email: ${user.email}\n`);
 
         // Notify the client of payment status via WebSocket connection
