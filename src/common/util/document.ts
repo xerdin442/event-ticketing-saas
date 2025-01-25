@@ -37,13 +37,13 @@ export const generateTicketPDF = (
       doc.moveDown();
 
       // Details
-      doc.text(`Name: ${user.lastName} ${user.firstName}`);
+      doc.text(`Name: ${user.firstName} ${user.lastName}`);
       doc.text(`Event: ${event.title}`);
-      doc.text(`Time: ${event.startTime} - ${event.endTime}`);
+      doc.text(`Time: ${event.startTime.toISOString()} - ${event.endTime.toISOString()}`);
       doc.text(`Date: ${event.date}`);
       doc.moveDown();
 
-      doc.fontSize(14).fillColor('black').text(`Ticket: ${ticket.tier}`);
+      doc.fontSize(16).fillColor('black').text(`Ticket: ${ticket.tier}`);
       doc.text(`Price: $${ticket.price}`);
       doc.text(`Access Key: ${ticket.accessKey}`);
       doc.moveDown();
@@ -51,7 +51,7 @@ export const generateTicketPDF = (
       doc.image(qrcode, { fit: [150, 150], align: 'center' });
       doc.moveDown();
 
-      doc.fontSize(12).fillColor('gray').text('Thanks for your purchase. See you at the event!', { align: 'center' });
+      doc.fontSize(14).fillColor('gray').text('Thanks for your purchase. See you at the event!', { align: 'center' });
       doc.end();
 
       writestream.on('error', (error) => {
