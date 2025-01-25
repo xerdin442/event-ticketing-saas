@@ -7,7 +7,7 @@ export class MetricsService {
   private readonly registry: Registry;
   public readonly twoFactorAuthMetric: Gauge<string>;
   public readonly unsuccessfulTransfersCounter: Counter<string>;
-  public readonly transactionRefundCounter: Counter;
+  public readonly transactionRefundCounter: Counter<string>;
 
   constructor() {
     this.registry = new Registry();
@@ -20,14 +20,14 @@ export class MetricsService {
     });
 
     this.transactionRefundCounter = new Counter({
-      name: 'unsuccessful_transfers',
-      help: 'Total number of unsuccessful transfers',
+      name: 'transaction_refunds',
+      help: 'Total number of transaction refunds',
       registers: [this.registry]
     })
 
     this.unsuccessfulTransfersCounter = new Counter({
-      name: 'transaction_refunds',
-      help: 'Total number of transaction refunds',
+      name: 'unsuccessful_transfers',
+      help: 'Total number of unsuccessful transfers',
       registers: [this.registry]
     })
   }
@@ -37,6 +37,7 @@ export class MetricsService {
   }
 
   updateTwoFactorAuthMetric(action: 'dec' | 'inc'): void {
+    console.log('Incrementing two factor auth metric')
     action === 'dec' ? this.twoFactorAuthMetric.dec() : this.twoFactorAuthMetric.inc();
   }
 
