@@ -37,7 +37,6 @@ export class MetricsService {
   }
 
   updateTwoFactorAuthMetric(action: 'dec' | 'inc'): void {
-    console.log('Incrementing two factor auth metric')
     action === 'dec' ? this.twoFactorAuthMetric.dec() : this.twoFactorAuthMetric.inc();
   }
 
