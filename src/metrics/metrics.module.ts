@@ -8,6 +8,7 @@ import { Secrets } from '../common/env';
 @Module({
   controllers: [MetricsController],
   providers: [
+    MetricsService,
     {
       provide: Registry,
       useFactory: () => {
@@ -15,13 +16,6 @@ import { Secrets } from '../common/env';
         registry.setDefaultLabels({ app: Secrets.APP_NAME }); 
         return registry;
       }
-    },
-    {
-      provide: MetricsService,
-      useFactory: (registry: Registry) => {
-        return new MetricsService(registry);
-      },
-      inject: [Registry]
     }
   ],
   exports: [

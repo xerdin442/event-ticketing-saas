@@ -1,13 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Counter, Gauge, Registry } from 'prom-client';
 
 @Injectable()
 export class MetricsService {
-  public readonly twoFactorAuthMetric: Gauge<string>;
-  public readonly unsuccessfulTransfersCounter: Counter<string>;
-  public readonly transactionRefundCounter: Counter<string>;
+  private readonly twoFactorAuthMetric: Gauge<string>;
+  private readonly unsuccessfulTransfersCounter: Counter<string>;
+  private readonly transactionRefundCounter: Counter<string>;
 
-  constructor(private readonly registry: Registry) {
+  constructor(@Inject(Registry) private readonly registry: Registry) {
     this.twoFactorAuthMetric = new Gauge({
       name: 'two_fa_enabled_users',
       help: 'Total number of users that enabled 2FA',
