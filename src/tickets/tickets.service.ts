@@ -4,15 +4,97 @@ import {
   UnauthorizedException
 } from '@nestjs/common';
 import { DbService } from '../db/db.service';
-import { PurchaseTicketDto, ValidateTicketDto } from './dto';
+import {
+  AddTicketTierDto,
+  PurchaseTicketDto,
+  ValidateTicketDto
+} from './dto';
 import { PaymentsService } from '../payments/payments.service';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 
 @Injectable()
 export class TicketsService {
   constructor(
     private readonly prisma: DbService,
-    private readonly payments: PaymentsService
+    private readonly payments: PaymentsService,
+    @InjectQueue('tasks-queue') private readonly tasksQueue: Queue
   ) { };
+
+  async addTicketTier(dto: AddTicketTierDto, eventId: number): Promise<void> {
+    try {
+      const { name, price, totalNumberOfTickets, discount, benefits, discountExpiration, discountPrice, numberOfDiscountTickets } = dto;
+
+      const tier = await this.prisma.ticketTier.create({
+        data: {
+          name,
+          price: +price,
+          totalNumberOfTickets: +totalNumberOfTickets,
+          discount,
+          benefits,
+          eventId
+        }
+      });
+
+      if (discount) {
+        await this.prisma.ticketTier.update({
+          where: { id: tier.id },
+          data: {
+            discountPrice: +discountPrice,
+            discountExpiration,
+            discountStatus: 'ACTIVE',
+            numberOfDiscountTickets: +numberOfDiscountTickets
+          }
+        });
+
+        // Set auto update of discount status based on the expiration date
+        await this.tasksQueue.add(
+          'discount-status-update',
+          { tierId: tier.id },
+          {
+            jobId: `tier-${tier.id}-discount`,
+            delay: Math.max(0, new Date(tier.discountExpiration).getTime() - new Date().getTime())
+          }
+        );
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async removeDiscount(eventId: number, tier: string): Promise<void> {
+    try {
+      const event = await this.prisma.event.findUnique({
+        where: { id: eventId },
+        include: { ticketTiers: true }
+      });
+      const ticketTier = event.ticketTiers.find(ticketTier => ticketTier.name === tier);
+
+      if (!ticketTier) {
+        throw new BadRequestException(`No ticket tier named ${tier} in this event`);
+      };
+
+      if (ticketTier.discount) {
+        await this.prisma.ticketTier.update({
+          where: { id: ticketTier.id },
+          data: {
+            discount: false,
+            discountPrice: null,
+            discountExpiration: null,
+            discountStatus: null,
+            numberOfDiscountTickets: null
+          }
+        });
+
+        // Delete discount status auto update
+        await this.tasksQueue.removeJobs(`tier-${ticketTier.id}-discount`);
+      } else {
+        throw new BadRequestException('No discount offer available in this tier');
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
 
   async purchaseTicket(dto: PurchaseTicketDto, eventId: number, userId: number): Promise<string> {
     let amount: number;

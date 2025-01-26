@@ -2,8 +2,7 @@ import { EventCategory } from "@prisma/client";
 import { 
   IsNotEmpty,
   IsOptional,
-  IsString,
-  IsBoolean,
+  IsString
 } from "class-validator";
 
 export class CreateEventDto {
@@ -90,46 +89,12 @@ export class UpdateEventDto {
   capacity?: string;
 }
 
-export class AddTicketTierDto {
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @IsString()
-  @IsNotEmpty()
-  price: string;
-
-  @IsBoolean()
-  @IsNotEmpty()
-  discount: boolean;
-
-  @IsString()
-  @IsOptional()
-  discountPrice?: string;
-
-  @IsString()
-  @IsOptional()
-  discountExpiration?: string;
-  
-  @IsString()
-  @IsOptional()
-  numberOfDiscountTickets?: string;
-
-  @IsString()
-  @IsOptional()
-  benefits?: string;
-  
-  @IsString()
-  @IsNotEmpty()
-  totalNumberOfTickets: string;
-}
-
 export class NearbyEventsDto {
-  @IsString({ message: 'Invalid "latitude" query parameter' })
-  @IsNotEmpty({ message: '"latitude" query parameter is required' })
+  @IsString()
+  @IsNotEmpty()
   latitude: string
   
-  @IsString({ message: 'Invalid "longitude" query parameter' })
-  @IsNotEmpty({ message: '"longitude" query parameter is required' })
+  @IsString()
+  @IsNotEmpty()
   longitude: string
 }

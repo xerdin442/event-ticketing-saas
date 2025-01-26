@@ -8,11 +8,16 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   UseGuards
 } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
 import { AuthGuard } from '@nestjs/passport';
-import { PurchaseTicketDto, ValidateTicketDto } from './dto';
+import {
+  AddTicketTierDto,
+  PurchaseTicketDto,
+  ValidateTicketDto
+} from './dto';
 import { GetUser } from '../custom/decorators';
 import { EventOrganizerGuard } from '../custom/guards';
 import { User } from '@prisma/client';
@@ -27,6 +32,38 @@ export class TicketsController {
   private readonly context: string = TicketsController.name;
 
   constructor(private readonly ticketsService: TicketsService) { };
+
+  @HttpCode(HttpStatus.OK)
+  @Post('add')
+  @UseGuards(EventOrganizerGuard)
+  async addTicketTier(
+    @Body() dto: AddTicketTierDto,
+    @Param('eventId', ParseIntPipe) eventId: number
+  ): Promise<{ message: string }> {
+    try {
+      await this.ticketsService.addTicketTier(dto, eventId);
+      return { message: 'Ticket tier added successfully!' };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while adding ticket tier to event. Error: ${error.message}\n`);
+      throw error;
+    } 
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('remove-discount')
+  @UseGuards(EventOrganizerGuard)
+  async removeDiscount(
+    @Param('eventId', ParseIntPipe) eventId: number,
+    @Query('tier') tier: string
+  ): Promise<{ message: string }> {
+    try {
+      await this.ticketsService.removeDiscount(eventId, tier);
+      return { message: 'Disocunt offer successfully removed from event' };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while removing discount offer from event. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
 
   @HttpCode(HttpStatus.OK)
   @Post('purchase')

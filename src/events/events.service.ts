@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import {
-  AddTicketTierDto,
   CreateEventDto,
   NearbyEventsDto,
   UpdateEventDto
@@ -152,20 +151,24 @@ export class EventsService {
     }
   }
 
-  async getEventDetails(role: string, eventId: number): Promise<Event> {
-    switch (role) {
-      case 'attendee':
-        return this.prisma.event.findUnique({
-          where: { id: eventId }
-        });
-      case 'organizer':
-        return this.prisma.event.findUnique({
-          where: { id: eventId },
-          include: { organizer: true }
-        });
-      default:
-        throw new BadRequestException('Invalid value for role parameter. Expected "organizer" or "attendee".');
-    }
+  async getEventDetails(eventId: number): Promise<Event> {
+    return this.prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        organizer: {
+          select: {
+            email: true,
+            events: { select: { id: true, title: true, poster: true } },  
+            name: true,
+            instagram: true,
+            phone: true,
+            whatsapp: true,
+            website: true,
+            twitter: true,                
+          }
+        }
+      }
+    });
   }
 
   async cancelEvent(eventId: number): Promise<void> {
@@ -193,81 +196,6 @@ export class EventsService {
     }
   }
 
-  async addTicketTier(dto: AddTicketTierDto, eventId: number): Promise<void> {
-    try {
-      const { name, price, totalNumberOfTickets, discount, benefits, discountExpiration, discountPrice, numberOfDiscountTickets } = dto;
-
-      const tier = await this.prisma.ticketTier.create({
-        data: {
-          name,
-          price: +price,
-          totalNumberOfTickets: +totalNumberOfTickets,
-          discount,
-          benefits,
-          eventId
-        }
-      });
-
-      if (discount) {
-        await this.prisma.ticketTier.update({
-          where: { id: tier.id },
-          data: {
-            discountPrice: +discountPrice,
-            discountExpiration,
-            discountStatus: 'ACTIVE',
-            numberOfDiscountTickets: +numberOfDiscountTickets
-          }
-        });
-
-        // Set auto update of discount status based on the expiration date
-        await this.tasksQueue.add(
-          'discount-status-update',
-          { tierId: tier.id },
-          {
-            jobId: `tier-${tier.id}-discount`,
-            delay: Math.max(0, new Date(tier.discountExpiration).getTime() - new Date().getTime())
-          }
-        );
-      };
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async removeDiscount(eventId: number, tier: string): Promise<void> {
-    try {
-      const event = await this.prisma.event.findUnique({
-        where: { id: eventId },
-        include: { ticketTiers: true }
-      });
-      const ticketTier = event.ticketTiers.find(ticketTier => ticketTier.name === tier);
-      
-      if (!ticketTier) {
-        throw new BadRequestException(`No ticket tier named ${tier} in this event`);
-      };
-
-      if (ticketTier.discount) {
-        await this.prisma.ticketTier.update({
-          where: { id: ticketTier.id },
-          data: {
-            discount: false,
-            discountPrice: null,
-            discountExpiration: null,
-            discountStatus: null,
-            numberOfDiscountTickets: null
-          }
-        });
-
-        // Delete discount status auto update
-        await this.tasksQueue.removeJobs(`tier-${ticketTier.id}-discount`);
-      } else {
-        throw new BadRequestException('No discount offer available in this tier');
-      };
-    } catch (error) {
-      throw error;
-    }
-  }
-
   async findNearbyEvents(dto: NearbyEventsDto): Promise<Event[]> {
     const redis: RedisClientType = await initializeRedis(
       Secrets.REDIS_URL,
@@ -278,20 +206,16 @@ export class EventsService {
 
     try {
       const events = await redis.geoRadius('events', { latitude, longitude }, 5, 'km');
-      // Fetch all upcoming events close to the user
       const nearbyEvents = await Promise.all(
         events.map(async (event) => {
           const eventId = event.split(':')[1];
           return await this.prisma.event.findUnique({
-            where: {
-              id: +eventId,
-              status: "UPCOMING"
-            }
+            where: { id: +eventId }
           });
         })
       );
 
-      return nearbyEvents;
+      return nearbyEvents.filter(event => event.status !== "CANCELLED");
     } catch (error) {
       throw error;
     } finally {

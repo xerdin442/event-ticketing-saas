@@ -82,7 +82,6 @@ model Ticket {
 
   @@index([attendee])
   @@index([eventId])
-  @@index([accessKey])
   @@map("tickets")
 }
 

@@ -8,7 +8,6 @@ import {
   ParseIntPipe,
   Patch,
   Post,
-  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors
@@ -16,7 +15,6 @@ import {
 import { EventsService } from './events.service';
 import { AuthGuard } from '@nestjs/passport';
 import {
-  AddTicketTierDto,
   CreateEventDto,
   NearbyEventsDto,
   UpdateEventDto
@@ -88,11 +86,10 @@ export class EventsController {
   @Get(':eventId')
   async getEventDetails(
     @GetUser() user: User,
-    @Param('eventId', ParseIntPipe) eventId: number,
-    @Query('role') role: string
+    @Param('eventId', ParseIntPipe) eventId: number
   ): Promise<{ event: Event }> {
     try {
-      const event = await this.eventsService.getEventDetails(role, eventId);
+      const event = await this.eventsService.getEventDetails(eventId);
       logger.info(`[${this.context}] Event details retrieved by ${user.email}.\n`);
 
       return { event };
@@ -120,40 +117,8 @@ export class EventsController {
     } 
   }
 
-  @HttpCode(HttpStatus.OK)
-  @Post(':eventId/tickets/add')
-  @UseGuards(EventOrganizerGuard)
-  async addTicketTier(
-    @Body() dto: AddTicketTierDto,
-    @Param('eventId', ParseIntPipe) eventId: number
-  ): Promise<{ message: string }> {
-    try {
-      await this.eventsService.addTicketTier(dto, eventId);
-      return { message: 'Ticket tier added successfully!' };
-    } catch (error) {
-      logger.error(`[${this.context}] An error occurred while adding ticket tier to event. Error: ${error.message}\n`);
-      throw error;
-    } 
-  }
-
-  @HttpCode(HttpStatus.OK)
-  @Post(':eventId/tickets/remove-discount')
-  @UseGuards(EventOrganizerGuard)
-  async removeDiscount(
-    @Param('eventId', ParseIntPipe) eventId: number,
-    @Query('tier') tier: string
-  ): Promise<{ message: string }> {
-    try {
-      await this.eventsService.removeDiscount(eventId, tier);
-      return { message: 'Disocunt offer successfully removed from event' };
-    } catch (error) {
-      logger.error(`[${this.context}] An error occurred while removing discount offer from event. Error: ${error.message}\n`);
-      throw error;
-    }
-  }
-
-  @Get('nearby')
-  async findNearbyEvents(@Query() dto: NearbyEventsDto): Promise<{ events: Event[] }> {
+  @Post('nearby')
+  async findNearbyEvents(@Body() dto: NearbyEventsDto): Promise<{ events: Event[] }> {
     try {
       return { events: await this.eventsService.findNearbyEvents(dto) };
     } catch (error) {
