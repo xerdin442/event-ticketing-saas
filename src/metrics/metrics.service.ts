@@ -16,7 +16,7 @@ export class MetricsService {
     if (!this.gauge[name]) {
       this.gauge[name] = new Gauge({
         name,
-        help: `Total number of ${name}`.replace('_', ' '),
+        help: `Total number of ${name}`.replace(/_/g, ' '),
         registers: [this.registry]
       })
     };
@@ -28,7 +28,7 @@ export class MetricsService {
     if (!this.counter[name]) {
       this.counter[name] = new Counter({
         name,
-        help: `Total number of ${name}`.replace('_', ' '),
+        help: `Total number of ${name}`.replace(/_/g, ' '),
         registers: [this.registry]
       })
     };

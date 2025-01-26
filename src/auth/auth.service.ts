@@ -37,7 +37,7 @@ export class AuthService {
   async signup(dto: CreateUserDto, filePath?: string)
     : Promise<{ user: User, token: string }> {
     try {
-      const { accountName, accountNumber, bankName, age, email, password, firstName, lastName } = dto;
+      const { accountName, accountNumber, bankName, age, email, password, firstName } = dto;
       
       // Verify if user account details are correct
       await this.payments.verifyAccountDetails({ accountName, accountNumber, bankName });
@@ -46,15 +46,10 @@ export class AuthService {
       const hash = await argon.hash(password)
       const user = await this.prisma.user.create({
         data: {
+          ...dto,
           age: +age,
-          email,
           password: hash,
           profileImage: filePath || Secrets.DEFAULT_IMAGE,
-          firstName,
-          lastName,
-          accountName,
-          accountNumber,
-          bankName
         }
       });
 

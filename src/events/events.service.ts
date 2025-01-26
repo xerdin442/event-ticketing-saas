@@ -45,16 +45,9 @@ export class EventsService {
       if (response.status === 200 && response.data.length > 0) {
         const event = await this.prisma.event.create({
           data: {
+            ...dto,
             organizerId: user.organizer.id,
-            title: dto.title,
-            category: dto.category,
-            description: dto.description,
-            date: dto.date,
-            startTime: dto.startTime,
-            endTime: dto.endTime,
             ageRestriction: +dto.ageRestriction,
-            venue: dto.venue,
-            address: dto.address,
             capacity: +dto.capacity,
             poster,
             revenue: 0
