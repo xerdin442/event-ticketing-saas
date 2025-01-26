@@ -136,7 +136,7 @@ export class PaymentsProcessor {
               //   }
               // );
 
-              this.metrics.incrementTransactionRefunds(); // Update the transaction refunds count
+              this.metrics.incrementCounter('transaction_refunds'); // Update the transaction refunds metric
               logger.warn(`[${this.context}] Ticket purchase processing failed. Transaction refund to ${user.email} initiated. Error: ${error.message}\n`);
 
               // Notify the user of the payment status
@@ -269,7 +269,7 @@ export class PaymentsProcessor {
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} was successful!\n`)
         return;
       } else if (eventType === 'transfer.failed' || eventType === 'transfer.reversed') {
-        this.metrics.incrementUnsuccessfulTransfers();  // Update number of unsuccessful transfers
+        this.metrics.incrementCounter('unsuccessful_transfers');  // Update unsuccessful transfers metric
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} failed or reversed.\n`);
 
         // Initiate transfer retry after 30 minutes

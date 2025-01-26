@@ -135,7 +135,7 @@ export class AuthService {
         }
       });
 
-      this.metrics.updateTwoFactorAuthMetric('inc'); // Update metrics value
+      this.metrics.updateGauge('two_fa_enabled_users', 'inc'); // Update metrics value
 
       // Create a QRcode image with the generated secret
       return await qrcode.toDataURL(secret.otpauth_url, { errorCorrectionLevel: 'high' });
@@ -154,7 +154,7 @@ export class AuthService {
         }
       });
 
-      this.metrics.updateTwoFactorAuthMetric('dec'); // Update metrics value
+      this.metrics.updateGauge('two_fa_enabled_users', 'dec'); // Update metrics value
       return;
     } catch (error) {
       throw error;
