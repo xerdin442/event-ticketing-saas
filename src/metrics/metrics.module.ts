@@ -18,6 +18,9 @@ import { Secrets } from '../common/env';
       }
     }
   ],
-  exports: [MetricsService]
+  exports: [
+    Registry,
+    MetricsService
+  ]
 })
 export class MetricsModule {}
