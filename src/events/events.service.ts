@@ -17,8 +17,7 @@ import { Secrets } from '../common/env';
 export class EventsService {
   constructor(
     private readonly prisma: DbService,
-    @InjectQueue('events-queue') private readonly eventsQueue: Queue,
-    @InjectQueue('tasks-queue') private readonly tasksQueue: Queue
+    @InjectQueue('events-queue') private readonly eventsQueue: Queue
   ) { };
 
   async createEvent(
@@ -62,7 +61,7 @@ export class EventsService {
         });
 
         // Set automatic status updates, 1.5 seconds after the start and end of the event
-        await this.tasksQueue.add(
+        await this.eventsQueue.add(
           'ongoing-status-update',
           { eventId: event.id },
           {
@@ -70,7 +69,7 @@ export class EventsService {
             delay: Math.max(0, new Date(event.startTime).getTime() - new Date().getTime() + 1500)
           }
         );
-        await this.tasksQueue.add(
+        await this.eventsQueue.add(
           'completed-status-update',
           { eventId: event.id },
           {
@@ -111,10 +110,10 @@ export class EventsService {
       if (dto.address || dto.venue || dto.date || dto.endTime || dto.startTime) {
         if (dto.startTime) {
           const jobId = `event-${event.id}-ongoing`;
-          await this.tasksQueue.removeJobs(jobId);
+          await this.eventsQueue.removeJobs(jobId);
 
           // Reset timeout for event status update
-          await this.tasksQueue.add(
+          await this.eventsQueue.add(
             'ongoing-status-update',
             { eventId: event.id },
             {
@@ -126,10 +125,10 @@ export class EventsService {
 
         if (dto.endTime) {
           const jobId = `event-${event.id}-completed`;
-          await this.tasksQueue.removeJobs(jobId);
+          await this.eventsQueue.removeJobs(jobId);
 
           // Reset timeout for event status update
-          await this.tasksQueue.add(
+          await this.eventsQueue.add(
             'completed-status-update',
             { eventId: event.id },
             {
@@ -187,8 +186,7 @@ export class EventsService {
       });
 
       // Clear event status auto updates
-      await this.tasksQueue.removeJobs(`event-${event.id}-*`);
-
+      await this.eventsQueue.removeJobs(`event-${event.id}-*`);
       // Notify attendees of event cancellation
       await this.eventsQueue.add('cancel-event', { event });
     } catch (error) {

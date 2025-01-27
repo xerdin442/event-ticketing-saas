@@ -2,18 +2,18 @@ import { Module } from '@nestjs/common';
 import { TicketsController } from './tickets.controller';
 import { TicketsService } from './tickets.service';
 import { BullModule } from '@nestjs/bull';
-import { TasksProcessor } from '../common/workers/tasks.processor';
+import { TicketsProcessor } from '../common/workers/tickets.processor';
 
 @Module({
   imports: [
     BullModule.registerQueue({
-      name: 'tasks-queue'
+      name: 'tickets-queue'
     })
   ],
   controllers: [TicketsController],
   providers: [
     TicketsService,
-    TasksProcessor
+    TicketsProcessor
   ]
 })
 export class TicketsModule { }

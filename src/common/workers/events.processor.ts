@@ -141,4 +141,30 @@ export class EventsProcessor {
       throw error;
     }
   }
+
+  @Process('ongoing-status-update')
+  async updateOngoingEvents(job: Job) {
+    try {
+      await this.prisma.event.update({
+        where: { id: job.data.eventId },
+        data: { status: "ONGOING" }
+      });      
+    } catch (error) {
+      logger.error(`[${this.context}] An error occured while processing ongoing event status update. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @Process('completed-status-update')
+  async updateCompletedEvents(job: Job) {
+    try {
+      await this.prisma.event.update({
+        where: { id: job.data.eventId },
+        data: { status: "COMPLETED" }
+      });      
+    } catch (error) {
+      logger.error(`[${this.context}] An error occured while processing completed event status update. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
 }

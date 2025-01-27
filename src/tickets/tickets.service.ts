@@ -18,7 +18,7 @@ export class TicketsService {
   constructor(
     private readonly prisma: DbService,
     private readonly payments: PaymentsService,
-    @InjectQueue('tasks-queue') private readonly tasksQueue: Queue
+    @InjectQueue('tickets-queue') private readonly ticketsQueue: Queue
   ) { };
 
   async addTicketTier(dto: AddTicketTierDto, eventId: number): Promise<void> {
@@ -48,7 +48,7 @@ export class TicketsService {
         });
 
         // Set auto update of discount status based on the expiration date
-        await this.tasksQueue.add(
+        await this.ticketsQueue.add(
           'discount-status-update',
           { tierId: tier.id },
           {
@@ -87,7 +87,7 @@ export class TicketsService {
         });
 
         // Delete discount status auto update
-        await this.tasksQueue.removeJobs(`tier-${ticketTier.id}-discount`);
+        await this.ticketsQueue.removeJobs(`tier-${ticketTier.id}-discount`);
       } else {
         throw new BadRequestException('No discount offer available in this tier');
       };
