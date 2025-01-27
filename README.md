@@ -3,14 +3,13 @@
 This API is a robust backend service designed to facilitate the creation and management of events, and the purchasing of event tickets. It ensures scalability, reliability, and a seamless experience for event organizers and attendees.
 
 ## Features
-* **User Authentication**: Secure user a
-uthentication system, with an option to enable 2FA for added security, and role-based access control for organizers and attendees.
+* **User Authentication**: Secure user authentication system, with an option to enable 2FA for added security, and role-based access control for organizers and attendees.
 * **Event Management**: Create, update, and cancel events with support for rich metadata like venues, dates, and ticket categories.
 * **Ticketing System**: Supports multiple ticket types with customizable pricing, discounts and validation at event venues.
 * **Payments**: Secure and idempotent payment processing for ticket purchases using Paystack.
 * **Refund and Revenue Splitting**: Automated refunds to attendees after event cancellation or unsuccessful ticket purchases, and revenue distribution for organizers.
 * **Metrics and Analytics**: Tracks important metrics like refunds and unsuccessful transactions using Prometheus-compatible endpoints.
-* **Webhook Support**: Real-time event updates via webhooks for status of ticket purchase transactions.
+* **Websockets**: Real-time event updates via websockets for status of ticket purchase transactions.
 * **Queue Management**: Optimized asynchronous processing using queues for abstracting purchases, refunds and notifications from the main application workflow.
 
 ## Tech Stack
@@ -19,7 +18,8 @@ uthentication system, with an option to enable 2FA for added security, and role-
 * **Blob Storage**: Cloudinary
 * **Caching**: Redis
 * **Queues**: BullMQ
-* **Transactional Email**: Brevo
+* **Mail**: Brevo
+* **Tests**: PactumJS
 * **Metrics**: Prometheus-compatible metrics
 
 ## Getting Started
@@ -52,7 +52,7 @@ Clone this repository and follow the instructions to set up the project locally:
     * Push the image: `docker push docker-username/repository-name:version-number`
     * Update the `BUILD_IMAGE` environment variable and run `docker-compose pull`
     * Start the containers: `docker-compose -f compose.yml -f compose.dev.yml up -d`
-1. Check the logs of the `backend` container on Docker Desktop. When the Nest application is fully initialized, the app should be running at: `http://localhost:3000/`
+1. Check the logs of the `backend` container on Docker Desktop. When the Nest application is fully initialized, it should be running at: `http://localhost:3000/`
 1. After making any changes to the application source code or applying new migrations, repeat steps 4(leave out the first two sub-steps) and 5.
 1. Tests;
     * Start the test containers: `docker-compose -f compose.test.yml up -d`
@@ -110,4 +110,4 @@ Clone this repository and follow the instructions to set up the project locally:
 
 > **Note: A live deployment link is available upon request**
 
-Happy Ticketing!:rocket:
+Happy Ticketing! :rocket:

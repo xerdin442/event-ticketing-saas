@@ -7,9 +7,10 @@ import { TasksProcessor } from '../common/workers/tasks.processor';
 
 @Module({
   imports: [
-    BullModule.registerQueue({
-      name: 'events-queue'
-    })
+    BullModule.registerQueue(
+      { name: 'events-queue' },
+      { name: 'tasks-queue' }
+    )
   ],
   controllers: [EventsController],
   providers: [
