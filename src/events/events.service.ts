@@ -40,6 +40,10 @@ export class EventsService {
         include: { organizer: true }
       });
 
+      if (!user.organizer.id) {
+        throw new BadRequestException('An organizer profile is required to create an event')
+      };
+
       if (response.status === 200 && response.data.length > 0) {
         const event = await this.prisma.event.create({
           data: {

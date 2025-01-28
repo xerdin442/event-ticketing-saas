@@ -28,27 +28,27 @@ import { MetricsModule } from './metrics/metrics.module';
         host: Secrets.REDIS_HOST,
         port: Secrets.REDIS_PORT,
         db: Secrets.QUEUE_STORE_INDEX,
-        password: Secrets.REDIS_PASSWORD,
+        // password: Secrets.REDIS_PASSWORD,
         family: 0
       }
     }),
-    ThrottlerModule.forRoot([{
-      name: 'Seconds',
-      ttl: 1000,
-      limit: Secrets.RATE_LIMITING_PER_SECOND
-    }, {
-      name: 'Minutes',
-      ttl: 60000,
-      limit: Secrets.RATE_LIMITING_PER_MINUTE
-    }]),
+    // ThrottlerModule.forRoot([{
+    //   name: 'Seconds',
+    //   ttl: 1000,
+    //   limit: Secrets.RATE_LIMITING_PER_SECOND
+    // }, {
+    //   name: 'Minutes',
+    //   ttl: 60000,
+    //   limit: Secrets.RATE_LIMITING_PER_MINUTE
+    // }]),
     ScheduleModule.forRoot(),
     TasksModule,
     MetricsModule,
   ],
 
-  providers: [{
-    provide: APP_GUARD,
-    useClass: ThrottlerGuard
-  }]
+  // providers: [{
+  //   provide: APP_GUARD,
+  //   useClass: ThrottlerGuard
+  // }]
 })
 export class AppModule { }

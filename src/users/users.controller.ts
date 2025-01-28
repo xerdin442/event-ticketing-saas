@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -135,6 +136,10 @@ export class UserController {
     @GetUser() user: User
   ): Promise<{ events: Event[] }> {
     try {
+      if (!role) {
+        throw new BadRequestException('Missing "role" query parameter.')
+      };
+
       const events = await this.userService.getAllEvents(role, user.id)
       logger.info(`[${this.context}] ${user.email} retrieved all events as an ${role}.\n`);
 

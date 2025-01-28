@@ -84,7 +84,7 @@ export class AuthService {
       })
       // Check if user is found with given email address
       if (!user) {
-        throw new BadRequestException('Invalid email address')
+        throw new BadRequestException('No user found with that email address')
       }
 
       // Check if password is valid

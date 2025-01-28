@@ -118,9 +118,12 @@ export class EventsController {
   }
 
   @Post('nearby')
-  async findNearbyEvents(@Body() dto: NearbyEventsDto): Promise<{ events: Event[] }> {
+  async findNearbyEvents(@Body() dto: NearbyEventsDto): Promise<{ events: Event[] } | { message: string }> {
     try {
-      return { events: await this.eventsService.findNearbyEvents(dto) };
+      const events = await this.eventsService.findNearbyEvents(dto);
+      if (events.length > 0) return { events };
+
+      return { message: 'No events found' };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while retrieving nearby events. Error: ${error.message}\n`);
       throw error;
