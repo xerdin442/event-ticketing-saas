@@ -15,7 +15,7 @@ This API is a robust backend service designed to facilitate the creation and man
 
 ## Deployment
 
-:globe_with_meridians: A live deployment link is available upon request
+:globe_with_meridians: **A live deployment link and Postman collection is available upon request**
 
 ## Tech Stack
 
@@ -68,17 +68,19 @@ Clone this repository and follow the instructions to set up the project locally:
 1. Check the logs of the `backend` container on Docker Desktop. When the Nest application is fully initialized, it should be running at: `http://localhost:3000/`
 1. After making any changes to the application source code or applying new migrations, repeat steps 4(leave out the first two sub-steps) and 5.
 1. Tests;
+
    - Start the test containers: `docker-compose -f compose.test.yml up -d`
 
-   > Add `--remove-orphans` flag when stopping the containers after running the tests.
+      > Add `--remove-orphans` flag when stopping the containers after running the tests.
+
+      > Also, comment out the `password` property in the **BullModule** configuration for both tests.
 
    - For end-to-end tests: `npm run test:e2e`
 
      > In [app.module.ts](src/app.module.ts), comment out the **ThrottlerModule** configuration from the imports and **ThrottlerGuard** object in the **providers** array. This is to avoid rate limiting errors in the end-to-end tests.
 
-     > Also, comment out the `password` property in the **BullModule** configuration.
-
    - For integration tests: `npm run test:int`
+
 1. Below are the available endpoints, each one is prefixed with '/api'.
 
 ## Auth API
@@ -87,6 +89,7 @@ Clone this repository and follow the instructions to set up the project locally:
 | ------ | ------------------------- | ---------------------------------- |
 | POST   | /auth/signup              | Sign up a new user                 |
 | POST   | /auth/login               | Sign in an existing user           |
+| POST   | /auth/logout              | Sign out a logged in user          |
 | POST   | /auth/2fa/enable          | Enable 2FA                         |
 | POST   | /auth/2fa/disable         | Disable 2FA                        |
 | POST   | /auth/2fa/verify          | Verify code from authenticator app |

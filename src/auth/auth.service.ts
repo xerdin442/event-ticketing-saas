@@ -78,9 +78,7 @@ export class AuthService {
     : Promise<{ token: string, twoFactorAuth: boolean }> {
     try {
       const user = await this.prisma.user.findUnique({
-        where: {
-          email: dto.email
-        }
+        where: { email: dto.email }
       })
       // Check if user is found with given email address
       if (!user) {
@@ -190,11 +188,11 @@ export class AuthService {
         await this.mailQueue.add('otp', {
           user,
           otp: data.otp
-        })
+        });
 
         return data.otp;
       } else {
-        throw new BadRequestException('No user found with that email')
+        throw new BadRequestException('No user found with that email address')
       }
     } catch (error) {
       throw error;

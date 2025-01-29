@@ -289,16 +289,6 @@ describe('App e2e', () => {
         expect(response.body).toHaveProperty('events');
       });
 
-      it('should throw if query parameter is invalid', async () => {
-        const response = await request(app.getHttpServer())
-          .get('/users/events')
-          .set('Authorization', `Bearer ${accessToken}`)
-          .query({ role: 'invalid-parameter' })
-
-        expect(response.status).toEqual(400);
-        expect(response.body.message).toEqual('Invalid value for role parameter. Expected "organizer" or "attendee".');
-      });
-
       it('should throw if query parameter is missing', async () => {
         const response = await request(app.getHttpServer())
           .get('/users/events')

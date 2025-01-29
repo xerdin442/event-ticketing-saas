@@ -17,10 +17,10 @@ export class DbService extends PrismaClient {
 
   async cleanDb() {
     return this.$transaction([
-      this.event.deleteMany(),
-      this.organizer.deleteMany(),
       this.ticket.deleteMany(),
       this.ticketTier.deleteMany(),
+      this.event.deleteMany(),
+      this.organizer.deleteMany(),
       this.user.deleteMany()
     ])
     .then(() => logger.info(`[${this.context}] Database cleaned up for tests.\n`))
