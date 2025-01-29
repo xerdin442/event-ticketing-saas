@@ -28,7 +28,7 @@ import { MetricsModule } from './metrics/metrics.module';
         host: Secrets.REDIS_HOST,
         port: Secrets.REDIS_PORT,
         db: Secrets.QUEUE_STORE_INDEX,
-        // password: Secrets.REDIS_PASSWORD,
+        password: Secrets.REDIS_PASSWORD,
         family: 0
       }
     }),
