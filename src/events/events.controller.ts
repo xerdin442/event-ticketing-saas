@@ -38,7 +38,7 @@ export class EventsController {
     FileInterceptor('poster', {
       fileFilter: UploadService.fileFilter,
       limits: { fileSize: 5 * 1024 * 1024 }, // Limit each file to 5MB
-      storage: UploadService.storage('events', 'auto')
+      storage: UploadService.storage('events', 'image')
     })
   )
   async createEvent(
@@ -110,13 +110,14 @@ export class EventsController {
       await this.eventsService.cancelEvent(eventId);
       logger.info(`[${this.context}] Event cancelled by ${user.email}.\n`);
 
-      return { message: 'Event cancellation successful.' };
+      return { message: 'Event cancellation successful' };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred during the event cancellation process. Error: ${error.message}\n`);
       throw error;
     } 
   }
 
+  @HttpCode(HttpStatus.OK)
   @Post('nearby')
   async findNearbyEvents(@Body() dto: NearbyEventsDto): Promise<{ events: Event[] } | { message: string }> {
     try {

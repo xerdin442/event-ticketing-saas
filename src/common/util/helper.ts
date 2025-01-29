@@ -1,6 +1,6 @@
 import { User } from "@prisma/client";
 
-export const sanitizeUserOutput = (user: User) => {
+export const sanitizeUserOutput = (user: User): User => {
   delete user.password;
   delete user.accountNumber;
   delete user.accountName;
@@ -9,4 +9,9 @@ export const sanitizeUserOutput = (user: User) => {
   delete user.twoFASecret;
 
   return user;
+}
+
+export const validateWebsiteUrl = (url: string): boolean => {
+  const pattern: RegExp = /^(https:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-._~:/?#[\]@!$&'()*+,;=]*)?$/;
+  return pattern.test(url);
 }

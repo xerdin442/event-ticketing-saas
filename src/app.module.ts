@@ -32,23 +32,23 @@ import { MetricsModule } from './metrics/metrics.module';
         family: 0
       }
     }),
-    // ThrottlerModule.forRoot([{
-    //   name: 'Seconds',
-    //   ttl: 1000,
-    //   limit: Secrets.RATE_LIMITING_PER_SECOND
-    // }, {
-    //   name: 'Minutes',
-    //   ttl: 60000,
-    //   limit: Secrets.RATE_LIMITING_PER_MINUTE
-    // }]),
+    ThrottlerModule.forRoot([{
+      name: 'Seconds',
+      ttl: 1000,
+      limit: Secrets.RATE_LIMITING_PER_SECOND
+    }, {
+      name: 'Minutes',
+      ttl: 60000,
+      limit: Secrets.RATE_LIMITING_PER_MINUTE
+    }]),
     ScheduleModule.forRoot(),
     TasksModule,
     MetricsModule,
   ],
 
-  // providers: [{
-  //   provide: APP_GUARD,
-  //   useClass: ThrottlerGuard
-  // }]
+  providers: [{
+    provide: APP_GUARD,
+    useClass: ThrottlerGuard
+  }]
 })
 export class AppModule { }

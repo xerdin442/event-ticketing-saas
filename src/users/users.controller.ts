@@ -117,19 +117,6 @@ export class UserController {
     }
   }
 
-  @Delete('organizer/delete')
-  async deleteOrganizerProfile(@GetUser() user: User): Promise<{ message: string }> {
-    try {
-      await this.userService.deleteOrganizerProfile(user.id);
-      logger.info(`[${this.context}] Organizer profile deleted by ${user.email}.\n`);
-
-      return { message: 'Organizer profile deleted successfully' };
-    } catch (error) {
-      logger.error(`[${this.context}] An error occurred while deleting organizer profile. Error: ${error.message}\n`);
-      throw error;
-    }
-  }
-
   @Get('events')
   async getAllEvents(
     @Query('role') role: string,

@@ -45,7 +45,7 @@ describe('Auth Service', () => {
     const dto: CreateUserDto = {
       email: 'example@gmail.com',
       password: 'password',
-      age: 21,
+      age: '21',
       accountName: Secrets.ACCOUNT_NAME,
       accountNumber: Secrets.ACCOUNT_NUMBER,
       bankName: Secrets.BANK_NAME,

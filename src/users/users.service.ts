@@ -12,7 +12,7 @@ import {
   User
 } from '@prisma/client';
 import { PaymentsService } from '../payments/payments.service';
-import { sanitizeUserOutput } from '../common/util/helper';
+import { sanitizeUserOutput, validateWebsiteUrl } from '../common/util/helper';
 
 @Injectable()
 export class UserService {
@@ -75,6 +75,10 @@ export class UserService {
         throw new BadRequestException('This user already has an organizer profile');
       };
 
+      if (dto.website && !validateWebsiteUrl(dto.website)) {
+        throw new BadRequestException('Please enter a valid webiste URL');
+      };
+
       // Verify organizer's account details before creating transfer recipient for revenue splits
       const details = {
         accountName: dto.accountName,
@@ -110,6 +114,10 @@ export class UserService {
         recipientCode = await this.payments.createTransferRecipient(details);
       };
 
+      if (dto.website && !validateWebsiteUrl(dto.website)) {
+        throw new BadRequestException('Please enter a valid webiste URL');
+      };
+
       return this.prisma.organizer.update({
         where: { userId },
         data: {
@@ -117,16 +125,6 @@ export class UserService {
           recipientCode
         }
       });
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async deleteOrganizerProfile(userId: number): Promise<void> {
-    try {
-      await this.prisma.organizer.delete({
-        where: { userId }
-      })
     } catch (error) {
       throw error;
     }

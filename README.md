@@ -69,6 +69,9 @@ Clone this repository and follow the instructions to set up the project locally:
 1. After making any changes to the application source code or applying new migrations, repeat steps 4(leave out the first two sub-steps) and 5.
 1. Tests;
    - Start the test containers: `docker-compose -f compose.test.yml up -d`
+
+   > Add `--remove-orphans` flag when stopping the containers after running the tests.
+
    - For end-to-end tests: `npm run test:e2e`
 
      > In [app.module.ts](src/app.module.ts), comment out the **ThrottlerModule** configuration from the imports and **ThrottlerGuard** object in the **providers** array. This is to avoid rate limiting errors in the end-to-end tests.
@@ -76,7 +79,6 @@ Clone this repository and follow the instructions to set up the project locally:
      > Also, comment out the `password` property in the **BullModule** configuration.
 
    - For integration tests: `npm run test:int`
-     > Add `--remove-orphans` flag when stopping the test containers
 1. Below are the available endpoints, each one is prefixed with '/api'.
 
 ## Auth API
