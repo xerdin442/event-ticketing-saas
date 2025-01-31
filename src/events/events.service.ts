@@ -40,7 +40,7 @@ export class EventsService {
         include: { organizer: true }
       });
 
-      if (!user.organizer.id) {
+      if (!user.organizer) {
         throw new BadRequestException('An organizer profile is required to create an event')
       };
 
@@ -112,6 +112,35 @@ export class EventsService {
       });
 
       if (dto.address || dto.venue || dto.date || dto.endTime || dto.startTime) {
+        if (dto.address || dto.venue) {
+          const redis: RedisClientType = await initializeRedis(
+            Secrets.REDIS_URL,
+            'Geolocation Search',
+            Secrets.GEOLOCATION_STORE_INDEX,
+          );
+          await redis.zRem('events', `ID:${event.id}`);
+
+          const location = `${dto.venue}+${dto.address}`.replace(/(,)/g, '').replace(/\s/g, '+');
+          const response = await axios.get(
+            `https://nominatim.openstreetmap.org/search?q=${location}&format=json`, {
+            headers: {
+              'User-Agent': `${Secrets.APP_NAME}-${Secrets.APP_EMAIL}`
+            }
+          });
+
+          if (response.status === 200 && response.data.length > 0) {
+            // Add coordinates to Redis geolocation store
+            const { lat, lon } = response.data[0];
+            await this.eventsQueue.add('geolocation-store', {
+              longitude: lon as string,
+              latitude: lat as string,
+              eventId: event.id
+            });
+          } else {
+            throw new BadRequestException('Failed to generate coordinates for the event location. Please enter correct values for "venue" and "address"');
+          };
+        };
+        
         if (dto.startTime) {
           const jobId = `event-${event.id}-ongoing`;
           await this.eventsQueue.removeJobs(jobId);
@@ -161,13 +190,13 @@ export class EventsService {
         organizer: {
           select: {
             email: true,
-            events: { select: { id: true, title: true, poster: true } },  
+            events: { select: { id: true, title: true, poster: true } },
             name: true,
             instagram: true,
             phone: true,
             whatsapp: true,
             website: true,
-            twitter: true,                
+            twitter: true,
           }
         }
       }

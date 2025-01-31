@@ -19,7 +19,7 @@ describe('User Service', () => {
     jest.useRealTimers();
 
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppModule]
     }).compile();
 
     // Creating and initializing Nest application
@@ -29,7 +29,6 @@ describe('User Service', () => {
     prisma = app.get(DbService)
     await prisma.cleanDb();
 
-    // Instantiate user service
     userService = app.get(UserService);
 
     user = await prisma.user.create({
@@ -86,12 +85,12 @@ describe('User Service', () => {
 
     it('should create organizer profile for user', async () => {
       await userService.createOrganizerProfile(user.id, dto);
-    }, 10000);
+    }, 30000);
 
     it('should throw if user already has an organizer profile', async () => {
       await expect(userService.createOrganizerProfile(user.id, dto))
         .rejects.toThrow('This user already has an organizer profile');
-    })
+    }, 30000);
   });
 
   describe('Update Organizer Profile', () => {

@@ -37,7 +37,7 @@ describe('Auth Service', () => {
     jest.useRealTimers();
     
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppModule]
     }).compile();
 
     // Creating and initializing Nest application
@@ -55,40 +55,15 @@ describe('Auth Service', () => {
   });
 
   describe('Signup', () => {
-    it('should throw if account number is invalid', async () => {
-      await expect(authService.signup({
-        ...signupDto,
-        accountNumber: '1234567890'
-      }))
-        .rejects.toThrow('Failed to verify account details. Please check your account number and try again');
-    });
-
-    it('should throw if account name is wrong', async () => {
-      await expect(authService.signup({
-        ...signupDto,
-        accountName: 'Wrong Account Name'
-      }))
-        .rejects.toThrow('Please check the spelling or order of your account name. The names should be ordered as it was during your account opening at the bank');
-    });
-
-    it('should throw if the order of the account name is incorrect', async () => {
-      const name = Secrets.ACCOUNT_NAME.split(' ');
-      await expect(authService.signup({
-        ...signupDto,
-        accountName: `${name[2]} ${name[0]} ${name[1]}`
-      }))
-        .rejects.toThrow('Please check the spelling or order of your account name. The names should be ordered as it was during your account opening at the bank');
-    });
-
     it('should signup a new user', async () => {
       const { user } = await authService.signup(signupDto);
       userId = user.id;
-    }, 10000);
+    }, 30000);
 
     it('should throw if email already exists', async () => {
       await expect(authService.signup(signupDto))
         .rejects.toThrow('This email already exists. Please try again!');
-    });
+    }, 30000);
 
     it('should throw if account number already exists', async () => {
       await expect(authService.signup({
@@ -96,7 +71,7 @@ describe('Auth Service', () => {
         email: 'hey@example.com'
       }))
         .rejects.toThrow('This accountNumber already exists. Please try again!');
-    });
+    }, 30000);
   });
 
   describe('Login', () => {

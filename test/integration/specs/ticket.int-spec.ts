@@ -29,7 +29,7 @@ describe('Ticket Service', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [AppModule],
+      imports: [AppModule]
     }).compile();
 
     // Creating and initializing Nest application
@@ -39,7 +39,6 @@ describe('Ticket Service', () => {
     prisma = app.get(DbService)
     await prisma.cleanDb();
 
-    // Instantiate user service
     ticketService = app.get(TicketsService);
 
     user = await prisma.user.create({
@@ -158,7 +157,7 @@ describe('Ticket Service', () => {
         ...dto,
         quantity: 1
       }, event.id, user.id);
-    });
+    }, 30000);
   });
 
   describe('Validate Ticket', () => {

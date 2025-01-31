@@ -122,28 +122,29 @@ export class TicketsService {
     // Check if the user is restricted by age from attending the event
     if (user.age > event.ageRestriction) {
       for (let tier of event.ticketTiers) {
-        // Find the tier and check if the number of tickets left is greater than or equal to the purchase quantity
-        if (tier.name === dto.tier && tier.totalNumberOfTickets >= dto.quantity) {
+        if (tier.name === dto.tier) {
           ticketTier = tier.name;
+          // Find the tier and check if the number of tickets left is greater than or equal to the purchase quantity
+          if (tier.totalNumberOfTickets >= dto.quantity) {
+            // Check if a discount is available
+            if (tier.discount) {
+              discount = true; // Specify that this purchase was made on discount
 
-          // Check if a discount is available
-          if (tier.discount) {
-            discount = true; // Specify that this purchase was made on discount
+              const currentTime = new Date().getTime();
+              const expirationDate = new Date(tier.discountExpiration).getTime();
 
-            const currentTime = new Date().getTime();
-            const expirationDate = new Date(tier.discountExpiration).getTime();
-
-            // Check if the discount has expired and if the discount tickets left is greater than or equal to the purchase quantity
-            if (currentTime < expirationDate && tier.numberOfDiscountTickets >= dto.quantity) {
-              // Calculate the ticket purchase amount using the discount price
-              amount = tier.discountPrice * dto.quantity;
+              // Check if the discount has expired and if the discount tickets left is greater than or equal to the purchase quantity
+              if (currentTime < expirationDate && tier.numberOfDiscountTickets >= dto.quantity) {
+                // Calculate the ticket purchase amount using the discount price
+                amount = tier.discountPrice * dto.quantity;
+              }
+            } else {
+              // Calculate the ticket purchase amount using the original price
+              amount = tier.price * dto.quantity;
             }
           } else {
-            // Calculate the ticket purchase amount using the original price
-            amount = tier.price * dto.quantity;
+            throw new BadRequestException(`Insufficient ${tier.name} tickets. Check out other ticket tiers`);
           }
-        } else {
-          throw new BadRequestException(`Insufficient ${tier.name} tickets. Check out other ticket tiers`);
         }
       }
     } else {
