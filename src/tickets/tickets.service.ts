@@ -25,6 +25,16 @@ export class TicketsService {
     try {
       const { name, price, totalNumberOfTickets, discount, benefits, discountExpiration, discountPrice, numberOfDiscountTickets } = dto;
 
+      const event = await this.prisma.event.findUnique({
+        where: { id: eventId },
+        include: { ticketTiers: true }
+      });
+      for (let tier of event.ticketTiers) {
+        if (tier.name === dto.name) {
+          throw new BadRequestException(`A ticket tier named ${dto.name} has already been added to this event`)
+        }
+      };
+
       const tier = await this.prisma.ticketTier.create({
         data: {
           name,
@@ -155,15 +165,16 @@ export class TicketsService {
   }
 
   async validateTicket(dto: ValidateTicketDto, eventId: number): Promise<void> {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-      include: { tickets: true }
+    const ticket = await this.prisma.ticket.findUnique({
+      where: {
+        accessKey: dto.accessKey,
+        eventId
+      }
     });
 
-    const ticket = event.tickets.find(ticket => ticket.accessKey === dto.accessKey);
     if (ticket) {
       if (ticket.status === 'USED') {
-        throw new BadRequestException('This ticekt has already been used');
+        throw new BadRequestException('This ticket has already been used');
       };
 
       await this.prisma.ticket.update({
