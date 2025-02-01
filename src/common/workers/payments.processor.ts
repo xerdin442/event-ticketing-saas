@@ -1,16 +1,16 @@
 import { Process, Processor } from "@nestjs/bull";
 import { Injectable } from "@nestjs/common";
 import { Job } from "bull";
-import { PaymentsGateway } from "../../payments/payments.gateway";
-import { DbService } from "../../db/db.service";
-import { PaymentsService } from "../../payments/payments.service";
+import { PaymentsGateway } from "@src/payments/payments.gateway";
+import { DbService } from "@src/db/db.service";
+import { PaymentsService } from "@src/payments/payments.service";
 import { randomUUID } from "crypto";
 import * as qrcode from "qrcode";
 import { sendEmail } from "../config/mail";
 import logger from "../logger";
 import { generateTicketPDF } from "../util/document";
 import { EmailAttachment } from "../types";
-import { MetricsService } from "../../metrics/metrics.service";
+import { MetricsService } from "@src/metrics/metrics.service";
 
 @Injectable()
 @Processor('payments-queue')

@@ -2,7 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Process, Processor } from "@nestjs/bull";
 import { Job } from "bull";
 import logger from "../logger";
-import { DbService } from "../../db/db.service";
+import { DbService } from "@src/db/db.service";
 
 @Injectable()
 @Processor('tickets-queue')

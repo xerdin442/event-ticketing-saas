@@ -1,13 +1,13 @@
 import { Test } from "@nestjs/testing";
-import { AppModule } from "../../../src/app.module";
-import { DbService } from "../../../src/db/db.service";
-import { UserService } from "../../../src/users/users.service";
+import { AppModule } from "@src/app.module";
+import { DbService } from "@src/db/db.service";
+import { UserService } from "@src/users/users.service";
 import {
   CreateOrganizerProfileDto,
   UpdateOrganizerProfileDto,
   UpdateProfileDto
-} from "../../../src/users/dto";
-import { Secrets } from "../../../src/common/env";
+} from "@src/users/dto";
+import { Secrets } from "@src/common/env";
 import { User } from "@prisma/client";
 
 describe('User Service', () => {

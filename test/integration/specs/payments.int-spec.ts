@@ -1,8 +1,8 @@
 import { Test } from "@nestjs/testing";
-import { AppModule } from "../../../src/app.module";
-import { Secrets } from "../../../src/common/env";
-import { PaymentsService } from "../../../src/payments/payments.service";
-import { AccountDetails } from "../../../src/common/types";
+import { AppModule } from "@src/app.module";
+import { Secrets } from "@src/common/env";
+import { PaymentsService } from "@src/payments/payments.service";
+import { AccountDetails } from "@src/common/types";
 
 describe('Payment Service', () => {
   let paymentsService: PaymentsService;

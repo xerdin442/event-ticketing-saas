@@ -6,8 +6,8 @@ import { initializeRedis } from "../config/redis-conf";
 import { Secrets } from "../env";
 import logger from "../logger";
 import { sendEmail } from "../config/mail";
-import { DbService } from "../../db/db.service";
-import { PaymentsService } from "../../payments/payments.service";
+import { DbService } from "@src/db/db.service";
+import { PaymentsService } from "@src/payments/payments.service";
 import { randomUUID } from "crypto";
 
 @Injectable()

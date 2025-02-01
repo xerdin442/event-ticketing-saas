@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
-import { AppModule } from '../../src/app.module';
+import { AppModule } from '@src/app.module';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { DbService } from '../../src/db/db.service';
+import { DbService } from '@src/db/db.service';
 import {
   CreateUserDto,
   LoginDto,
@@ -9,14 +9,14 @@ import {
   PasswordResetDto,
   Verify2FADto,
   VerifyOTPDto
-} from "../../src/auth/dto";
+} from "@src/auth/dto";
 import {
   CreateOrganizerProfileDto,
   UpdateOrganizerProfileDto,
   UpdateProfileDto
-} from '../../src/users/dto';
-import { SessionService } from '../../src/common/session';
-import { Secrets } from '../../src/common/env';
+} from '@src/users/dto';
+import { SessionService } from '@src/common/session';
+import { Secrets } from '@src/common/env';
 import { WsAdapter } from '@nestjs/platform-ws';
 import request from 'supertest'
 import path from 'path';
@@ -24,11 +24,11 @@ import {
   CreateEventDto,
   NearbyEventsDto,
   UpdateEventDto
-} from '../../src/events/dto';
+} from '@src/events/dto';
 import {
   AddTicketTierDto,
   PurchaseTicketDto
-} from '../../src//tickets/dto';
+} from '@src/tickets/dto';
 
 describe('App e2e', () => {
   let app: INestApplication;

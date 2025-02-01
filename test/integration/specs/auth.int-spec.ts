@@ -1,7 +1,7 @@
 import { Test } from "@nestjs/testing";
-import { AppModule } from "../../../src/app.module";
-import { DbService } from "../../../src/db/db.service";
-import { AuthService } from "../../../src/auth/auth.service";
+import { AppModule } from "@src/app.module";
+import { DbService } from "@src/db/db.service";
+import { AuthService } from "@src/auth/auth.service";
 import {
   CreateUserDto,
   LoginDto,
@@ -9,10 +9,10 @@ import {
   PasswordResetDto,
   Verify2FADto,
   VerifyOTPDto
-} from "../../../src/auth/dto";
-import { SessionService } from "../../../src/common/session";
-import { SessionData } from "../../../src/common/types";
-import { Secrets } from "../../../src/common/env";
+} from "@src/auth/dto";
+import { SessionService } from "@src/common/session";
+import { SessionData } from "@src/common/types";
+import { Secrets } from "@src/common/env";
 
 describe('Auth Service', () => {
   let prisma: DbService;

@@ -1,14 +1,14 @@
 import { Test } from "@nestjs/testing";
-import { AppModule } from "../../../src/app.module";
-import { DbService } from "../../../src/db/db.service";
-import { Secrets } from "../../../src/common/env";
+import { AppModule } from "@src/app.module";
+import { DbService } from "@src/db/db.service";
+import { Secrets } from "@src/common/env";
 import { Event, Ticket, User } from "@prisma/client";
 import {
   AddTicketTierDto,
   PurchaseTicketDto,
   ValidateTicketDto
-} from "../../../src/tickets/dto";
-import { TicketsService } from "../../../src/tickets/tickets.service";
+} from "@src/tickets/dto";
+import { TicketsService } from "@src/tickets/tickets.service";
 
 describe('Ticket Service', () => {
   let prisma: DbService;

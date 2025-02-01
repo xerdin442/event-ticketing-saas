@@ -1,14 +1,14 @@
 import { Test } from "@nestjs/testing";
-import { AppModule } from "../../../src/app.module";
-import { DbService } from "../../../src/db/db.service";
-import { Secrets } from "../../../src/common/env";
+import { AppModule } from "@src/app.module";
+import { DbService } from "@src/db/db.service";
+import { Secrets } from "@src/common/env";
 import { Event, User } from "@prisma/client";
-import { EventsService } from "../../../src/events/events.service";
+import { EventsService } from "@src/events/events.service";
 import {
   CreateEventDto,
   NearbyEventsDto,
   UpdateEventDto
-} from "../../../src/events/dto";
+} from "@src/events/dto";
 
 describe('Event Service', () => {
   let prisma: DbService;

@@ -4,7 +4,7 @@ import {
   ForbiddenException,
   Injectable
 } from "@nestjs/common";
-import { DbService } from "../../db/db.service";
+import { DbService } from "@src/db/db.service";
 
 @Injectable()
 export class EventOrganizerGuard implements CanActivate {
