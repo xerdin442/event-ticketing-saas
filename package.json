@@ -21,9 +21,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "pretest:e2e": "npm run deploy:test",
-    "test:e2e": "dotenv -e .env.test -- jest --watch --no-cache --config ./test/e2e/jest-e2e.json",
+    "test:e2e": "dotenv -e .env.test -- jest --watch --no-cache --config ./test/e2e/jest.config.ts",
     "pretest:int": "npm run deploy:test",
-    "test:int": "dotenv -e .env.test -- jest -i --no-cache --watch --config ./test/integration/jest-int.json"
+    "test:int": "dotenv -e .env.test -- jest -i --no-cache --watch --config ./test/integration/jest.config.ts"
   },
   "dependencies": {
     "@fluidjs/multer-cloudinary": "^1.0.4",

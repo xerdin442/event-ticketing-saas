@@ -14,6 +14,7 @@
       "@src/*": ["src/*"]
     },
     "incremental": true,
+    "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "strictNullChecks": false,
