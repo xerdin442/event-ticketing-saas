@@ -37,7 +37,7 @@ export class UserController {
     return { user };
   }
 
-  @Patch('profile/update')
+  @Patch('profile')
   @UseInterceptors(FileInterceptor('profileImage', {
     fileFilter: UploadService.fileFilter,
     limits: { fieldSize: 5 * 1024 * 1024 }, // File sizes must be less than 5MB
@@ -59,7 +59,7 @@ export class UserController {
     }
   }
 
-  @Delete('profile/delete')
+  @Delete('profile')
   async deleteAccount(@GetUser() user: User): Promise<{ message: string }> {
     try {
       await this.userService.deleteAccount(user.id);
@@ -85,7 +85,7 @@ export class UserController {
     }
   }
 
-  @Post('organizer/create')
+  @Post('organizer')
   async createOrganizerProfile(
     @GetUser() user: User,
     @Body() dto: CreateOrganizerProfileDto
@@ -101,7 +101,7 @@ export class UserController {
     }
   }
 
-  @Patch('organizer/update')
+  @Patch('organizer')
   async updateOrganizerProfile(
     @GetUser() user: User,
     @Body() dto: UpdateOrganizerProfileDto

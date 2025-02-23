@@ -71,9 +71,9 @@ Clone this repository and follow the instructions to set up the project locally:
 
    - Start the test containers: `docker-compose -f compose.test.yml up -d`
 
-      > Add `--remove-orphans` flag when stopping the containers after running the tests.
+     > Add `--remove-orphans` flag when stopping the containers after running the tests.
 
-      > Also, comment out the `password` property in the **BullModule** configuration for both tests.
+     > Also, comment out the `password` property in the **BullModule** configuration for both tests.
 
    - For end-to-end tests: `npm run test:e2e`
 
@@ -100,22 +100,21 @@ Clone this repository and follow the instructions to set up the project locally:
 
 ## Users API
 
-| Method | Path                  | Description                                |
-| ------ | --------------------- | ------------------------------------------ |
-| GET    | /users/profile        | Get user profile                           |
-| PATCH  | /users/profile/update | Update user profile                        |
-| DELETE | /users/profile/delete | Delete user profile                        |
-| GET    | /users/tickets        | Get all event tickets for user             |
-| GET    | /users/events?role    | Get all events as an attendee or organizer |
+| Method | Path               | Description                                |
+| ------ | ------------------ | ------------------------------------------ |
+| GET    | /users/profile     | Get user profile                           |
+| PATCH  | /users/profile     | Update user profile                        |
+| DELETE | /users/profile     | Delete user profile                        |
+| GET    | /users/tickets     | Get all event tickets for user             |
+| GET    | /users/events?role | Get all events as an attendee or organizer |
 
 ## Organizer API
 
-| Method | Path                    | Description              |
-| ------ | ----------------------- | ------------------------ |
-| GET    | /users/organizer        | Get organizer profile    |
-| POST   | /users/organizer/create | Create organizer profile |
-| PATCH  | /users/organizer/update | Update organizer profile |
-| DELETE | /users/organizer/delete | Delete organizer profile |
+| Method | Path             | Description              |
+| ------ | ---------------- | ------------------------ |
+| GET    | /users/organizer | Get organizer profile    |
+| POST   | /users/organizer | Create organizer profile |
+| PATCH  | /users/organizer | Update organizer profile |
 
 ## Events API
 
@@ -123,7 +122,7 @@ Clone this repository and follow the instructions to set up the project locally:
 | ------ | ----------------------- | ------------------------ |
 | POST   | /events/create          | Create new event         |
 | GET    | /events/:eventId        | Get event details        |
-| PATCH  | /events/:eventId/update | Update event details     |
+| PATCH  | /events/:eventId        | Update event details     |
 | POST   | /events/:eventId/cancel | Cancel event             |
 | POST   | /events/nearby          | Search for nearby events |
 

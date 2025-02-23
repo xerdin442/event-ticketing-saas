@@ -57,7 +57,7 @@ export class EventsController {
     }
   }
 
-  @Patch(':eventId/update')
+  @Patch(':eventId')
   @UseGuards(EventOrganizerGuard)
   @UseInterceptors(
     FileInterceptor('poster', {

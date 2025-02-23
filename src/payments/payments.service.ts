@@ -74,7 +74,7 @@ export class PaymentsService {
       const bankCode = await this.getBankCode(details.bankName)
 
       const url = 'https://api.paystack.co/transferrecipient';
-      const recipient = await axios.post(url,
+      const response = await axios.post(url,
         {
           "type": "nuban",
           "bank_code": bankCode,
@@ -90,7 +90,7 @@ export class PaymentsService {
         }
       );
 
-      return recipient.data.data.recipient_code;
+      return response.data.data.recipient_code;
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while creating transfer recipient. Error: ${error.message}\n`);
       throw error;
@@ -110,21 +110,21 @@ export class PaymentsService {
   }
 
   async initiateTransfer(
-    recipientCode: string,
+    recipient: string,
     amount: number,
     reason: string,
     metadata: Record<string, any>
   ): Promise<string> {
     try {
       const url = 'https://api.paystack.co/transfer'
-      const transfer = await axios.post(url,
+      const response = await axios.post(url,
         {
-          "amount": amount,
-          "reason": reason,
+          amount,
+          reason,
           "source": "balance",
-          "recipient": recipientCode,
+          recipient,
           "currency": "NGN",
-          "metadata": metadata
+          metadata
         },
         {
           headers: {
@@ -134,7 +134,7 @@ export class PaymentsService {
         }
       )
 
-      return transfer.data.data.transfer_code;
+      return response.data.data.transfer_code;
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while initiating transfer from balance. Error: ${error.message}\n`);
       throw error;
@@ -206,7 +206,7 @@ export class PaymentsService {
     : Promise<string> {
     try {
       const url = 'https://api.paystack.co/transaction/initialize'
-      const transaction = await axios.post(url,
+      const response = await axios.post(url,
         { amount, email, metadata },
         {
           headers: {
@@ -216,7 +216,7 @@ export class PaymentsService {
         }
       )
 
-      return transaction.data.data.authorization_url
+      return response.data.data.authorization_url
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while initializing transaction. Error: ${error.message}\n`);
       throw error;
