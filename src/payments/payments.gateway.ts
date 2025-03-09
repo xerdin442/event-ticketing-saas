@@ -1,4 +1,8 @@
-import { WebSocketGateway, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
+import {
+  WebSocketGateway,
+  OnGatewayConnection,
+  OnGatewayDisconnect
+} from '@nestjs/websockets';
 import logger from '../common/logger';
 import { WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
