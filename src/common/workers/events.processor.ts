@@ -9,6 +9,7 @@ import { sendEmail } from "../config/mail";
 import { DbService } from "@src/db/db.service";
 import { PaymentsService } from "@src/payments/payments.service";
 import { randomUUID } from "crypto";
+import { MetricsService } from "@src/metrics/metrics.service";
 
 @Injectable()
 @Processor('events-queue')
@@ -17,6 +18,7 @@ export class EventsProcessor {
 
   constructor(
     private readonly prisma: DbService,
+    private readonly metrics: MetricsService,
     private readonly payments: PaymentsService
   ) { };
 
@@ -60,16 +62,16 @@ export class EventsProcessor {
         Best regards,
         ${event.organizer.name}
         `
-  
-        if (event.users.length > 0) {
-          for (const user of event.users) {
-            await sendEmail(user, subject, content);
-          }
 
-          return;
+      if (event.users.length > 0) {
+        for (const user of event.users) {
+          await sendEmail(user, subject, content);
         }
 
         return;
+      }
+
+      return;
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while completing update of event details. Error: ${error.message}.\n`)
       throw error;
@@ -87,8 +89,8 @@ export class EventsProcessor {
         data: { status: "CANCELLED" }
       });
 
-      // Remove organizer as a transfer recipient after event cancellation
-      await this.payments.deleteTransferRecipient(event.organizer.recipientCode);
+      // Update metrics value
+      this.metrics.incrementCounter('total_events', ['cancelled']);
 
       if (event.users.length > 0) {
         for (let user of event.users) {
@@ -100,14 +102,14 @@ export class EventsProcessor {
           Best regards,
           ${event.organizer.name}`;
           await sendEmail(user, subject, content);
-  
+
           // Create a transfer recipient for the attendee to receive the refund
           const recipientCode = await this.payments.createTransferRecipient({
             accountName: user.accountName,
             accountNumber: user.accountNumber,
             bankName: user.bankName
           });
-  
+
           // Get user tickets for this event
           const tickets = await this.prisma.ticket.findMany({
             where: {
@@ -115,29 +117,31 @@ export class EventsProcessor {
               attendee: user.id
             }
           });
-  
+
           // Calculate the refund amount in kobo
           const refund = tickets.reduce((total, ticket) => {
             return total + (ticket.discountPrice ? ticket.discountPrice : ticket.price) * 100;
           }, 0);
-  
+
           // Initiate transfer of ticket refund
-          // await this.payments.initiateTransfer(
-          //   recipientCode,
-          //   refund,
-          //   'Ticket Refund',
-          //   {
-          //     userId: user.id,
-          //     eventTitle: event.title,
-          //     retryKey: randomUUID().replace(/-/g, '')
-          //   }
-          // );
+          if (!Secrets.PAYSTACK_SECRET_KEY.includes('test')) {
+            await this.payments.initiateTransfer(
+              recipientCode,
+              refund,
+              'Ticket Refund',
+              {
+                userId: user.id,
+                eventTitle: event.title,
+                retryKey: randomUUID().replace(/-/g, '')
+              }
+            );
+          }
         }
       }
 
       logger.info(`[${this.context}] Event cancellation process completed for ${event.title}.\n`);
     } catch (error) {
-      logger.error(`[${this.context}] An error occurred while completing event cancellation process. Error: ${error.message}.\n`);
+      logger.error(`[${this.context}] An error occurred while processing event cancellation. Error: ${error.message}.\n`);
       throw error;
     }
   }
@@ -148,9 +152,9 @@ export class EventsProcessor {
       await this.prisma.event.update({
         where: { id: job.data.eventId },
         data: { status: "ONGOING" }
-      });      
+      });
     } catch (error) {
-      logger.error(`[${this.context}] An error occured while processing ongoing event status update. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occured while processing ONGOING event status update. Error: ${error.message}\n`);
       throw error;
     }
   }
@@ -158,12 +162,37 @@ export class EventsProcessor {
   @Process('completed-status-update')
   async updateCompletedEvents(job: Job) {
     try {
-      await this.prisma.event.update({
+      const event = await this.prisma.event.findUnique({
         where: { id: job.data.eventId },
+        include: { organizer: true }
+      });
+
+      // Mark event as complete
+      await this.prisma.event.update({
+        where: { id: event.id },
         data: { status: "COMPLETED" }
-      });      
+      });
+
+      // Intitiate transfer of revenue split to event orgnaizer
+      if (!Secrets.PAYSTACK_SECRET_KEY.includes('test')) {
+        await this.payments.initiateTransfer(
+          event.organizer.recipientCode,
+          event.revenue * 100,
+          'Revenue Split',
+          {
+            userId: event.organizer.userId,
+            eventTitle: event.title,
+            retryKey: randomUUID().replace(/-/g, '')
+          }
+        );
+
+      }
+
+      // Update metrics value
+      this.metrics.incrementCounter('total_events', ['completed']);
+      this.metrics.incrementCounter('payout_volume', [], event.revenue);
     } catch (error) {
-      logger.error(`[${this.context}] An error occured while processing completed event status update. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occured while processing COMPLETED event status update. Error: ${error.message}\n`);
       throw error;
     }
   }

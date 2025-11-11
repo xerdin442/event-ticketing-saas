@@ -24,64 +24,55 @@ This API is a robust backend service designed to facilitate the creation and man
 - **Blob Storage**: Cloudinary
 - **Caching**: Redis
 - **Queues**: BullMQ
-- **Mail**: Brevo
+- **Mail**: Resend
 - **Tests**: Jest & Supertest
-- **Metrics**: Prometheus-compatible metrics
+- **Metrics**: Prometheus and Grafana
 
 ## Getting Started
 
 Clone this repository and follow the instructions to set up the project locally:
 
-1. Run `npm install` to install all the project dependencies.
-1. [Use the sample here](./.env.example) to create three files - `.env`, `.env.test` and `.env.local` - for storing and managing the required environment variables.
-1. The database schema has been migrated. But if you make changes to the [schema file](prisma/schema.prisma), apply the migrations with the following steps;
-   - Start the database container: `docker-compose up -d database`
-   - Run the migrations: `npx dotenv -e .env.local -- npm run migrate`
-1. Containerization;
+### 1. Installation
 
-   - Create a repository on Docker hub
-   - Create a Dockerfile in the root directory and paste this;
+- Run `npm install` to install all the project dependencies.
 
-   ```
-   FROM node:latest
-   WORKDIR /usr/src/app
-   COPY package.json .
+### 2. Environment Variables
 
-   ARG NODE_ENV
-   RUN if [ "$NODE_ENV" = "development" ]; \
-         then npm install -f; \
-         else npm install -f --only=production; \
-         fi
+- [Use the sample here](./.env.example) to create three files - `.env`, `.env.test` and `.env.local` - for storing and managing the required global environment variables in test and development environments.
+- `localhost` should be the hostname for all external service urls (database and redis) in the `.env.test` file. This will connect the test environment to the same docker instances as `docker.host.internal` in the `compose.test.yml` file.
 
-   COPY . .
-   EXPOSE 3000
-   CMD [ "npm", "start" ]
-   ```
+### 3. Database Migrations
 
-   > I removed `Dockerfile` from git tracking because of my deployment strategy on Railway. Feel free to add it to git if needed
+The database schema is located [here](prisma/schema.prisma). If no schema changes are needed, move to the next step. If you make changes to the schema, follow these steps to run migrations locally:
 
-   - Build the image: `docker build -t docker-username/repository-name:version-number .`
-   - Push the image: `docker push docker-username/repository-name:version-number`
-   - Update the `BUILD_IMAGE` environment variable and run `docker-compose pull`
-   - Start the containers: `docker-compose -f compose.yml -f compose.dev.yml up -d`
+- Start the database container: `npm run compose:db` (**ensure Docker Desktop is running!**)
+- Run the migrations: `npm run migrate`
 
-1. Check the logs of the `backend` container on Docker Desktop. When the Nest application is fully initialized, it should be running at: `http://localhost:3000/`
-1. After making any changes to the application source code or applying new migrations, repeat steps 4(leave out the first two sub-steps) and 5.
-1. Tests;
+### 4. Initialization
 
-   - Start the test containers: `docker-compose -f compose.test.yml up -d`
+- Start the storage and monitoring services: `npm run compose:up`
+- Start the server: `npm run start:dev`
+- When the Nest application is fully initialized, the server should be running at: `http://localhost:3000`
+  > The Nest application runs outside Docker.
 
-     > Add `--remove-orphans` flag when stopping the containers after running the tests.
+### 5. Tests
 
-     > Also, comment out the `password` property in the **BullModule** configuration for both tests.
+- For integration tests, run: `npm run test:int`
+- For end-to-end tests, run;
+  - Start the test containers: `npm run compose:test`
+  - Run the tests: `npm run test:e2e`
 
-   - For end-to-end tests: `npm run test:e2e`
+### 6. Monitoring
 
-     > In [app.module.ts](src/app.module.ts), comment out the **ThrottlerModule** configuration from the imports and **ThrottlerGuard** object in the **providers** array. This is to avoid rate limiting errors in the end-to-end tests.
+- To view the custom application metrics on Grafana, visit: `http://localhost:3002`.
+- If you add new metrics, update the dashboard [config file](./monitoring/grafana/dashboards/observability.json).
 
-   - For integration tests: `npm run test:int`
+<br>
 
-1. Below are the available endpoints, each one is prefixed with '/api'.
+> If you make changes to any of the compose files in test or development, restart the containers using: `npm run compose:restart`.
+> To kill the containers, run `npm run compose:down`.
+
+## Endpoints
 
 ## Auth API
 

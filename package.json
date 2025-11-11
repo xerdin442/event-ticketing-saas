@@ -23,7 +23,12 @@
     "pretest:e2e": "npm run deploy:test",
     "test:e2e": "dotenv -e .env.test -- jest --watch --no-cache --config ./test/e2e/jest.config.ts",
     "pretest:int": "npm run deploy:test",
-    "test:int": "dotenv -e .env.test -- jest -i --no-cache --watch --config ./test/integration/jest.config.ts"
+    "test:int": "dotenv -e .env.test -- jest -i --no-cache --watch --config ./test/integration/jest.config.ts",
+    "compose:db": "docker-compose up -d database",
+    "compose:up": "docker-compose up -d",
+    "compose:test": "docker-compose -f compose.test.yml --env-file ./.env.test up -d",
+    "compose:down": "docker-compose down --remove-orphans",
+    "compose:restart": "docker-compose restart"
   },
   "dependencies": {
     "@fluidjs/multer-cloudinary": "^1.0.4",

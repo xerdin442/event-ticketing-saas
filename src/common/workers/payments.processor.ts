@@ -11,6 +11,7 @@ import logger from "../logger";
 import { generateTicketPDF } from "../util/document";
 import { EmailAttachment } from "../types";
 import { MetricsService } from "@src/metrics/metrics.service";
+import { Secrets } from "../env";
 
 @Injectable()
 @Processor('payments-queue')
@@ -57,97 +58,94 @@ export class PaymentsProcessor {
     let split: number;
     let price: number;
     let pdfs: EmailAttachment[] = [];
-    let discountPrice: null | number = null;
 
     try {
-      if (discount) {
-        discountPrice = amount / quantity
-      };
-
       if (eventType === 'charge.success') {
-        for (let tier of event.ticketTiers) {
-          if (tier.name === ticketTier) {
-            price = tier.price;
+        const tier = event.ticketTiers.find(tier => tier.name === ticketTier);
+        price = tier.price;
 
-            try {
-              await this.prisma.$transaction(async (tx) => {
-                // Check total number of tickets left
-                if (tier.totalNumberOfTickets < quantity) {
-                  throw new Error(`Insufficient ${tier.name} tickets`);
-                };
-
-                if (discount) {
-                  // Check number of discount tickets left
-                  if (tier.numberOfDiscountTickets < quantity) {
-                    throw new Error(`Discount ${tier.name} tickets are sold out! Please purchase regular tickets`);
-                  };
-
-                  // Check if the discount offer has expired
-                  const currentTime = new Date().getTime();
-                  const expirationDate = new Date(tier.discountExpiration).getTime();
-                  if (currentTime > expirationDate) {
-                    throw new Error(`Discount offer for ${tier.name} tickets has expired. Please purchase regular tickets`);
-                  };
-
-                  // Decrement the number of discount tickets and total number of tickets left in the tier
-                  await tx.ticketTier.update({
-                    where: { id: tier.id },
-                    data: {
-                      numberOfDiscountTickets: { decrement: quantity },
-                      totalNumberOfTickets: { decrement: quantity }
-                    }
-                  });
-                } else {
-                  // Decrement the total number of tickets left in the tier
-                  await tx.ticketTier.update({
-                    where: { id: tier.id },
-                    data: {
-                      totalNumberOfTickets: { decrement: quantity }
-                    }
-                  });
-                };
-
-                // Check the number of discount tickets left and update status of the discount offer
-                if (tier.numberOfDiscountTickets === 0) {
-                  await tx.ticketTier.update({
-                    where: { id: tier.id },
-                    data: { discountStatus: "ENDED" }
-                  });
-                };
-
-                // Check the total number of tickets left and update status of the ticket tier
-                if (tier.totalNumberOfTickets === 0) {
-                  await tx.ticketTier.update({
-                    where: { id: tier.id },
-                    data: { soldOut: true }
-                  });
-                };
-              });
-            } catch (error) {
-              // Initiate transfer of transaction refund
-              // await this.payments.initiateTransfer(
-              //   userRefundRecipientCode,
-              //   amount,
-              //   'Transaction Refund',
-              //   {
-              //     userId,
-              //     eventTitle: event.title,
-              //     retryKey: randomUUID().replace(/-/g, '')
-              //   }
-              // );
-
-              this.metrics.incrementCounter('transaction_refunds'); // Update the transaction refunds metric
-              logger.warn(`[${this.context}] Ticket purchase processing failed. Transaction refund to ${user.email} initiated. Error: ${error.message}\n`);
-
-              // Notify the user of the payment status
-              return this.gateway.sendPaymentStatus(
-                user.email,
-                'refund',
-                `Transaction failed: ${error.message}. This is due to too many purchase requests being processed simultaneously on our server.
-                  A refund of your initial purchase amount has been initiated. Please try again in a few minutes.`
-              );
+        try {
+          await this.prisma.$transaction(async (tx) => {
+            // Check total number of tickets left
+            if (tier.totalNumberOfTickets < quantity) {
+              throw new Error(`Insufficient ${tier.name} tickets`);
             };
+
+            if (discount) {
+              // Check number of discount tickets left
+              if (tier.numberOfDiscountTickets < quantity) {
+                throw new Error(`Discount ${tier.name} tickets are sold out! Please purchase regular tickets`);
+              };
+
+              // Check if the discount offer has expired
+              const currentTime = new Date().getTime();
+              const expirationDate = new Date(tier.discountExpiration).getTime();
+              if (currentTime > expirationDate) {
+                throw new Error(`Discount offer for ${tier.name} tickets has expired. Please purchase regular tickets`);
+              };
+
+              // Decrement the number of discount tickets and total number of tickets left in the tier
+              await tx.ticketTier.update({
+                where: { id: tier.id },
+                data: {
+                  numberOfDiscountTickets: { decrement: quantity },
+                  totalNumberOfTickets: { decrement: quantity }
+                }
+              });
+            } else {
+              // Decrement the total number of tickets left in the tier
+              await tx.ticketTier.update({
+                where: { id: tier.id },
+                data: {
+                  totalNumberOfTickets: { decrement: quantity }
+                }
+              });
+            };
+
+            // Check the number of discount tickets left and update status of the discount offer
+            if (tier.numberOfDiscountTickets === 0) {
+              await tx.ticketTier.update({
+                where: { id: tier.id },
+                data: { discountStatus: "ENDED" }
+              });
+            };
+
+            // Check the total number of tickets left and update status of the ticket tier
+            if (tier.totalNumberOfTickets === 0) {
+              await tx.ticketTier.update({
+                where: { id: tier.id },
+                data: { soldOut: true }
+              });
+            };
+          });
+        } catch (error) {
+          // Initiate transfer of transaction refund
+          if (!Secrets.PAYSTACK_SECRET_KEY.includes('test')) {
+            await this.payments.initiateTransfer(
+              userRefundRecipientCode,
+              amount,
+              'Transaction Refund',
+              {
+                userId,
+                eventTitle: event.title,
+                retryKey: randomUUID().replace(/-/g, '')
+              }
+            );
           }
+
+          // Update metrics value
+          this.metrics.incrementCounter('transaction_refunds');
+          this.metrics.incrementCounter('transaction_refunds_volume', [], amount);
+
+          logger.warn(`[${this.context}] Ticket purchase processing failed. Transaction refund to ${user.email} initiated. Error: ${error.message}\n`);
+
+          // Notify the user of the payment status
+          return this.gateway.sendPaymentStatus(
+            user.email,
+            'refund',
+            `Transaction failed: ${error.message}. This is due to too many purchase requests being processed simultaneously on our server.
+              A refund of your initial purchase amount has been initiated. Please try again in a few minutes.`
+          );
         };
 
         // Calculate and subtract the platform fee from transaction amount based on ticket price
@@ -181,18 +179,6 @@ export class PaymentsProcessor {
           const subject = 'SOLD OUT!'
           const content = `Congratulations, your event titled: ${event.title} is sold out!`
           await sendEmail(event.organizer, subject, content);
-
-          // Intitiate transfer of the event revenue
-          // await this.payments.initiateTransfer(
-          //   event.organizer.recipientCode,
-          //   event.revenue * 100,
-          //   'Revenue Split',
-          //   {
-          //     userId: event.organizer.userId,
-          //     eventTitle: event.title,
-          //     retryKey: randomUUID().replace(/-/g, '')
-          //   }
-          // );
         };
 
         // Create the required number of tickets
@@ -205,7 +191,7 @@ export class PaymentsProcessor {
               accessKey,
               price,
               tier: ticketTier,
-              discountPrice,
+              discountPrice: discount && (amount / quantity),
               attendee: userId,
               eventId
             },
@@ -226,14 +212,17 @@ export class PaymentsProcessor {
           Attached to this email are your ticket(s). They'll be required for entry at the event, keep them safe!`
         await sendEmail(user, subject, content, pdfs);
 
+        this.metrics.incrementCounter('tickets_purchased');
+        this.metrics.incrementCounter('tickets_purchased_volume', [], amount);
+
         logger.info(`[${this.context}] Ticket purchase completed by ${user.email}.\n`);
 
-        // Notify the client of payment status via WebSocket connection
+        // Notify the client of payment status
         return this.gateway.sendPaymentStatus(user.email, 'success', 'Payment successful!');
       } else if (eventType === 'charge.failed') {
         logger.info(`[${this.context}] Ticket purchase failed: Email: ${user.email}\n`);
 
-        // Notify the client of payment status via WebSocket connection
+        // Notify the client of payment status
         return this.gateway.sendPaymentStatus(user.email, 'failed', 'Payment unsuccessful!');;
       }
     } catch (error) {
@@ -257,19 +246,22 @@ export class PaymentsProcessor {
           // Notify the attendee of the ticket refund
           const content = `Ticket refund has been completed for the cancelled event: ${eventTitle}. Thanks for your patience.`;
           await sendEmail(user, reason, content);
+
+          // Remove attendee as a transfer recipient after ticket refund
+          await this.payments.deleteTransferRecipient(recipientCode);
         } else if (reason === 'Revenue Split') {
           // Notify the organizer of the transfer of the revenue split
-          const content = `Congratulations on the success of your event: ${eventTitle}. Transfer of your event revenue has been initiated.
+          const content = `Congratulations on the success of your event: ${eventTitle}. Payout of your event revenue has been initiated.
             Thank you for choosing our platform!`;
           await sendEmail(user, reason, content);
         }
 
-        await this.payments.deleteTransferRecipient(recipientCode); // Delete recipient after transfer success
-
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} was successful!\n`)
         return;
       } else if (eventType === 'transfer.failed' || eventType === 'transfer.reversed') {
-        this.metrics.incrementCounter('unsuccessful_transfers');  // Update unsuccessful transfers metric
+        // Update metrics value
+        this.metrics.incrementCounter('unsuccessful_transfers');
+
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} failed or reversed.\n`);
 
         // Initiate transfer retry after 30 minutes

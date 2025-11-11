@@ -13,6 +13,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TasksModule } from './tasks/tasks.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { MetricsModule } from './metrics/metrics.module';
   providers: [{
     provide: APP_GUARD,
     useClass: ThrottlerGuard
-  }]
+  }],
+  controllers: [AppController]
 })
 export class AppModule { }
