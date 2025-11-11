@@ -12,11 +12,13 @@ import { Queue } from 'bull';
 import { RedisClientType } from 'redis';
 import { initializeRedis } from '../common/config/redis-conf';
 import { Secrets } from '../common/env';
+import { MetricsService } from '@src/metrics/metrics.service';
 
 @Injectable()
 export class EventsService {
   constructor(
     private readonly prisma: DbService,
+    private readonly metrics: MetricsService,
     @InjectQueue('events-queue') private readonly eventsQueue: Queue
   ) { };
 
@@ -81,6 +83,9 @@ export class EventsService {
             delay: Math.max(0, new Date(event.endTime).getTime() - new Date().getTime() + 1500)
           }
         );
+
+        // Update metrics value
+        this.metrics.incrementCounter('total_events', ['created']);
 
         return event;
       } else {

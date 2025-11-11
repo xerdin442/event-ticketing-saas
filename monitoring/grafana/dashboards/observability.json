@@ -1,0 +1,164 @@
+{
+  "title": "Event Ticketing SaaS Metrics",
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "15s",
+  "tags": [
+    "events",
+    "ticketing",
+    "prometheus"
+  ],
+  "panels": [
+    {
+      "type": "singlestat",
+      "title": "2FA Enabled Users (Gauge)",
+      "description": "Current count of users who have 2FA enabled",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "two_fa_enabled_users",
+          "legendFormat": "Current Count",
+          "instant": true
+        }
+      ],
+      "gauge": {
+        "show": true,
+        "minValue": 0,
+        "maxValue": 10000
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "type": "graph",
+      "title": "Total Events",
+      "description": "The current cumulative number of events across all time, grouped by status",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status) (total_events_total)",
+          "legendFormat": "Status: {{status}}"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      }
+    },
+    {
+      "type": "graph",
+      "title": "Tickets Purchased",
+      "description": "The current cumulative number of tickets purchased across all time",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(tickets_purchased_total)",
+          "legendFormat": "Cumulative Count"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      }
+    },
+    {
+      "type": "graph",
+      "title": "Tickets Purchase Volume",
+      "description": "The current cumulative volume of tickets purchased across all time.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(tickets_purchased_volume_total)",
+          "legendFormat": "Cumulative Volume"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      }
+    },
+    {
+      "type": "graph",
+      "title": "Revenue Payout Volume",
+      "description": "The cumulative volume of revenue payouts across all time.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(payout_volume_total)",
+          "legendFormat": "Cumulative Volume"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      }
+    },
+    {
+      "type": "graph",
+      "title": "Total Transaction Refunds",
+      "description": "The current cumulative number of transaction refunds across all time",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(transaction_refunds_total)",
+          "legendFormat": "Cumulative Count"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      }
+    },
+    {
+      "type": "graph",
+      "title": "Transaction Refunds Volume",
+      "description": "The cumulative volume of transaction refunds across all time.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(transaction_refunds_volume_total)",
+          "legendFormat": "Cumulative Volume"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 16
+      }
+    },
+    {
+      "type": "graph",
+      "title": "Unsuccessful Transfers",
+      "description": "The current cumulative number of unsuccessful transfers across all time",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(unsuccessful_transfers_total)",
+          "legendFormat": "Cumulative Count"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 16
+      }
+    }
+  ]
+}

@@ -24,13 +24,10 @@ const newLogger = (env: string): Logger => {
   })
 }
 
-let logger: Logger;
+let logger: Logger = newLogger('DEV');
 
 if (Secrets.NODE_ENV === 'production') {
   logger = newLogger('PROD')
-}
-if (Secrets.NODE_ENV === 'development') {
-  logger = newLogger('DEV')
 }
 if (Secrets.NODE_ENV === 'test') {
   logger = newLogger('TEST')

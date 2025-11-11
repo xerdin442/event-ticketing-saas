@@ -122,31 +122,29 @@ export class TicketsService {
 
       // Check if the user is restricted by age from attending the event
       if (user.age > event.ageRestriction) {
-        for (let tier of event.ticketTiers) {
-          if (tier.name === dto.tier) {
-            ticketTier = tier.name;
-            // Find the tier and check if the number of tickets left is greater than or equal to the purchase quantity
-            if (tier.totalNumberOfTickets >= dto.quantity) {
-              // Check if a discount is available
-              if (tier.discount) {
-                discount = true; // Specify that this purchase was made on discount
+        const tier = event.ticketTiers.find(tier => tier.name === dto.tier);
+        ticketTier = tier.name;
 
-                const currentTime = new Date().getTime();
-                const expirationDate = new Date(tier.discountExpiration).getTime();
+        // Check if the number of tickets left is greater than or equal to the purchase quantity
+        if (tier.totalNumberOfTickets >= dto.quantity) {
+          // Check if a discount is available
+          if (tier.discount) {
+            discount = true; // Specify that this purchase was made on discount
 
-                // Check if the discount has expired and if the discount tickets left is greater than or equal to the purchase quantity
-                if (currentTime < expirationDate && tier.numberOfDiscountTickets >= dto.quantity) {
-                  // Calculate the ticket purchase amount using the discount price
-                  amount = tier.discountPrice * dto.quantity;
-                }
-              } else {
-                // Calculate the ticket purchase amount using the original price
-                amount = tier.price * dto.quantity;
-              }
-            } else {
-              throw new BadRequestException(`Insufficient ${tier.name} tickets. Check out other ticket tiers`);
+            const currentTime = new Date().getTime();
+            const expirationDate = new Date(tier.discountExpiration).getTime();
+
+            // Check if the discount has expired and if the discount tickets left is greater than or equal to the purchase quantity
+            if (currentTime < expirationDate && tier.numberOfDiscountTickets >= dto.quantity) {
+              // Calculate the ticket purchase amount using the discount price
+              amount = tier.discountPrice * dto.quantity;
             }
+          } else {
+            // Calculate the ticket purchase amount using the original price
+            amount = tier.price * dto.quantity;
           }
+        } else {
+          throw new BadRequestException(`Insufficient ${tier.name} tickets. Check out other ticket tiers`);
         }
       } else {
         throw new UnauthorizedException(`You must be at least ${event.ageRestriction} years old to attend this event`);
