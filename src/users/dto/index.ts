@@ -1,4 +1,6 @@
+import { EventCategory } from "@prisma/client";
 import {
+  IsArray,
   IsEmail,
   IsNotEmpty,
   IsOptional,
@@ -8,19 +10,11 @@ import {
 export class UpdateProfileDto {
   @IsString()
   @IsOptional()
-  age?: string
+  age?: number
 
   @IsEmail()
   @IsOptional()
   email?: string
-
-  @IsOptional()
-  @IsString()
-  firstName?: string
-
-  @IsOptional()
-  @IsString()
-  lastName?: string
 
   @IsOptional()
   @IsString()
@@ -33,6 +27,9 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   bankName?: string
+
+  @IsArray()
+  preferences?: EventCategory[];  
 }
 
 export class CreateOrganizerProfileDto {

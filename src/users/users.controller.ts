@@ -4,6 +4,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Patch,
   Post,
   Query,
@@ -68,6 +70,20 @@ export class UserController {
       return { message: 'Account deleted successfully' };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while deleting user profile. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('preferences/clear')
+  async clearPreferences(@GetUser() user: User): Promise<{ message: string }> {
+    try {
+      await this.userService.clearPreferences(user.id);
+      logger.info(`[${this.context}] User preferences cleared by ${user.email}.\n`);
+
+      return { message: 'Event preferences cleared successfully' };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while clearing user preferences. Error: ${error.message}\n`);
       throw error;
     }
   }

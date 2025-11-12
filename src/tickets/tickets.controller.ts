@@ -65,7 +65,7 @@ export class TicketsController {
   }
 
   @HttpCode(HttpStatus.OK)
-  @Delete(':tierId/remove')
+  @Delete(':tierId')
   @UseGuards(EventOrganizerGuard)
   async removeTicketTier(
     @Param('tierId', ParseIntPipe) tierId: number,

@@ -1,4 +1,6 @@
+import { EventCategory } from "@prisma/client";
 import { 
+  IsArray,
   IsEmail,
   IsNotEmpty,
   IsString,
@@ -8,7 +10,7 @@ import {
 export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
-  age: string;
+  age: number;
 
   @IsEmail({}, { message: 'Please enter a valid email address' })
   @IsNotEmpty()
@@ -27,14 +29,6 @@ export class CreateUserDto {
 
   @IsNotEmpty()
   @IsString()
-  firstName: string;
-
-  @IsNotEmpty()
-  @IsString()
-  lastName: string;
-
-  @IsNotEmpty()
-  @IsString()
   accountNumber: string;
 
   @IsNotEmpty()
@@ -44,6 +38,9 @@ export class CreateUserDto {
   @IsNotEmpty()
   @IsString()
   bankName: string;
+
+  @IsArray()
+  preferences: EventCategory[];
 }
 
 export class LoginDto {

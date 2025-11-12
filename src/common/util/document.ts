@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
-import { Event, Ticket, User } from '@prisma/client';
+import { Event, Ticket } from '@prisma/client';
 import logger from '../logger';
 import { FailedTransfer } from '../types';
 import { randomUUID } from 'crypto';
@@ -20,7 +20,6 @@ const deleteFile = async (file: string) => {
 export const generateTicketPDF = (
   ticket: Ticket,
   qrcode: string,
-  user: User,
   event: Event
 ): Promise<Attachment> => {
   return new Promise((resolve, reject) => {
@@ -38,7 +37,6 @@ export const generateTicketPDF = (
       doc.moveDown();
 
       // Details
-      doc.text(`Name: ${user.firstName} ${user.lastName}`);
       doc.text(`Event: ${event.title}`);
       doc.text(`Time: ${event.startTime.toISOString()} - ${event.endTime.toISOString()}`);
       doc.text(`Date: ${event.date}`);

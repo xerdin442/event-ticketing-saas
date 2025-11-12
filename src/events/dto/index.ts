@@ -1,5 +1,6 @@
 import { EventCategory } from "@prisma/client";
 import { 
+  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString
@@ -14,7 +15,7 @@ export class CreateEventDto {
   @IsNotEmpty()
   description: string;
 
-  @IsString()
+  @IsEnum(EventCategory, { message: 'Invalid category value' })
   @IsNotEmpty()
   category: EventCategory;
 
@@ -56,7 +57,7 @@ export class UpdateEventDto {
   @IsOptional()
   description?: string;
 
-  @IsString()
+  @IsEnum(EventCategory, { message: 'Invalid category value' })
   @IsOptional()
   category?: EventCategory;
 

@@ -32,12 +32,12 @@ export class AuthService {
     private readonly payments: PaymentsService,
     private readonly metrics: MetricsService,
     @InjectQueue('mail-queue') private readonly mailQueue: Queue
-  ) { }
+  ) {}
 
   async signup(dto: CreateUserDto, filePath?: string)
     : Promise<{ user: User, token: string }> {
     try {
-      const { accountName, accountNumber, bankName, age, email, password } = dto;
+      const { accountName, accountNumber, bankName, email, password } = dto;
 
       // Verify if user account details are correct
       await this.payments.verifyAccountDetails({ accountName, accountNumber, bankName });
@@ -47,7 +47,6 @@ export class AuthService {
       const user = await this.prisma.user.create({
         data: {
           ...dto,
-          age: +age,
           password: hash,
           profileImage: filePath || Secrets.DEFAULT_IMAGE,
         }

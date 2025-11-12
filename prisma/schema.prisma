@@ -25,7 +25,10 @@ enum EventStatus {
 enum EventCategory {
   TECH
   HEALTH
-  ENTERTAINMENT
+  MUSIC
+  COMEDY
+  NIGHTLIFE
+  ART
   FASHION
   SPORTS
   BUSINESS
@@ -44,16 +47,15 @@ model User {
   updatedAt DateTime @updatedAt
 
   age           Int
-  email         String  @unique
+  email         String          @unique
   password      String
   profileImage  String
-  firstName     String
-  lastName      String
   twoFASecret   String?
-  twoFAEnabled  Boolean @default(false)
+  twoFAEnabled  Boolean         @default(false)
   accountName   String
-  accountNumber String  @unique
+  accountNumber String          @unique
   bankName      String
+  preferences   EventCategory[]
 
   tickets   Ticket[]
   events    Event[]    @relation("Attendees")
