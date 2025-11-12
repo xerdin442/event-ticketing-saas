@@ -6,12 +6,14 @@ import {
 import { DbService } from '../db/db.service';
 import {
   AddTicketTierDto,
+  CreateDiscountDto,
   PurchaseTicketDto,
   ValidateTicketDto
 } from './dto';
 import { PaymentsService } from '../payments/payments.service';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
+import { TicketTier } from '@prisma/client';
 
 @Injectable()
 export class TicketsService {
@@ -19,12 +21,23 @@ export class TicketsService {
     private readonly prisma: DbService,
     private readonly payments: PaymentsService,
     @InjectQueue('tickets-queue') private readonly ticketsQueue: Queue
-  ) { };
+  ) {};
+
+  async findAllTickets(eventId: number): Promise<TicketTier[]> {
+    try {
+      const event = await this.prisma.event.findUnique({
+        where: { id: eventId },
+        include: { ticketTiers: true },
+      });
+
+      return event.ticketTiers;
+    } catch (error) {
+      throw error;
+    }
+  }
 
   async addTicketTier(dto: AddTicketTierDto, eventId: number): Promise<void> {
     try {
-      const { name, price, totalNumberOfTickets, discount, benefits, discountExpiration, discountPrice, numberOfDiscountTickets } = dto;
-
       const event = await this.prisma.event.findUnique({
         where: { id: eventId },
         include: { ticketTiers: true }
@@ -37,27 +50,14 @@ export class TicketsService {
 
       const tier = await this.prisma.ticketTier.create({
         data: {
-          name,
-          price: +price,
-          totalNumberOfTickets: +totalNumberOfTickets,
-          discount,
-          benefits,
-          eventId
+          ...dto,
+          eventId,
+          discountStatus: dto.discount ? 'ACTIVE' : null,
         }
       });
 
-      if (discount) {
-        await this.prisma.ticketTier.update({
-          where: { id: tier.id },
-          data: {
-            discountPrice: +discountPrice,
-            discountExpiration,
-            discountStatus: 'ACTIVE',
-            numberOfDiscountTickets: +numberOfDiscountTickets
-          }
-        });
-
-        // Set auto update of discount status based on the expiration date
+      if (dto.discount) {
+        // Set auto update of discount status based on discount expiration date
         await this.ticketsQueue.add(
           'discount-status-update',
           { tierId: tier.id },
@@ -72,17 +72,75 @@ export class TicketsService {
     }
   }
 
-  async removeDiscount(eventId: number, tier: string): Promise<void> {
+  async removeTicketTier(tierId: number): Promise<void> {
     try {
-      const event = await this.prisma.event.findUnique({
-        where: { id: eventId },
-        include: { ticketTiers: true }
+      const ticketTier = await this.prisma.ticketTier.findUnique({
+        where: { id: tierId },
       });
-      const ticketTier = event.ticketTiers.find(ticketTier => ticketTier.name === tier);
+      const event = await this.prisma.event.findUnique({
+        where: { id: ticketTier.eventId },
+        include: { tickets: true },
+      });
 
-      if (!ticketTier) {
-        throw new BadRequestException(`No ticket tier named ${tier} in this event`);
-      };
+      // Check if attendees have purchased this ticket tier
+      const ticket = event.tickets.find(ticket => ticket.tier === ticketTier.name);
+      if (!ticket) {
+        await this.prisma.ticketTier.delete({
+          where: { id: tierId },
+        });
+      } else {
+        throw new BadRequestException('This ticket tier cannot be deleted');
+      }
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async createDiscount(tierId: number, dto: CreateDiscountDto): Promise<void> {
+    try {
+      const ticketTier = await this.prisma.ticketTier.findUnique({
+        where: { id: tierId }
+      });
+
+      if (ticketTier.discount) {
+        throw new BadRequestException('This ticket already has a discount offer')
+      }
+      if (dto.numberOfDiscountTickets > ticketTier.totalNumberOfTickets) {
+        throw new BadRequestException('Not enough tickets left to create discount offer')
+      }
+      if (dto.discountPrice > ticketTier.price) {
+        throw new BadRequestException('Discount price cannot be higher than original price')
+      }
+
+      // Update ticket tier details with discount offer
+      await this.prisma.ticketTier.update({
+        where: { id: tierId },
+        data: {
+          discount: true,
+          ...dto,
+          discountStatus: 'ACTIVE',
+        }
+      });
+
+      // Set auto update of discount status based on discount expiration date
+      await this.ticketsQueue.add(
+        'discount-status-update',
+        { tierId },
+        {
+          jobId: `tier-${tierId}-discount`,
+          delay: Math.max(0, new Date(dto.discountExpiration).getTime() - new Date().getTime())
+        }
+      );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async removeDiscount(tierId: number): Promise<void> {
+    try {
+      const ticketTier = await this.prisma.ticketTier.findUnique({
+        where: { id: tierId }
+      });
 
       if (ticketTier.discount) {
         await this.prisma.ticketTier.update({
@@ -110,7 +168,6 @@ export class TicketsService {
     try {
       let amount: number;
       let discount: boolean = false;
-      let ticketTier: string;
 
       const user = await this.prisma.user.findUnique({
         where: { id: userId }
@@ -119,12 +176,10 @@ export class TicketsService {
         where: { id: eventId },
         include: { ticketTiers: true }
       });
+      const tier = event.ticketTiers.find(tier => tier.name === dto.tier);
 
       // Check if the user is restricted by age from attending the event
       if (user.age > event.ageRestriction) {
-        const tier = event.ticketTiers.find(tier => tier.name === dto.tier);
-        ticketTier = tier.name;
-
         // Check if the number of tickets left is greater than or equal to the purchase quantity
         if (tier.totalNumberOfTickets >= dto.quantity) {
           // Check if a discount is available
@@ -154,7 +209,7 @@ export class TicketsService {
       const metadata = {
         userId,
         eventId,
-        ticketTier,
+        tierId: tier.id,
         amount,
         discount,
         quantity: dto.quantity
@@ -167,13 +222,10 @@ export class TicketsService {
     }
   }
 
-  async validateTicket(dto: ValidateTicketDto, eventId: number): Promise<void> {
+  async validateTicket(dto: ValidateTicketDto): Promise<void> {
     try {
       const ticket = await this.prisma.ticket.findUnique({
-        where: {
-          accessKey: dto.accessKey,
-          eventId
-        }
+        where: { accessKey: dto.accessKey }
       });
 
       if (ticket) {

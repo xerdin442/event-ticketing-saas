@@ -2,25 +2,27 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
+  Get,
   Headers,
   HttpCode,
   HttpStatus,
   Param,
   ParseIntPipe,
   Post,
-  Query,
   UseGuards
 } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
 import { AuthGuard } from '@nestjs/passport';
 import {
   AddTicketTierDto,
+  CreateDiscountDto,
   PurchaseTicketDto,
   ValidateTicketDto
 } from './dto';
 import { GetUser } from '../custom/decorators';
 import { EventOrganizerGuard } from '../custom/guards';
-import { User } from '@prisma/client';
+import { TicketTier, User } from '@prisma/client';
 import logger from '../common/logger';
 import { RedisClientType } from 'redis';
 import { initializeRedis } from '../common/config/redis-conf';
@@ -31,7 +33,20 @@ import { Secrets } from '../common/env';
 export class TicketsController {
   private readonly context: string = TicketsController.name;
 
-  constructor(private readonly ticketsService: TicketsService) { };
+  constructor(private readonly ticketsService: TicketsService) {};
+
+  @Get()
+  async getEventTickets(
+    @Param('eventId', ParseIntPipe) eventId: number
+  ): Promise<{ tickets: TicketTier[] }> {
+    try {
+      const tickets = await this.ticketsService.findAllTickets(eventId);
+      return { tickets };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while deleting ticket tier. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
 
   @HttpCode(HttpStatus.OK)
   @Post('add')
@@ -42,25 +57,55 @@ export class TicketsController {
   ): Promise<{ message: string }> {
     try {
       await this.ticketsService.addTicketTier(dto, eventId);
-      return { message: 'Ticket tier added successfully!' };
+      return { message: 'Ticket tier added successfully' };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while adding ticket tier to event. Error: ${error.message}\n`);
       throw error;
-    } 
+    }
   }
 
   @HttpCode(HttpStatus.OK)
-  @Post('remove-discount')
+  @Delete(':tierId/remove')
   @UseGuards(EventOrganizerGuard)
-  async removeDiscount(
-    @Param('eventId', ParseIntPipe) eventId: number,
-    @Query('tier') tier: string
+  async removeTicketTier(
+    @Param('tierId', ParseIntPipe) tierId: number,
   ): Promise<{ message: string }> {
     try {
-      await this.ticketsService.removeDiscount(eventId, tier);
-      return { message: 'Disocunt offer successfully removed from event' };
+      await this.ticketsService.removeTicketTier(tierId);
+      return { message: 'Ticket tier deleted successfully' };
     } catch (error) {
-      logger.error(`[${this.context}] An error occurred while removing discount offer from event. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occurred while deleting ticket tier. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post(':tierId/discount/create')
+  @UseGuards(EventOrganizerGuard)
+  async createDiscount(
+    @Param('tierId', ParseIntPipe) tierId: number,
+    @Body() dto: CreateDiscountDto,
+  ): Promise<{ message: string }> {
+    try {
+      await this.ticketsService.createDiscount(tierId, dto);
+      return { message: 'Disocunt offer created successfully' };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while creating discount offer. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post(':tierId/discount/remove')
+  @UseGuards(EventOrganizerGuard)
+  async removeDiscount(
+    @Param('tierId', ParseIntPipe) tierId: number,
+  ): Promise<{ message: string }> {
+    try {
+      await this.ticketsService.removeDiscount(tierId);
+      return { message: 'Disocunt offer removed successfully' };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while removing discount offer from ticket. Error: ${error.message}\n`);
       throw error;
     }
   }
@@ -77,7 +122,7 @@ export class TicketsController {
     if (!idempotencyKey) {
       throw new BadRequestException('Idempotency-Key header is required');
     }
-    
+
     const redis: RedisClientType = await initializeRedis(
       Secrets.REDIS_URL,
       'Idempotency Keys',
@@ -95,7 +140,7 @@ export class TicketsController {
       // Process ticket purchase and store checkout URL to prevent multiple payments
       const checkout = await this.ticketsService.purchaseTicket(dto, eventId, user.id);
       await redis.setEx(idempotencyKey, 3600, JSON.stringify({ checkout }));
-      
+
       logger.info(`[${this.context}] ${user.email} initiated ticket purchase.\n`);
       return { checkout };
     } catch (error) {
@@ -109,13 +154,10 @@ export class TicketsController {
   @HttpCode(HttpStatus.OK)
   @Post('validate')
   @UseGuards(EventOrganizerGuard)
-  async validateTicket(
-    @Body() dto: ValidateTicketDto,
-    @Param('eventId', ParseIntPipe) eventId: number
-  ): Promise<{ message: string }> {
+  async validateTicket(@Body() dto: ValidateTicketDto): Promise<{ message: string }> {
     try {
-      await this.ticketsService.validateTicket(dto, eventId);
-      return { message: 'Ticket validation successful' };
+      await this.ticketsService.validateTicket(dto);
+      return { message: 'Ticket validated successfully' };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while validating event ticket. Error: ${error.message}\n`);
       throw error;

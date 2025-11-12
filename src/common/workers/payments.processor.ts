@@ -29,10 +29,10 @@ export class PaymentsProcessor {
   @Process('transaction')
   async finalizeTransaction(job: Job) {
     const { eventType, metadata } = job.data;
-    const { ticketTier } = metadata;
 
     const eventId = parseInt(metadata.eventId);
     const userId = parseInt(metadata.userId);
+    const tierId = parseInt(metadata.tierId);
     const amount = parseInt(metadata.amount);
     const quantity = parseInt(metadata.quantity);
 
@@ -46,6 +46,8 @@ export class PaymentsProcessor {
         organizer: true
       }
     });
+    const tier = event.ticketTiers.find(tier => tier.id === tierId);
+    const price = tier.price;
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId }
@@ -56,15 +58,8 @@ export class PaymentsProcessor {
       bankName: user.bankName
     });
 
-    let split: number;
-    let price: number;
-    let pdfs: Attachment[] = [];
-
     try {
       if (eventType === 'charge.success') {
-        const tier = event.ticketTiers.find(tier => tier.name === ticketTier);
-        price = tier.price;
-
         try {
           await this.prisma.$transaction(async (tx) => {
             // Check total number of tickets left
@@ -150,6 +145,7 @@ export class PaymentsProcessor {
         };
 
         // Calculate and subtract the platform fee from transaction amount based on ticket price
+        let split: number = 0;
         if (price <= 20000) {
           split = amount * 0.925;  // 7.5%
         } else if (price > 20000 && price <= 100000) {
@@ -183,6 +179,7 @@ export class PaymentsProcessor {
         };
 
         // Create the required number of tickets
+        let pdfs: Attachment[] = [];
         for (let i = 1; i <= quantity; i++) {
           const accessKey = randomUUID().split('-')[4]
           const qrcodeImage = await qrcode.toDataURL(accessKey, { errorCorrectionLevel: 'H' })
@@ -190,8 +187,8 @@ export class PaymentsProcessor {
           const ticket = await this.prisma.ticket.create({
             data: {
               accessKey,
-              price,
-              tier: ticketTier,
+              price,            
+              tier: tier.name,
               discountPrice: discount && (amount / quantity),
               attendee: userId,
               eventId
@@ -209,7 +206,7 @@ export class PaymentsProcessor {
 
         // Send an email with the ticket PDFs to the attendee
         const subject = 'Ticket Purchase'
-        const content = `You are purchased a ticket for the event: ${event.title}.
+        const content = `You have purchased tickets for the event: ${event.title}.
           Attached to this email are your ticket(s). They'll be required for entry at the event, keep them safe!`
         await this.mailService.sendEmail(user.email, subject, content, pdfs);
 

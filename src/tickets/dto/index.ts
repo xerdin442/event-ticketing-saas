@@ -3,7 +3,8 @@ import {
   IsNotEmpty,
   IsNumber,
   IsBoolean,
-  IsOptional
+  IsOptional,
+  IsDate,
 } from "class-validator";
 
 export class AddTicketTierDto {
@@ -11,33 +12,47 @@ export class AddTicketTierDto {
   @IsNotEmpty()
   name: string;
 
-  @IsString()
+  @IsNumber()
   @IsNotEmpty()
-  price: string;
+  price: number;
 
   @IsBoolean()
   @IsNotEmpty()
   discount: boolean;
 
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  discountPrice?: string;
+  discountPrice?: number;
 
-  @IsString()
+  @IsDate()
   @IsOptional()
-  discountExpiration?: string;
-  
-  @IsString()
+  discountExpiration?: Date;
+
+  @IsNumber()
   @IsOptional()
-  numberOfDiscountTickets?: string;
+  numberOfDiscountTickets?: number;
 
   @IsString()
   @IsOptional()
   benefits?: string;
-  
-  @IsString()
+
+  @IsNumber()
   @IsNotEmpty()
-  totalNumberOfTickets: string;
+  totalNumberOfTickets: number;
+}
+
+export class CreateDiscountDto {
+  @IsNumber()
+  @IsNotEmpty()
+  discountPrice: number;
+
+  @IsDate()
+  @IsNotEmpty()
+  discountExpiration: Date;
+  
+  @IsNumber()
+  @IsNotEmpty()
+  numberOfDiscountTickets: number;
 }
 
 export class PurchaseTicketDto {
