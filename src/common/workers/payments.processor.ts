@@ -6,7 +6,7 @@ import { DbService } from "@src/db/db.service";
 import { PaymentsService } from "@src/payments/payments.service";
 import { randomUUID } from "crypto";
 import * as qrcode from "qrcode";
-import { sendEmail } from "../config/mail";
+import { MailService } from "../config/mail";
 import logger from "../logger";
 import { generateTicketPDF } from "../util/document";
 import { MetricsService } from "@src/metrics/metrics.service";
@@ -22,7 +22,8 @@ export class PaymentsProcessor {
     private readonly gateway: PaymentsGateway,
     private readonly prisma: DbService,
     private readonly payments: PaymentsService,
-    private readonly metrics: MetricsService
+    private readonly metrics: MetricsService,
+    private readonly mailService: MailService,
   ) { };
 
   @Process('transaction')
@@ -178,7 +179,7 @@ export class PaymentsProcessor {
           // Notify the event organizer of the event's sold out status
           const subject = 'SOLD OUT!'
           const content = `Congratulations, your event titled: ${event.title} is sold out!`
-          await sendEmail(event.organizer.email, subject, content);
+          await this.mailService.sendEmail(event.organizer.email, subject, content);
         };
 
         // Create the required number of tickets
@@ -210,7 +211,7 @@ export class PaymentsProcessor {
         const subject = 'Ticket Purchase'
         const content = `You are purchased a ticket for the event: ${event.title}.
           Attached to this email are your ticket(s). They'll be required for entry at the event, keep them safe!`
-        await sendEmail(user.email, subject, content, pdfs);
+        await this.mailService.sendEmail(user.email, subject, content, pdfs);
 
         this.metrics.incrementCounter('tickets_purchased');
         this.metrics.incrementCounter('tickets_purchased_volume', [], amount);
@@ -245,7 +246,7 @@ export class PaymentsProcessor {
         if (reason === 'Ticket Refund') {
           // Notify the attendee of the ticket refund
           const content = `Ticket refund has been completed for the cancelled event: ${eventTitle}. Thanks for your patience.`;
-          await sendEmail(user.email, reason, content);
+          await this.mailService.sendEmail(user.email, reason, content);
 
           // Remove attendee as a transfer recipient after ticket refund
           await this.payments.deleteTransferRecipient(recipientCode);
@@ -253,7 +254,7 @@ export class PaymentsProcessor {
           // Notify the organizer of the transfer of the revenue split
           const content = `Congratulations on the success of your event: ${eventTitle}. Payout of your event revenue has been initiated.
             Thank you for choosing our platform!`;
-          await sendEmail(user.email, reason, content);
+          await this.mailService.sendEmail(user.email, reason, content);
         }
 
         logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} was successful!\n`)

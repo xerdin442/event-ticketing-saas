@@ -2,8 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import logger from "../common/logger";
 import { DbService } from "../db/db.service";
-import { PaymentsService } from "../payments/payments.service";
-import { sendEmail } from "../common/config/mail";
+import { MailService } from "../common/config/mail";
 import { RedisClientType } from "redis";
 import { initializeRedis } from "../common/config/redis-conf";
 import { Secrets } from "../common/env";
@@ -18,7 +17,7 @@ export class TasksService {
 
   constructor(
     private readonly prisma: DbService,
-    private readonly payments: PaymentsService
+    private readonly mailService: MailService,
   ) { };
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
@@ -43,7 +42,7 @@ export class TasksService {
         const record: Attachment = await generateFailedTransferRecords(transfers);
         const subject = 'Failed Transfers'
         const content = 'Hello, these are failed transfers that occured in the past 24 hours. The details are attached to this email.'
-        await sendEmail(Secrets.ADMIN_EMAIL, subject, content, [record]);
+        await this.mailService.sendEmail(Secrets.ADMIN_EMAIL, subject, content, [record]);
 
         logger.info(`[${this.context}] Details of failed transfers sent to platform email for further processing.\n`);
         return;

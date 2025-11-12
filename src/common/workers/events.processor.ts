@@ -5,7 +5,7 @@ import { RedisClientType } from "redis";
 import { initializeRedis } from "../config/redis-conf";
 import { Secrets } from "../env";
 import logger from "../logger";
-import { sendEmail } from "../config/mail";
+import { MailService } from "../config/mail";
 import { DbService } from "@src/db/db.service";
 import { PaymentsService } from "@src/payments/payments.service";
 import { randomUUID } from "crypto";
@@ -19,7 +19,8 @@ export class EventsProcessor {
   constructor(
     private readonly prisma: DbService,
     private readonly metrics: MetricsService,
-    private readonly payments: PaymentsService
+    private readonly payments: PaymentsService,
+    private readonly mailService: MailService,
   ) { };
 
   @Process('geolocation-store')
@@ -65,7 +66,7 @@ export class EventsProcessor {
 
       if (event.users.length > 0) {
         for (const user of event.users) {
-          await sendEmail(user.email, subject, content);
+          await this.mailService.sendEmail(user.email, subject, content);
         }
 
         return;
@@ -101,7 +102,7 @@ export class EventsProcessor {
           
           Best regards,
           ${event.organizer.name}`;
-          await sendEmail(user.email, subject, content);
+          await this.mailService.sendEmail(user.email, subject, content);
 
           // Create a transfer recipient for the attendee to receive the refund
           const recipientCode = await this.payments.createTransferRecipient({

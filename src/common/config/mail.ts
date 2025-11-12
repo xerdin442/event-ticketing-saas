@@ -1,43 +1,52 @@
+import { Injectable } from '@nestjs/common';
 import * as cheerio from 'cheerio';
 import { Attachment, Resend } from 'resend';
 import logger from '../logger';
 import { Secrets } from '../env';
 
-export const sendEmail = async (
-  receiver: string,
-  subject: string,
-  content: string,
-  attachments?: Attachment[],
-): Promise<void> => {
-  const context: string = 'Mail Service';
+@Injectable()
+export class MailService {
+  private readonly context: string = MailService.name;
+  private readonly resend: Resend;
 
-  // Generate HTML from email content
-  const $ = cheerio.load(content);
-  const htmlContent = $.html();
-
-  // Initialize Resend client
-  const resend = new Resend(Secrets.RESEND_EMAIL_API_KEY);
-
-  // Send email to receiver
-  const response = await resend.emails.send({
-    from: `${Secrets.APP_NAME} <${Secrets.APP_EMAIL}>`,
-    subject,
-    to: receiver,
-    html: htmlContent,
-    attachments,
-  });
-
-  if (response.data) {
-    logger.info(
-      `[${context}] "${subject}" email sent successfully to ${receiver}.\n`,
-    );
-    return;
+  constructor() {
+    this.resend = new Resend(Secrets.RESEND_EMAIL_API_KEY);
   }
 
-  if (response.error) {
-    logger.error(
-      `[${context}] An error occured while sending "${subject}" email to ${receiver}. Error: ${response.error.message}\n`,
-    );
-    return;
+  async sendEmail(
+    receiver: string,
+    subject: string,
+    content: string,
+    attachments?: Attachment[],
+  ): Promise<void> {
+    // Generate HTML from email content
+    const $ = cheerio.load(content);
+    const htmlContent = $.html();
+
+    try {
+      // Send email to receiver
+      const response = await this.resend.emails.send({
+        from: `${Secrets.APP_NAME} <${Secrets.APP_EMAIL}>`,
+        subject,
+        to: receiver,
+        html: htmlContent,
+        attachments,
+      });
+
+      if (response.data) {
+        logger.info(
+          `[${this.context}] "${subject}" email sent successfully to ${receiver}.\n`,
+        );
+        return;
+      }
+
+      if (response.error) {
+        logger.error(
+          `[${this.context}] An error occurred while sending "${subject}" email to ${receiver}. Error: ${response.error.message}\n`,
+        );
+      }
+    } catch (error) {
+      throw error;
+    }
   }
-};
+}
