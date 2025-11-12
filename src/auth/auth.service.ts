@@ -37,8 +37,8 @@ export class AuthService {
   async signup(dto: CreateUserDto, filePath?: string)
     : Promise<{ user: User, token: string }> {
     try {
-      const { accountName, accountNumber, bankName, age, email, password, firstName } = dto;
-      
+      const { accountName, accountNumber, bankName, age, email, password } = dto;
+
       // Verify if user account details are correct
       await this.payments.verifyAccountDetails({ accountName, accountNumber, bankName });
 
@@ -57,7 +57,7 @@ export class AuthService {
       const payload = { sub: user.id, email };
 
       // Send an onboarding email to the new user
-      await this.mailQueue.add('signup', { email, firstName });
+      await this.mailQueue.add('signup', email);
 
       return { 
         user: sanitizeUserOutput(user),
@@ -186,7 +186,7 @@ export class AuthService {
 
         // Send the OTP via email
         await this.mailQueue.add('otp', {
-          user,
+          email: user.email,
           otp: data.otp
         });
 
@@ -215,7 +215,7 @@ export class AuthService {
 
         // Send another email with the new OTP
         await this.mailQueue.add('otp', {
-          user,
+          email: user.email,
           otp: data.otp
         })
 

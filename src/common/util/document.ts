@@ -2,8 +2,9 @@ import PDFDocument from 'pdfkit';
 import fs from 'fs';
 import { Event, Ticket, User } from '@prisma/client';
 import logger from '../logger';
-import { EmailAttachment, FailedTransfer } from '../types';
+import { FailedTransfer } from '../types';
 import { randomUUID } from 'crypto';
+import { Attachment } from 'resend';
 
 const deleteFile = async (file: string) => {
   const context = deleteFile.name;
@@ -21,7 +22,7 @@ export const generateTicketPDF = (
   qrcode: string,
   user: User,
   event: Event
-): Promise<EmailAttachment> => {
+): Promise<Attachment> => {
   return new Promise((resolve, reject) => {
     const context = generateTicketPDF.name;
     const outputFile = `ticket-${new Date().toISOString().replace(/:/g, '-')}-${ticket.id}.pdf`;
@@ -64,7 +65,7 @@ export const generateTicketPDF = (
         await deleteFile(pdfPath); // Clean up temporary file storage
 
         resolve({
-          name: outputFile,
+          filename: outputFile,
           content
         });
       }); 
@@ -74,7 +75,7 @@ export const generateTicketPDF = (
   });
 }
 
-export const generateFailedTransferRecords = (transfers: FailedTransfer[]): Promise<EmailAttachment> => {
+export const generateFailedTransferRecords = (transfers: FailedTransfer[]): Promise<Attachment> => {
   const context = generateFailedTransferRecords.name;
   const outputFile = `transfers-${new Date().toISOString().replace(/:/g, '-')}-${randomUUID().split('-')[2]}.pdf`;
   const pdfPath = `/tmp/${outputFile}`;
@@ -116,7 +117,7 @@ export const generateFailedTransferRecords = (transfers: FailedTransfer[]): Prom
         await deleteFile(pdfPath); // Clean up temporary file storage
 
         resolve({
-          name: outputFile,
+          filename: outputFile,
           content
         });
       });

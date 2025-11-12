@@ -65,7 +65,7 @@ export class EventsProcessor {
 
       if (event.users.length > 0) {
         for (const user of event.users) {
-          await sendEmail(user, subject, content);
+          await sendEmail(user.email, subject, content);
         }
 
         return;
@@ -101,7 +101,7 @@ export class EventsProcessor {
           
           Best regards,
           ${event.organizer.name}`;
-          await sendEmail(user, subject, content);
+          await sendEmail(user.email, subject, content);
 
           // Create a transfer recipient for the attendee to receive the refund
           const recipientCode = await this.payments.createTransferRecipient({

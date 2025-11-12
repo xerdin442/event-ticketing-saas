@@ -7,10 +7,10 @@ import { sendEmail } from "../common/config/mail";
 import { RedisClientType } from "redis";
 import { initializeRedis } from "../common/config/redis-conf";
 import { Secrets } from "../common/env";
-import { EmailAttachment, FailedTransfer } from "../common/types";
+import { FailedTransfer } from "../common/types";
 import { generateFailedTransferRecords } from "../common/util/document";
-import { randomUUID } from "crypto";
 import { UploadService } from "../common/config/upload";
+import { Attachment } from "resend";
 
 @Injectable()
 export class TasksService {
@@ -40,11 +40,10 @@ export class TasksService {
           })
         );
 
-        const record: EmailAttachment = await generateFailedTransferRecords(transfers);
+        const record: Attachment = await generateFailedTransferRecords(transfers);
         const subject = 'Failed Transfers'
         const content = 'Hello, these are failed transfers that occured in the past 24 hours. The details are attached to this email.'
-        const receiver = { name: 'Admin', email: Secrets.ADMIN_EMAIL };
-        await sendEmail(receiver, subject, content, [record]);
+        await sendEmail(Secrets.ADMIN_EMAIL, subject, content, [record]);
 
         logger.info(`[${this.context}] Details of failed transfers sent to platform email for further processing.\n`);
         return;

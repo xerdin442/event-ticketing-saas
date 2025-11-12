@@ -28,11 +28,6 @@ export type SessionData = {
   otpExpiration?: number
 }
 
-export type EmailAttachment = {
-  content: string
-  name: string
-}
-
 export type FailedTransfer = {
   transferCode: string
   details: any

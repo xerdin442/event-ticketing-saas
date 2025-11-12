@@ -1,51 +1,43 @@
-import axios from 'axios';
 import * as cheerio from 'cheerio';
+import { Attachment, Resend } from 'resend';
 import logger from '../logger';
 import { Secrets } from '../env';
-import { EmailAttachment } from '../types';
 
 export const sendEmail = async (
-  receiver: any,
+  receiver: string,
   subject: string,
   content: string,
-  attachment?: EmailAttachment[]
-): Promise<void> => {  
-  const context = sendEmail.name
+  attachments?: Attachment[],
+): Promise<void> => {
+  const context: string = 'Mail Service';
 
   // Generate HTML from email content
-  const $ = cheerio.load(content)
-  const htmlContent = $.html()
+  const $ = cheerio.load(content);
+  const htmlContent = $.html();
 
-  const data = {
-    sender: {
-      name: Secrets.APP_NAME,
-      email: Secrets.APP_EMAIL,
-    },
-    to: [
-      {
-        email: `${receiver.email}`,
-        name: `${receiver?.firstName ?? receiver?.name}`
-      },
-    ],
+  // Initialize Resend client
+  const resend = new Resend(Secrets.RESEND_EMAIL_API_KEY);
+
+  // Send email to receiver
+  const response = await resend.emails.send({
+    from: `${Secrets.APP_NAME} <${Secrets.APP_EMAIL}>`,
     subject,
-    htmlContent,
-    attachment
-  };
+    to: receiver,
+    html: htmlContent,
+    attachments,
+  });
 
-  try {
-    const url = 'https://api.brevo.com/v3/smtp/email';
-    const response = await axios.post(url, data, {
-      headers: {
-        'accept': 'application/json',
-        'api-key': Secrets.BREVO_API_KEY,
-        'content-type': 'application/json'
-      },
-    });
-
-    logger.info(`[${context}] "${subject}" email sent to ${receiver.email}\n`);
-  } catch (error) {
-    console.log(error.response.data);
-    logger.error(`[${context}] An error occured while sending "${subject}" email to ${receiver.email}. Error: ${error.message}\n`);
-    throw error;
+  if (response.data) {
+    logger.info(
+      `[${context}] "${subject}" email sent successfully to ${receiver}.\n`,
+    );
+    return;
   }
-}
+
+  if (response.error) {
+    logger.error(
+      `[${context}] An error occured while sending "${subject}" email to ${receiver}. Error: ${response.error.message}\n`,
+    );
+    return;
+  }
+};

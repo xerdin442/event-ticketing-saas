@@ -15,7 +15,7 @@ export const Secrets = {
   REDIS_HOST: config.getOrThrow<string>('REDIS_HOST'),
   REDIS_PASSWORD: config.getOrThrow<string>('REDIS_PASSWORD'),
   REDIS_URL: config.getOrThrow<string>('REDIS_URL'),
-  BREVO_API_KEY: config.getOrThrow<string>('BREVO_API_KEY'),
+  RESEND_EMAIL_API_KEY: config.getOrThrow<string>('RESEND_EMAIL_API_KEY'),
   APP_NAME: config.getOrThrow<string>('APP_NAME'),
   APP_EMAIL: config.getOrThrow<string>('APP_EMAIL'),
   ADMIN_EMAIL: config.getOrThrow<string>('ADMIN_EMAIL'),
