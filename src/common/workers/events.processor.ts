@@ -95,48 +95,14 @@ export class EventsProcessor {
 
       if (event.users.length > 0) {
         for (let user of event.users) {
-          // Send email to attendees to inform them of the cancellation
+          // Notify all attendees of the event cancellation
           const subject = 'Event Cancellation'
           const content = `The event: ${event.title} has been cancelled. We sincerely apologize for any inconveniences
-          caused by this cancellation. A refund for your tickets has been initiated. Thanks for your patience.
-          
+          caused by this cancellation. You can initiate a ticket refund here: .
+
           Best regards,
           ${event.organizer.name}`;
           await this.mailService.sendEmail(user.email, subject, content);
-
-          // Create a transfer recipient for the attendee to receive the refund
-          const recipientCode = await this.payments.createTransferRecipient({
-            accountName: user.accountName,
-            accountNumber: user.accountNumber,
-            bankName: user.bankName
-          });
-
-          // Get user tickets for this event
-          const tickets = await this.prisma.ticket.findMany({
-            where: {
-              eventId: event.id,
-              attendee: user.id
-            }
-          });
-
-          // Calculate the refund amount in kobo
-          const refund = tickets.reduce((total, ticket) => {
-            return total + (ticket.discountPrice ? ticket.discountPrice : ticket.price) * 100;
-          }, 0);
-
-          // Initiate transfer of ticket refund
-          if (!Secrets.PAYSTACK_SECRET_KEY.includes('test')) {
-            await this.payments.initiateTransfer(
-              recipientCode,
-              refund,
-              'Ticket Refund',
-              {
-                userId: user.id,
-                eventTitle: event.title,
-                retryKey: randomUUID().replace(/-/g, '')
-              }
-            );
-          }
         }
       }
 
@@ -181,7 +147,7 @@ export class EventsProcessor {
           event.revenue * 100,
           'Revenue Split',
           {
-            userId: event.organizer.userId,
+            email: event.organizer.email,
             eventTitle: event.title,
             retryKey: randomUUID().replace(/-/g, '')
           }

@@ -17,6 +17,7 @@ import { AuthGuard } from '@nestjs/passport';
 import {
   CreateEventDto,
   NearbyEventsDto,
+  TicketRefundDto,
   UpdateEventDto
 } from './dto';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -128,6 +129,23 @@ export class EventsController {
     } catch (error) {
       logger.error(`[${this.context}] An error occurred during the event cancellation process. Error: ${error.message}\n`);
       throw error;
-    } 
+    }
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post(':eventId/refund')
+  async initiateTicketRefund(
+    @Param('eventId', ParseIntPipe) eventId: number,
+    @Body() dto: TicketRefundDto,
+  ): Promise<{ message: string }> {
+    try {
+      await this.eventsService.initiateTicketRefund(eventId, dto);
+      logger.info(`[${this.context}] Ticket refund initiated by ${dto.email}.\n`);
+
+      return { message: 'A refund of your ticket amount has been initiated. Please check your email for confirmation' };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred during processing of ticket refund. Error: ${error.message}\n`);
+      throw error;
+    }
   }
 }

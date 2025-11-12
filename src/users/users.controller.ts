@@ -34,7 +34,7 @@ export class UserController {
   constructor(private userService: UserService) { };
 
   @Get('profile')
-  profile(@GetUser() user: User): { user: User } {
+  getProfile(@GetUser() user: User): { user: User } {
     logger.info(`[${this.context}] User profile viewed by ${user.email}\n`);
     return { user };
   }
@@ -70,20 +70,6 @@ export class UserController {
       return { message: 'Account deleted successfully' };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while deleting user profile. Error: ${error.message}\n`);
-      throw error;
-    }
-  }
-
-  @HttpCode(HttpStatus.OK)
-  @Post('preferences/clear')
-  async clearPreferences(@GetUser() user: User): Promise<{ message: string }> {
-    try {
-      await this.userService.clearPreferences(user.id);
-      logger.info(`[${this.context}] User preferences cleared by ${user.email}.\n`);
-
-      return { message: 'Event preferences cleared successfully' };
-    } catch (error) {
-      logger.error(`[${this.context}] An error occurred while clearing user preferences. Error: ${error.message}\n`);
       throw error;
     }
   }

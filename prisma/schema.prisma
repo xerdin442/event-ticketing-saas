@@ -46,15 +46,11 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  age           Int
   email         String          @unique
   password      String
   profileImage  String
   twoFASecret   String?
   twoFAEnabled  Boolean         @default(false)
-  accountName   String
-  accountNumber String          @unique
-  bankName      String
   preferences   EventCategory[]
 
   tickets   Ticket[]

@@ -8,10 +8,6 @@ import {
 } from "class-validator";
 
 export class CreateUserDto {
-  @IsString()
-  @IsNotEmpty()
-  age: number;
-
   @IsEmail({}, { message: 'Please enter a valid email address' })
   @IsNotEmpty()
   email: string;
@@ -26,18 +22,6 @@ export class CreateUserDto {
     minSymbols: 1
   }, { message: 'Password must contain at least one uppercase and lowercase letter, one digit and one symbol' })
   password: string;
-
-  @IsNotEmpty()
-  @IsString()
-  accountNumber: string;
-
-  @IsNotEmpty()
-  @IsString()
-  accountName: string;
-
-  @IsNotEmpty()
-  @IsString()
-  bankName: string;
 
   @IsArray()
   preferences: EventCategory[];

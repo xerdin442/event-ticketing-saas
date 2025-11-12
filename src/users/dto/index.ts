@@ -8,26 +8,6 @@ import {
 } from "class-validator";
 
 export class UpdateProfileDto {
-  @IsString()
-  @IsOptional()
-  age?: number
-
-  @IsEmail()
-  @IsOptional()
-  email?: string
-
-  @IsOptional()
-  @IsString()
-  accountNumber?: string
-
-  @IsOptional()
-  @IsString()
-  accountName?: string
-
-  @IsOptional()
-  @IsString()
-  bankName?: string
-
   @IsArray()
   preferences?: EventCategory[];  
 }

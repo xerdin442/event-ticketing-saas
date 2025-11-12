@@ -19,7 +19,6 @@ import { Queue } from 'bull';
 import { SessionData } from '../common/types';
 import { SessionService } from '../common/session';
 import { Secrets } from '../common/env';
-import { PaymentsService } from '../payments/payments.service';
 import { sanitizeUserOutput } from '../common/util/helper';
 import { MetricsService } from '../metrics/metrics.service';
 
@@ -29,7 +28,6 @@ export class AuthService {
     private readonly prisma: DbService,
     private readonly jwt: JwtService,
     private readonly sessionService: SessionService,
-    private readonly payments: PaymentsService,
     private readonly metrics: MetricsService,
     @InjectQueue('mail-queue') private readonly mailQueue: Queue
   ) {}
@@ -37,10 +35,7 @@ export class AuthService {
   async signup(dto: CreateUserDto, filePath?: string)
     : Promise<{ user: User, token: string }> {
     try {
-      const { accountName, accountNumber, bankName, email, password } = dto;
-
-      // Verify if user account details are correct
-      await this.payments.verifyAccountDetails({ accountName, accountNumber, bankName });
+      const { email, password } = dto;
 
       // Hash password and create new user
       const hash = await argon.hash(password)

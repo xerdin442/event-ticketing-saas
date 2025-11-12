@@ -3,6 +3,7 @@ import { DbService } from '../db/db.service';
 import {
   CreateEventDto,
   NearbyEventsDto,
+  TicketRefundDto,
   UpdateEventDto
 } from './dto';
 import axios from 'axios';
@@ -13,12 +14,15 @@ import { RedisClientType } from 'redis';
 import { initializeRedis } from '../common/config/redis-conf';
 import { Secrets } from '../common/env';
 import { MetricsService } from '@src/metrics/metrics.service';
+import { PaymentsService } from '@src/payments/payments.service';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class EventsService {
   constructor(
     private readonly prisma: DbService,
     private readonly metrics: MetricsService,
+    private readonly payments: PaymentsService,
     @InjectQueue('events-queue') private readonly eventsQueue: Queue
   ) { };
 
@@ -145,7 +149,7 @@ export class EventsService {
             throw new BadRequestException('Failed to generate coordinates for the event location. Please enter correct values for "venue" and "address"');
           };
         };
-        
+
         if (dto.startTime) {
           const jobId = `event-${event.id}-ongoing`;
           await this.eventsQueue.removeJobs(jobId);
@@ -256,6 +260,59 @@ export class EventsService {
       throw error;
     } finally {
       await redis.disconnect();
+    }
+  }
+
+  async initiateTicketRefund(eventId: number, dto: TicketRefundDto): Promise<void> {
+    try {
+      // Verify that the event has been cancelled
+      const event = await this.prisma.event.findUnique({
+        where: { id: eventId }
+      });
+      if (event.status !== 'CANCELLED') {
+        throw new BadRequestException('Ticket refunds can only be processed for a cancelled event')
+      }
+
+      // Verify that the user is an attendee
+      const tickets = await this.prisma.ticket.findMany({
+        where: {
+          eventId,
+          user: { email: dto.email }
+        }
+      });
+
+      if (tickets.length > 0) {
+        // Verify attendee's account details
+        await this.payments.verifyAccountDetails({ ...dto });
+
+        // Create recipient code to process transfer
+        const recipientCode = await this.payments.createTransferRecipient({ ...dto })
+
+        // Calculate the refund amount in kobo
+        const refund = tickets.reduce((total, ticket) => {
+          return total + (ticket.discountPrice ? ticket.discountPrice : ticket.price) * 100;
+        }, 0);
+
+        // Initiate transfer of ticket refund
+        if (!Secrets.PAYSTACK_SECRET_KEY.includes('test')) {
+          await this.payments.initiateTransfer(
+            recipientCode,
+            refund,
+            'Ticket Refund',
+            {
+              email: dto.email,
+              eventTitle: event.title,
+              retryKey: randomUUID().replace(/-/g, '')
+            }
+          );
+        }
+
+        return;
+      } else {
+        throw new BadRequestException('Only attendees can initiate ticket refunds for this event. Check the email and try again')
+      }
+    } catch (error) {
+      throw error;
     }
   }
 }

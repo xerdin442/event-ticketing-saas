@@ -192,15 +192,11 @@ export class PaymentsProcessor {
               discountPrice: discount && (amount / quantity),
               attendee: userId,
               eventId
-            },
-            include: {
-              user: true,
-              event: true
             }
           });
 
           // Generate ticket PDF and configure email attachment
-          const ticketPDF = await generateTicketPDF(ticket, qrcodeImage, ticket.user, ticket.event);
+          const ticketPDF = await generateTicketPDF(ticket, qrcodeImage, event);
           pdfs.push(ticketPDF);
         };
 
@@ -232,18 +228,14 @@ export class PaymentsProcessor {
   @Process('transfer')
   async finalizeTransfer(job: Job) {
     const { eventType, metadata, reason, recipientCode } = job.data;
-    const { userId, eventTitle } = metadata;
-
-    const user = await this.prisma.user.findUnique({
-      where: { id: +userId }
-    });
+    const { email, eventTitle } = metadata;
 
     try {
       if (eventType === 'transfer.success') {
         if (reason === 'Ticket Refund') {
           // Notify the attendee of the ticket refund
           const content = `Ticket refund has been completed for the cancelled event: ${eventTitle}. Thanks for your patience.`;
-          await this.mailService.sendEmail(user.email, reason, content);
+          await this.mailService.sendEmail(email, reason, content);
 
           // Remove attendee as a transfer recipient after ticket refund
           await this.payments.deleteTransferRecipient(recipientCode);
@@ -251,21 +243,21 @@ export class PaymentsProcessor {
           // Notify the organizer of the transfer of the revenue split
           const content = `Congratulations on the success of your event: ${eventTitle}. Payout of your event revenue has been initiated.
             Thank you for choosing our platform!`;
-          await this.mailService.sendEmail(user.email, reason, content);
+          await this.mailService.sendEmail(email, reason, content);
         }
 
-        logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} was successful!\n`)
+        logger.info(`[${this.context}] ${reason}: Transfer to ${email} was successful!\n`)
         return;
       } else if (eventType === 'transfer.failed' || eventType === 'transfer.reversed') {
         // Update metrics value
         this.metrics.incrementCounter('unsuccessful_transfers');
 
-        logger.info(`[${this.context}] ${reason}: Transfer to ${user.email} failed or reversed.\n`);
+        logger.info(`[${this.context}] ${reason}: Transfer to ${email} failed or reversed.\n`);
 
         // Initiate transfer retry after 30 minutes
         setTimeout(async () => {
           try {
-            await this.payments.retryTransfer(job.data, user);
+            await this.payments.retryTransfer(job.data, email);
           } catch (error) {
             throw error;
           }
@@ -274,7 +266,7 @@ export class PaymentsProcessor {
         return;
       }
     } catch (error) {
-      logger.error(`[${this.context}] An error occured while processing ${reason} transfer to ${user.email}. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occured while processing ${reason} transfer to ${email}. Error: ${error.message}\n`);
       throw error;
     }
   }

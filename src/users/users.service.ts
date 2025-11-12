@@ -23,36 +23,16 @@ export class UserService {
 
   async updateProfile(userId: number, dto: UpdateProfileDto, filePath?: string): Promise<User> {
     try {
-      const { accountName, accountNumber, bankName } = dto;
-
-      // Verify new account details
-      if (accountNumber) {
-        await this.payments.verifyAccountDetails({ accountName, accountNumber, bankName });
-      }
-
       // Update user's details
       const user = await this.prisma.user.update({
         where: { id: userId },
         data: {
-          ...dto,
+          preferences: dto.preferences,
           ...(filePath && { profileImage: filePath })
         }
       });
 
       return sanitizeUserOutput(user);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async clearPreferences(userId: number): Promise<void> {
-    try {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { preferences: [] }
-      });
-
-      return;
     } catch (error) {
       throw error;
     }

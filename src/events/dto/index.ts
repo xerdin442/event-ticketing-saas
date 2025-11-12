@@ -99,3 +99,21 @@ export class NearbyEventsDto {
   @IsNotEmpty()
   longitude: string
 }
+
+export class TicketRefundDto {
+  @IsNotEmpty()
+  @IsString()
+  email: string;
+
+  @IsNotEmpty()
+  @IsString()
+  accountNumber: string;
+
+  @IsNotEmpty()
+  @IsString()
+  accountName: string;
+
+  @IsNotEmpty()
+  @IsString()
+  bankName: string;
+}

@@ -5,7 +5,6 @@ import { Secrets } from '../common/env';
 import logger from '../common/logger';
 import { RedisClientType } from 'redis';
 import { initializeRedis } from '../common/config/redis-conf';
-import { User } from '@prisma/client';
 
 @Injectable()
 export class PaymentsService {
@@ -141,7 +140,7 @@ export class PaymentsService {
     }
   }
 
-  async retryTransfer(data: any, user: User): Promise<void> {
+  async retryTransfer(data: any, email: string): Promise<void> {
     const { metadata, reason, recipientCode, amount, transferCode, date } = data;
     const { retryKey } = metadata;
     const MAX_RETRIES = 2;
@@ -166,16 +165,13 @@ export class PaymentsService {
           const ttl = await redis.ttl(retryKey);
           await redis.set(retryKey, JSON.stringify({ retries: retries + 1 }), { EX: ttl });
 
-          logger.info(`[${this.context}] ${reason}: Final transfer retry to ${user.email} initiated.\n`);
+          logger.info(`[${this.context}] ${reason}: Final transfer retry to ${email} initiated.\n`);
           return;          
         } else if (retries === MAX_RETRIES) {
           // If retries are exhausted, store details of the failed transfer for 30 days
           await redis.select(Secrets.FAILED_TRANSFERS_STORE_INDEX);
           await redis.setEx(transferCode, 2592000, JSON.stringify({
-            email: user.email,
-            bankName: user.bankName,
-            accountNumber: user.accountNumber,
-            accountName: user.accountName,
+            email,
             reason,
             amount,
             date
@@ -192,7 +188,7 @@ export class PaymentsService {
       await this.initiateTransfer(recipientCode, amount, reason, metadata);
       await redis.setEx(retryKey, 86400, JSON.stringify({ retries: 1 }));
 
-      logger.info(`[${this.context}] ${reason}: Transfer retry to ${user.email} initiated.\n`);
+      logger.info(`[${this.context}] ${reason}: Transfer retry to ${email} initiated.\n`);
       return;
     } catch (error) {
       logger.error(`[${this.context}] ${reason}: An error occurred while processing transfer retry. Error: ${error.message}\n`);
