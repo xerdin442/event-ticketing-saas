@@ -1,56 +1,86 @@
 import {
   WebSocketGateway,
   OnGatewayConnection,
-  OnGatewayDisconnect
+  OnGatewayDisconnect,
+  WsException,
+  BaseWsExceptionFilter,
+  ConnectedSocket,
+  WebSocketServer,
 } from '@nestjs/websockets';
+import { UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Server, Socket } from 'socket.io';
 import logger from '../common/logger';
-import { WebSocket } from 'ws';
-import { IncomingMessage } from 'http';
+import { DbService } from '@src/db/db.service';
 
-@WebSocketGateway({ path: '/ws/payments' })
+@UsePipes(
+  new ValidationPipe({ exceptionFactory: (errors) => new WsException(errors) }),
+)
+@UseFilters(new BaseWsExceptionFilter())
+@WebSocketGateway({ path: '/payments' })
 export class PaymentsGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  private clients: Record<string, WebSocket> = {}; // Store active WebSocket connections
+  @WebSocketServer()
+  private readonly server: Server;
+
   private readonly context: string = PaymentsGateway.name;
 
-  handleConnection(client: WebSocket, req: IncomingMessage): void {
+  constructor(private readonly prisma: DbService) {}
+
+  async handleConnection(@ConnectedSocket() client: Socket): Promise<void> {
     try {
-      // Extract email from the URL and save to connection store
-      const email = req.url?.split('/').pop();
-      if (email) {
-        this.clients[email] = client;
-        logger.info(`[${this.context}] Client connected to payments gateway: ${email}\n`)
-      }
-      return;
+      // Reject the connection if email is not provided
+      const email = client.handshake.query.email as string;
+      if (!email) throw new WsException('Missing email query parameter');
+
+      // Reject the connection if no user exists with email address
+      const user = await this.prisma.user.findUnique({
+        where: { email },
+      });
+      if (!user) throw new WsException('Invalid email address');
+
+      client.data.email = email; // Attach email to the socket instance
+
+      logger.info(
+        `[${this.context}] Client connected to payments gateway: ${email}\n`,
+      );
     } catch (error) {
-      logger.info(`[${this.context}] An error occurred while connecting to payments gateway. Error: ${error.message}\n`);
+      logger.info(
+        `[${this.context}] An error occurred while connecting to payments gateway. Error: ${error.message}\n`,
+      );
+
       throw error;
     }
   }
 
-  handleDisconnect(client: WebSocket): void {
+  handleDisconnect(@ConnectedSocket() client: Socket): void {
     try {
-      // Check if client exists in connection store before deleting
-      const email = Object.keys(this.clients).find(key => this.clients[key] === client);
-      if (email) {
-        delete this.clients[email]
-        logger.info(`[${this.context}] Client disconnected from payments gateway: ${email}\n`);
-      }
-      return;
+      const email = client.data?.email as string;
+
+      logger.info(`[${this.context}] Client disconnected: ${email}`);
     } catch (error) {
-      logger.info(`[${this.context}] An error occurred while disconnecting from payments gateway. Error: ${error.message}\n`);
+      logger.info(
+        `[${this.context}] An error occurred while disconnecting from payments gateway. Error: ${error.message}\n`,
+      );
+
       throw error;
     }
   }
 
-  sendPaymentStatus(email: string, status: string, message: string) {
+  sendPaymentStatus(email: string, status: string, message: string): void {
     try {
-      const client = this.clients[email];
+      const client = Array.from(this.server.sockets.sockets.values()).find(
+        (socket) => socket.data.email === email,
+      );      
+
       if (client) {
-        client.send(JSON.stringify({ status, message }));
+        client.emit('status', { status, message });
+      } else {
+        throw new WsException(
+          `Payment status notification failed: No active socket for ${email}.`,
+        );
       }
-      return;
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while notifying clients of payment status. Error: ${error.message}`);
+      
       throw error;
     }
   }

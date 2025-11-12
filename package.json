@@ -39,7 +39,7 @@
     "@nestjs/jwt": "^10.2.0",
     "@nestjs/passport": "^10.0.3",
     "@nestjs/platform-express": "^10.0.0",
-    "@nestjs/platform-ws": "^10.4.15",
+    "@nestjs/platform-socket.io": "^10.4.20",
     "@nestjs/schedule": "^4.1.2",
     "@nestjs/throttler": "^6.2.1",
     "@nestjs/websockets": "^10.4.15",
@@ -62,9 +62,9 @@
     "reflect-metadata": "^0.2.0",
     "resend": "^6.4.2",
     "rxjs": "^7.8.1",
+    "socket.io": "^4.8.1",
     "speakeasy": "^2.0.0",
-    "winston": "^3.17.0",
-    "ws": "^8.18.0"
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -81,7 +81,6 @@
     "@types/qrcode": "^1.5.5",
     "@types/speakeasy": "^2.0.10",
     "@types/supertest": "^6.0.0",
-    "@types/ws": "^8.5.13",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "dotenv-cli": "^7.4.3",
