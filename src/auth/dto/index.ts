@@ -53,9 +53,17 @@ export class VerifyOTPDto {
   @IsString()
   @IsNotEmpty()
   otp: string;
+
+  @IsString()
+  @IsNotEmpty()
+  resetId: string;
 }
 
 export class NewPasswordDto {
+  @IsString()
+  @IsNotEmpty()
+  resetId: string;
+
   @IsString()
   @IsNotEmpty()
   @IsStrongPassword({

@@ -5,7 +5,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from '../common/strategy/jwt-strategy';
 import { BullModule } from '@nestjs/bull';
 import { MailProcessor } from '../common/workers/mail.processor';
-import { SessionService } from '../common/session';
 import { Secrets } from '../common/env';
 import { PaymentsService } from '../payments/payments.service';
 import { MetricsService } from '../metrics/metrics.service';
@@ -25,7 +24,6 @@ import { MetricsService } from '../metrics/metrics.service';
     AuthService,
     JwtStrategy,
     MailProcessor,
-    SessionService,
     PaymentsService,
     MetricsService
   ]

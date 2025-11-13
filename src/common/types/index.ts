@@ -22,10 +22,10 @@ export type AccountDetails = {
   bankName: string
 }
 
-export type SessionData = {
-  email?: string
-  otp?: string
-  otpExpiration?: number
+export type PasswordResetInfo = {
+  email: string
+  otp: string
+  otpExpiration: number
 }
 
 export type FailedTransfer = {
