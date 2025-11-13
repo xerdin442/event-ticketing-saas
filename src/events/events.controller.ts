@@ -8,6 +8,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors
@@ -58,16 +59,27 @@ export class EventsController {
     }
   }
 
-  @HttpCode(HttpStatus.OK)
-  @Post('nearby')
-  async findNearbyEvents(@Body() dto: NearbyEventsDto): Promise<{ events: Event[] } | { message: string }> {
+  @Get('nearby')
+  async findNearbyEvents(
+    @Query('latitude') latitude: string,
+    @Query('longitude') longitude: string,
+  ): Promise<{ events: Event[] }> {
     try {
-      const events = await this.eventsService.findNearbyEvents(dto);
-      if (events.length > 0) return { events };
-
-      return { message: 'No events found' };
+      const events = await this.eventsService.findNearbyEvents(latitude, longitude);
+      return { events };
     } catch (error) {
-      logger.error(`[${this.context}] An error occurred while retrieving nearby events. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occurred while fetching nearby events. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @Get('trending')
+  async getTrendingEvents(): Promise<{ events: Event[] }> {
+    try {
+      const events = await this.eventsService.getTrendingEvents();
+      return { events };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while fetching trending events. Error: ${error.message}\n`);
       throw error;
     }
   }

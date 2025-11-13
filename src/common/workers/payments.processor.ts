@@ -12,6 +12,8 @@ import { generateTicketPDF } from "../util/document";
 import { MetricsService } from "@src/metrics/metrics.service";
 import { Secrets } from "../env";
 import { Attachment } from "resend";
+import { RedisClientType } from "redis";
+import { initializeRedis } from "../config/redis-conf";
 
 @Injectable()
 @Processor('payments-queue')
@@ -57,6 +59,12 @@ export class PaymentsProcessor {
       accountNumber: user.accountNumber,
       bankName: user.bankName
     });
+
+    const redis: RedisClientType = await initializeRedis(
+      Secrets.REDIS_URL,
+      'Trending Events',
+      Secrets.TRENDING_EVENTS_STORE_INDEX,
+    );
 
     try {
       if (eventType === 'charge.success') {
@@ -198,6 +206,13 @@ export class PaymentsProcessor {
           // Generate ticket PDF and configure email attachment
           const ticketPDF = await generateTicketPDF(ticket, qrcodeImage, event);
           pdfs.push(ticketPDF);
+
+          // Record ticket sale for ranking in trending events
+          const trendingWindow = Date.now() - (72 * 60 * 60 * 1000); // 72 hours
+          redis.multi()
+            .zAdd(`event_log:${eventId}`, [{ score: trendingWindow, value: ticket.id.toString() }]) // Add new entry
+            .zRemRangeByScore(`event_log:${eventId}`, 0, trendingWindow) // Remove all entries older than 72 hours
+            .exec();
         };
 
         // Send an email with the ticket PDFs to the attendee
@@ -222,6 +237,8 @@ export class PaymentsProcessor {
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing ticket purchase. Error: ${error.message}\n`);
       throw error;
+    } finally {
+      await redis.disconnect();
     }
   }
 

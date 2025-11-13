@@ -90,16 +90,6 @@ export class UpdateEventDto {
   capacity?: string;
 }
 
-export class NearbyEventsDto {
-  @IsString()
-  @IsNotEmpty()
-  latitude: string
-  
-  @IsString()
-  @IsNotEmpty()
-  longitude: string
-}
-
 export class TicketRefundDto {
   @IsNotEmpty()
   @IsString()

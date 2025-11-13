@@ -68,10 +68,6 @@ export class TasksService {
     };
 
     try {
-      // Extract the public IDs of all user profile images
-      const users = await this.prisma.user.findMany({ select: { profileImage: true } });
-      users.forEach(user => localResources.push(extractPublicId(user.profileImage)));
-
       // Extract the public IDs of all event posters
       const events = await this.prisma.event.findMany({ select: { poster: true } });
       events.forEach(event => localResources.push(extractPublicId(event.poster)));
@@ -98,6 +94,54 @@ export class TasksService {
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while deleting unused Cloudinary resources. Error: ${error.message}\n`);
       throw error;
+    }
+  }
+
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async updateTrendingEvents() {
+    const redis: RedisClientType = await initializeRedis(
+      Secrets.REDIS_URL,
+      'Trending Events',
+      Secrets.TRENDING_EVENTS_STORE_INDEX,
+    )
+
+    try {
+      let index = 0;
+      let allKeys: string[] = [];
+
+      do {
+        const { cursor, keys } = await redis.scan(index, {
+          MATCH: 'event_log:*',
+          COUNT: 500,
+        });
+
+        // Add the found keys to the result array
+        allKeys = allKeys.concat(keys);
+
+        // Update the cursor for the next iteration
+        index = cursor;
+      } while (index !== 0);
+
+      if (allKeys.length === 0) return;
+
+      const rankingUpdates = [];
+      for (const key of allKeys) {
+        const eventId = key.split(':')[1];
+        const ticketCount = await redis.zCard(key);
+
+        rankingUpdates.push({
+          score: ticketCount,
+          value: eventId
+        });
+      }
+
+      // Rank the events by ticket sales within the last 72 hours
+      await redis.zAdd('trending-list', rankingUpdates);
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while updating trending event rankings. Error: ${error.message}\n`);
+      throw error;
+    } finally {
+      await redis.disconnect();
     }
   }
 }

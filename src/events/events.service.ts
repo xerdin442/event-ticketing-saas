@@ -2,7 +2,6 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import {
   CreateEventDto,
-  NearbyEventsDto,
   TicketRefundDto,
   UpdateEventDto
 } from './dto';
@@ -236,13 +235,12 @@ export class EventsService {
     }
   }
 
-  async findNearbyEvents(dto: NearbyEventsDto): Promise<Event[]> {
+  async findNearbyEvents(latitude: string, longitude: string): Promise<Event[]> {
     const redis: RedisClientType = await initializeRedis(
       Secrets.REDIS_URL,
       'Geolocation Search',
       Secrets.GEOLOCATION_STORE_INDEX,
     );
-    const { latitude, longitude } = dto;
 
     try {
       const events = await redis.geoRadius('events', { latitude, longitude }, 5, 'km');
@@ -313,6 +311,39 @@ export class EventsService {
       }
     } catch (error) {
       throw error;
+    }
+  }
+
+  async getTrendingEvents(): Promise<Event[]> {
+    const redis: RedisClientType = await initializeRedis(
+      Secrets.REDIS_URL,
+      'Trending Events',
+      Secrets.TRENDING_EVENTS_STORE_INDEX,
+    )
+
+    try {
+      // Fetch the top ten trending events
+      const LIMIT = 10;
+      const results = await redis.zRange('trending-list', 0, LIMIT - 1, {
+        REV: true,
+        BY: 'SCORE',
+      });
+
+      // Fetch details of the events
+      const trendingEvents: Event[] = [];
+      for (let i = 0; i < results.length; i += 2) {
+        const event = await this.prisma.event.findUnique({
+          where: { id: +results[i] }
+        });
+
+        trendingEvents.push(event);
+      }
+
+      return trendingEvents;
+    } catch (error) {
+      throw error;
+    } finally {
+      await redis.disconnect();
     }
   }
 }
