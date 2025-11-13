@@ -11,6 +11,7 @@ import { UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import logger from '../common/logger';
 import { DbService } from '@src/db/db.service';
+import { PaymentStatus } from '@src/common/types';
 
 @UsePipes(
   new ValidationPipe({ exceptionFactory: (errors) => new WsException(errors) }),
@@ -65,7 +66,7 @@ export class PaymentsGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
   }
 
-  sendPaymentStatus(email: string, status: string, message: string): void {
+  sendPaymentStatus(email: string, status: PaymentStatus, message: string): void {
     try {
       const client = Array.from(this.server.sockets.sockets.values()).find(
         (socket) => socket.data.email === email,

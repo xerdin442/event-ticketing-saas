@@ -3,6 +3,7 @@ import fs from 'fs';
 import { Event, Ticket } from '@prisma/client';
 import logger from '../logger';
 import { Attachment } from 'resend';
+import { formatDate } from './helper';
 
 const deleteFile = async (file: string) => {
   const context = deleteFile.name;
@@ -36,8 +37,8 @@ export const generateTicketPDF = (
 
       // Details
       doc.text(`Event: ${event.title}`);
-      doc.text(`Time: ${event.startTime.toISOString()} - ${event.endTime.toISOString()}`);
-      doc.text(`Date: ${event.date}`);
+      doc.text(`Time: ${formatDate(event.startTime, 'time')} - ${formatDate(event.endTime, 'time')}`);
+      doc.text(`Date: ${formatDate(event.date, 'date')}`);
       doc.moveDown();
 
       doc.fontSize(16).fillColor('black').text(`Ticket: ${ticket.tier}`);

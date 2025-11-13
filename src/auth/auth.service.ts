@@ -14,7 +14,6 @@ import { User } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { PasswordResetInfo } from '../common/types';
-import { sanitizeUserOutput } from '../common/util/helper';
 import { RedisClientType } from 'redis';
 import { initializeRedis } from '@src/common/config/redis-conf';
 import { Secrets } from '@src/common/env';
@@ -48,8 +47,10 @@ export class AuthService {
       // Send an onboarding email to the new user
       await this.authQueue.add('signup', email);
 
+      delete user.password; // Sanitize user details
+      
       return {
-        user: sanitizeUserOutput(user),
+        user,
         token: await this.jwt.signAsync(payload)
       };
     } catch (error) {
@@ -143,7 +144,7 @@ export class AuthService {
         // Fetch existing reset info
         const data = JSON.parse(resetIdCheck) as PasswordResetInfo;
 
-        // Reset the OTP value and expiration time
+        // Reset the OTP value
         await redis.setEx(resetId, 3600, JSON.stringify({
           email: data.email,
           otp: `${Math.random() * 10 ** 16}`.slice(3, 7),
@@ -234,7 +235,7 @@ export class AuthService {
 
         return user.email;
       } else {
-        throw new BadRequestException('Invalid password reset ID');
+        throw new BadRequestException('Invalid or expired password reset ID');
       }
     } catch (error) {
       throw error;

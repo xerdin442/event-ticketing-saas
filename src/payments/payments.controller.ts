@@ -46,7 +46,8 @@ export class PaymentsController {
         if (event.includes('charge')) {
           await this.paymentsQueue.add('transaction', {
             eventType: event,
-            metadata: data.metadata
+            metadata: data.metadata,
+            transactionReference: data.reference,
           });
         };
 
@@ -55,11 +56,21 @@ export class PaymentsController {
           await this.paymentsQueue.add('transfer', {
             eventType: event,
             transferCode: data.transfer_code,
-            metadata: data.recipient.metadata,
+            metadata: data.metadata,
             recipientCode: data.recipient.recipient_code,
             reason: data.reason,
             amount: data.amount,
             date: data.updated_at
+          });
+        };
+
+        // Listen for status of refunds for unsuccessful ticket purchases
+        if (event.includes('refund')) {
+          await this.paymentsQueue.add('refund', {
+            eventType: event,
+            amount: data.amount,
+            refundId: data.refund_reference,
+            metadata: data.metadata,
           });
         };
 

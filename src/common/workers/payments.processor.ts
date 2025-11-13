@@ -14,6 +14,7 @@ import { Secrets } from "../env";
 import { Attachment } from "resend";
 import { RedisClientType } from "redis";
 import { initializeRedis } from "../config/redis-conf";
+import { formatDate } from "../util/helper";
 
 @Injectable()
 @Processor('payments-queue')
@@ -30,7 +31,7 @@ export class PaymentsProcessor {
 
   @Process('transaction')
   async finalizeTransaction(job: Job) {
-    const { eventType, metadata } = job.data;
+    const { eventType, metadata, transactionReference } = job.data;
     const attendee = metadata.email as string;
 
     const eventId = parseInt(metadata.eventId);
@@ -51,12 +52,7 @@ export class PaymentsProcessor {
     const tier = event.ticketTiers.find(tier => tier.id === tierId);
     const price = tier.price;
 
-    const userRefundRecipientCode = await this.payments.createTransferRecipient({
-      accountName: user.accountName,
-      accountNumber: user.accountNumber,
-      bankName: user.bankName
-    });
-
+    // Initialize Redis store to track trending events
     const redis: RedisClientType = await initializeRedis(
       Secrets.REDIS_URL,
       'Trending Events',
@@ -75,14 +71,14 @@ export class PaymentsProcessor {
             if (discount) {
               // Check number of discount tickets left
               if (tier.numberOfDiscountTickets < quantity) {
-                throw new Error(`Discount ${tier.name} tickets are sold out! Please purchase regular tickets`);
+                throw new Error(`Discount ${tier.name} tickets are sold out! Please, browse other ticket tiers`);
               };
 
               // Check if the discount offer has expired
               const currentTime = new Date().getTime();
               const expirationDate = new Date(tier.discountExpiration).getTime();
               if (currentTime > expirationDate) {
-                throw new Error(`Discount offer for ${tier.name} tickets has expired. Please purchase regular tickets`);
+                throw new Error(`Discount offer for ${tier.name} tickets has expired. Please, browse other ticket tiers`);
               };
 
               // Decrement the number of discount tickets and total number of tickets left in the tier
@@ -120,31 +116,20 @@ export class PaymentsProcessor {
             };
           });
         } catch (error) {
-          // Initiate transfer of transaction refund
-          if (!Secrets.PAYSTACK_SECRET_KEY.includes('test')) {
-            await this.payments.initiateTransfer(
-              userRefundRecipientCode,
-              amount,
-              'Transaction Refund',
-              {
-                userId,
-                eventTitle: event.title,
-              }
-            );
-          }
+          // Initiate refund of transaction amount
+          await this.payments.initiateRefund(transactionReference, {
+            email: attendee,
+            eventTitle: event.title,
+            date: formatDate(new Date(), 'date'),
+          });
 
-          // Update metrics value
-          this.metrics.incrementCounter('transaction_refunds');
-          this.metrics.incrementCounter('transaction_refunds_volume', [], amount);
-
-          logger.warn(`[${this.context}] Ticket purchase processing failed. Transaction refund to ${attendee} initiated. Error: ${error.message}\n`);
+          logger.warn(`[${this.context}] Ticket purchase unsuccessful. Transaction refund to ${attendee} initiated. Error: ${error.message}\n`);
 
           // Notify the user of the payment status
           return this.gateway.sendPaymentStatus(
             attendee,
             'refund',
-            `Transaction failed: ${error.message}. This is due to too many purchase requests being processed simultaneously on our server.
-              A refund of your initial purchase amount has been initiated. Please try again in a few minutes.`
+            `Transaction unsuccessful: ${error.message}. Please try again in a few minutes.`
           );
         };
 
@@ -188,7 +173,7 @@ export class PaymentsProcessor {
           const ticket = await this.prisma.ticket.create({
             data: {
               accessKey,
-              price,            
+              price,
               tier: tier.name,
               discountPrice: discount && (amount / quantity),
               attendee,
@@ -201,7 +186,7 @@ export class PaymentsProcessor {
           pdfs.push(ticketPDF);
 
           // Record ticket sale for ranking in trending events
-          const trendingWindow = Date.now() - (72 * 60 * 60 * 1000); // 72 hours
+          const trendingWindow = Date.now() - (72 * 60 * 60 * 1000);
           redis.multi()
             .zAdd(`event_log:${eventId}`, [{ score: trendingWindow, value: ticket.id.toString() }]) // Add new entry
             .zRemRangeByScore(`event_log:${eventId}`, 0, trendingWindow) // Remove all entries older than 72 hours
@@ -222,10 +207,10 @@ export class PaymentsProcessor {
         // Notify the client of payment status
         return this.gateway.sendPaymentStatus(attendee, 'success', 'Payment successful!');
       } else if (eventType === 'charge.failed') {
-        logger.info(`[${this.context}] Ticket purchase failed: Email: ${attendee}\n`);
+        logger.warn(`[${this.context}] Ticket purchase failed: Email: ${attendee}\n`);
 
         // Notify the client of payment status
-        return this.gateway.sendPaymentStatus(attendee, 'failed', 'Payment unsuccessful!');;
+        return this.gateway.sendPaymentStatus(attendee, 'failed', 'Payment failed!');;
       }
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing ticket purchase. Error: ${error.message}\n`);
@@ -237,7 +222,7 @@ export class PaymentsProcessor {
 
   @Process('transfer')
   async finalizeTransfer(job: Job) {
-    const { eventType, metadata, reason, recipientCode } = job.data;
+    const { eventType, metadata, reason, recipientCode, amount } = job.data;
     const { email, eventTitle } = metadata;
 
     try {
@@ -249,11 +234,18 @@ export class PaymentsProcessor {
 
           // Remove attendee as a transfer recipient after ticket refund
           await this.payments.deleteTransferRecipient(recipientCode);
+
+          // Update metrics value
+          this.metrics.incrementCounter('ticket_refunds');
+          this.metrics.incrementCounter('ticket_refund_volume', [], amount);
         } else if (reason === 'Revenue Split') {
           // Notify the organizer of the transfer of the revenue split
           const content = `Congratulations on the success of your event: ${eventTitle}. Payout of your event revenue has been initiated.
             Thank you for choosing our platform!`;
           await this.mailService.sendEmail(email, reason, content);
+
+          // Update metrics value
+          this.metrics.incrementCounter('payout_volume', [], amount);
         }
 
         logger.info(`[${this.context}] ${reason}: Transfer to ${email} was successful!\n`)
@@ -262,12 +254,42 @@ export class PaymentsProcessor {
         // Update metrics value
         this.metrics.incrementCounter('unsuccessful_transfers');
 
-        logger.info(`[${this.context}] ${reason}: Transfer to ${email} failed or reversed.\n`);
+        logger.warn(`[${this.context}] ${reason}: Transfer to ${email} failed or reversed.\n`);
 
         return;
       }
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing ${reason} transfer to ${email}. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @Process('refund')
+  async processRefunds(job: Job) {
+    const { eventType, metadata, amount, refundId } = job.data;
+    const { email, eventTitle, date } = metadata;
+
+    try {
+      if (eventType === 'refund.processed') {
+        // Update metrics value
+        this.metrics.incrementCounter('transaction_refunds');
+      } else if (eventType === 'refund.failed') {
+        // Update metrics value
+        this.metrics.incrementCounter('failed_refunds');
+
+        const content = `A transaction refund has failed. Here are the details: \n
+          Email: ${email}\n
+          Event Title: ${eventTitle}\n
+          Date: ${date}\n
+          Amount: ${amount}\n
+          Paystack Reference: ${refundId}\n
+
+          Please, follow this up to ensure the attendee is refunded.
+          `;
+        await this.mailService.sendEmail(Secrets.ADMIN_EMAIL, 'Failed Transaction Refund', content);
+      }
+    } catch (error) {
+      logger.error(`[${this.context}] An error occured while processing transaction refund to ${email}. Error: ${error.message}\n`);
       throw error;
     }
   }

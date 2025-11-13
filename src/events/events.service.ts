@@ -110,10 +110,12 @@ export class EventsService {
         // Send alerts to users that are subscribed to this event category
         const users = await this.prisma.user.findMany({
           where: {
-            // **ADD SUBSCRIBED FIELD**
-            preferences: {
-              has: event.category,
-            }
+            AND: [{
+              alertsSubscription: true,
+              preferences: {
+                has: event.category,
+              }
+            }]
           }
         });
         await this.eventsQueue.add(

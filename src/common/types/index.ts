@@ -22,6 +22,8 @@ export type AccountDetails = {
   bankName: string
 }
 
+export type PaymentStatus = 'success' | 'failed' | 'refund';
+
 export interface PasswordResetInfo {
   email: string
   otp: string

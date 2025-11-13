@@ -6,7 +6,6 @@ import {
   Ticket,
   User
 } from '@prisma/client';
-import { sanitizeUserOutput } from '../common/util/helper';
 
 @Injectable()
 export class UserService {
@@ -20,7 +19,8 @@ export class UserService {
         data: { ...dto }
       });
 
-      return sanitizeUserOutput(user);
+      delete user.password;
+      return user;
     } catch (error) {
       throw error;
     }
@@ -82,7 +82,7 @@ export class UserService {
       await this.prisma.user.update({
         where: { id: userId },
         data: {
-          // **subscription toggle here**
+          alertsSubscription: mode === 'on' ? true : false,
         }
       });
     } catch (error) {

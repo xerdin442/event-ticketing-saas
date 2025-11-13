@@ -126,13 +126,13 @@
     },
     {
       "type": "graph",
-      "title": "Transaction Refunds Volume",
-      "description": "The cumulative volume of transaction refunds across all time.",
+      "title": "Failed Transaction Refunds",
+      "description": "The current cumulative number of failed transaction refunds across all time",
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(transaction_refunds_volume_total)",
-          "legendFormat": "Cumulative Volume"
+          "expr": "sum(failed_refunds_total)",
+          "legendFormat": "Cumulative Count"
         }
       ],
       "gridPos": {
@@ -180,9 +180,45 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 0,
-        "y": 0
+        "x": 16,
+        "y": 16
       }
-    }  
+    },
+    {
+      "type": "graph",
+      "title": "Ticket Refunds",
+      "description": "The current cumulative number of ticket refunds across all time",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(ticket_refunds_total)",
+          "legendFormat": "Cumulative Count"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 24
+      }
+    },
+    {
+      "type": "graph",
+      "title": "Ticket Refund Volume",
+      "description": "The cumulative volume of ticket refunds across all time.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(ticket_refund_volume_total)",
+          "legendFormat": "Cumulative Volume"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 24
+      }
+    }
   ]
 }

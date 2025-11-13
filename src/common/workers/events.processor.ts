@@ -11,6 +11,7 @@ import { PaymentsService } from "@src/payments/payments.service";
 import { MetricsService } from "@src/metrics/metrics.service";
 import { Ticket } from "@prisma/client";
 import { TicketRefundInfo } from "../types";
+import { formatDate } from "../util/helper";
 
 @Injectable()
 @Processor('events-queue')
@@ -56,8 +57,8 @@ export class EventsProcessor {
       const content = `Hello, there has been a change in the details of the event: ${event.title}
         Venue: ${event.venue}
         Address: ${event.address}
-        Time: ${event.startTime} - ${event.endTime}
-        Date: ${event.date}
+        Time: ${formatDate(event.startTime, 'time')} - ${formatDate(event.endTime, 'time')}
+        Date: ${formatDate(event.date, 'date')}
   
         We sincerely apologize for any inconveniences caused by these changes.
   
@@ -161,7 +162,6 @@ export class EventsProcessor {
 
       // Update metrics value
       this.metrics.incrementCounter('total_events', ['completed']);
-      this.metrics.incrementCounter('payout_volume', [], event.revenue);
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing COMPLETED event status update. Error: ${error.message}\n`);
       throw error;
