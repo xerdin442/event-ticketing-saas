@@ -14,13 +14,17 @@ import { GetUser } from '../custom/decorators';
 import { UpdateProfileDto } from './dto';
 import { UserService } from './users.service';
 import logger from '../common/logger';
+import { MetricsService } from '@src/metrics/metrics.service';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('user')
 export class UserController {
-  private context = UserController.name;
+  private readonly context = UserController.name;
 
-  constructor(private userService: UserService) { };
+  constructor(
+    private readonly userService: UserService,
+    private readonly metrics: MetricsService,
+  ) { };
 
   @Get('profile')
   getProfile(@GetUser() user: User): { user: User } {
@@ -104,10 +108,16 @@ export class UserController {
         await this.userService.toggleAlertSubscription(user.id, 'on');
         logger.info(`[${this.context}] ${user.email} subscribed to event alerts\n`);
 
+        // Update metric value
+        this.metrics.updateGauge('subscribed_users', 'inc');
+
         return { message: 'Event alerts subscription successful' };
       } else if (action === 'unsubscribe') {
         await this.userService.toggleAlertSubscription(user.id, 'off');
         logger.info(`[${this.context}] ${user.email} unsubscribed from event alerts\n`);
+
+        // Update metric value
+        this.metrics.updateGauge('subscribed_users', 'dec');
 
         return { message: 'Event alerts turned off successfully' };
       } else {

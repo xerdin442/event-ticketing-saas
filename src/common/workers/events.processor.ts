@@ -10,6 +10,7 @@ import { DbService } from "@src/db/db.service";
 import { PaymentsService } from "@src/payments/payments.service";
 import { MetricsService } from "@src/metrics/metrics.service";
 import { Ticket } from "@prisma/client";
+import { TicketRefundInfo } from "../types";
 
 @Injectable()
 @Processor('events-queue')
@@ -167,6 +168,36 @@ export class EventsProcessor {
     }
   }
 
+  @Process('ticket-refund-otp')
+  async sendTicketRefundOtp(job: Job) {
+    // Initialize Redis connection
+    const redis: RedisClientType = await initializeRedis(
+      Secrets.REDIS_URL,
+      'Ticket Refund',
+      Secrets.TICKET_REFUND_STORE_INDEX,
+    );
+
+    try {
+      const otp = `${Math.random() * 10 ** 16}`.slice(3, 9);
+      const content = `Here's the OTP to verify your ticket refund request: ${otp}
+        This code is only valid for the next 10 minutes.`;
+
+      // Send verification mail to attendee
+      await this.mailService.sendEmail(job.data.email, 'Ticket Refund Verification', content);
+
+      // Cache the OTP for the next 10mins
+      const refundInfo: TicketRefundInfo = { ...job.data, otp };
+      await redis.setEx(job.data.requestId, 600, JSON.stringify(refundInfo));
+
+      return;
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while sending verification mail for ticket refund. Error: ${error.message}.\n`);
+      throw error;
+    } finally {
+      await redis.disconnect();
+    }
+  }
+
   @Process('event-alerts')
   async sendEventAlerts(job: Job) {
     try {
@@ -178,7 +209,7 @@ export class EventsProcessor {
       });
 
       const subject = 'NEW EVENT ALERT!'
-      const content =  `Hey there! \nA new ${event.category.toLowerCase()} event is coming up soon! Here are the details:\n
+      const content = `A new ${event.category.toLowerCase()} event is coming up soon! Here are the details:\n
         Title: ${event.title}
         Venue: ${event.venue}
         Address: ${event.address}

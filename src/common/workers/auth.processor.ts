@@ -29,7 +29,7 @@ export class AuthProcessor {
     try {
       const { email, otp } = job.data;
       const subject = 'Password Reset'
-      const content = `This is your OTP: ${otp}. It is valid for one hour.`
+      const content = `This is your OTP to verify your password reset request: ${otp}. \nIt is valid for one hour.`
   
       await this.mailService.sendEmail(email, subject, content);
     } catch (error) {

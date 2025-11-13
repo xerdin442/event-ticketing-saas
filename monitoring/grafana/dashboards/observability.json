@@ -12,7 +12,7 @@
   "panels": [
     {
       "type": "singlestat",
-      "title": "2FA Enabled Users (Gauge)",
+      "title": "2FA Enabled Users",
       "description": "Current count of users who have 2FA enabled",
       "targets": [
         {
@@ -159,6 +159,30 @@
         "x": 8,
         "y": 16
       }
-    }
+    },
+    {
+      "type": "singlestat",
+      "title": "Subscribed Users",
+      "description": "Current count of users who are subscribed to event alerts",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "subscribed_users",
+          "legendFormat": "Current Count",
+          "instant": true
+        }
+      ],
+      "gauge": {
+        "show": true,
+        "minValue": 0,
+        "maxValue": 10000
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      }
+    }  
   ]
 }

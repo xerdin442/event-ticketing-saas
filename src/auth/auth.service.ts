@@ -102,15 +102,14 @@ export class AuthService {
       });
 
       if (user) {
-        // Set the OTP value and expiration time
         const data: PasswordResetInfo = {
           email: dto.email,
           otp: `${Math.random() * 10 ** 16}`.slice(3, 7),
-          otpExpiration: Date.now() + (60 * 60 * 1000),
         }
 
         const resetId = randomUUID();
-        await redis.set(resetId, JSON.stringify(data))
+        // Cache the reset OTP for one hour
+        await redis.setEx(resetId, 3600, JSON.stringify(data))
 
         // Send the OTP via email
         await this.authQueue.add('otp', {
@@ -145,13 +144,10 @@ export class AuthService {
         const data = JSON.parse(resetIdCheck) as PasswordResetInfo;
 
         // Reset the OTP value and expiration time
-        const otp = `${Math.random() * 10 ** 16}`.slice(3, 7);
-        const otpExpiration = Date.now() + (60 * 60 * 1000);
-        await redis.set(resetId, JSON.stringify({
+        await redis.setEx(resetId, 3600, JSON.stringify({
           email: data.email,
-          otp,
-          otpExpiration,
-        }))
+          otp: `${Math.random() * 10 ** 16}`.slice(3, 7),
+        }));
 
         // Send another email with the new OTP
         await this.authQueue.add('otp', {
@@ -161,7 +157,7 @@ export class AuthService {
 
         return data.email;
       } else {
-        throw new BadRequestException('Invalid password reset ID');
+        throw new BadRequestException('Invalid or expired password reset ID');
       }
     } catch (error) {
       throw error;
@@ -189,13 +185,10 @@ export class AuthService {
         if (data.otp !== dto.otp) {
           throw new BadRequestException('Invalid OTP')
         };
-        if (data.otpExpiration < Date.now()) {
-          throw new BadRequestException('This reset OTP has expired')
-        };
 
         return data.email;
       } else {
-        throw new BadRequestException('Invalid password reset ID');
+        throw new BadRequestException('Invalid or expired password reset ID');
       }
     } catch (error) {
       throw error;

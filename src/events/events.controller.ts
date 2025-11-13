@@ -17,8 +17,9 @@ import { EventsService } from './events.service';
 import { AuthGuard } from '@nestjs/passport';
 import {
   CreateEventDto,
-  TicketRefundDto,
-  UpdateEventDto
+  ProcessTicketRefundDto,
+  UpdateEventDto,
+  VerifyTicketRefundDto
 } from './dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from '../common/config/upload';
@@ -158,15 +159,53 @@ export class EventsController {
   @Post(':eventId/refund')
   async initiateTicketRefund(
     @Param('eventId', ParseIntPipe) eventId: number,
-    @Body() dto: TicketRefundDto,
-  ): Promise<{ message: string }> {
+    @Query('email') email: string,
+  ): Promise<{ requestId: string; message: string }> {
     try {
-      await this.eventsService.initiateTicketRefund(eventId, dto);
-      logger.info(`[${this.context}] Ticket refund initiated by ${dto.email}.\n`);
+      const requestId = await this.eventsService.initiateTicketRefund(eventId, email);
+      logger.info(`[${this.context}] Ticket refund initiated by ${email}.\n`);
 
-      return { message: 'A refund of your ticket amount has been initiated. Please check your email for confirmation' };
+      return {
+        requestId,
+        message: 'A verification OTP has been sent to your email'
+      };
     } catch (error) {
-      logger.error(`[${this.context}] An error occurred during processing of ticket refund. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occurred while initiating ticket refund. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post(':eventId/refund/verify')
+  async verifyTicketRefund(
+    @Body() dto: VerifyTicketRefundDto,
+  ): Promise<{ requestId: string; message: string }>  {
+    try {
+      const { requestId, email } = await this.eventsService.verifyTicketRefund(dto);
+      logger.info(`[${this.context}] Ticket refund request verified by ${email}.\n`);
+
+      return {
+        requestId,
+        message: 'OTP verification successful! You can now safely process your ticket refund'
+      };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while verifying ticket refund request. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post(':eventId/refund/process')
+  async processTicketRefund(@Body() dto: ProcessTicketRefundDto): Promise<{ message: string }>  {
+    try {
+      const email = await this.eventsService.processTicketRefund(dto);
+      logger.info(`[${this.context}] Ticket refund processed by ${email}.\n`);
+
+      return {
+        message: 'A refund of your ticket amount has been initiated. A confirmation mail will be sent to you shortly'
+      };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while processing ticket refund request. Error: ${error.message}\n`);
       throw error;
     }
   }

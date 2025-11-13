@@ -2,8 +2,9 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import {
   CreateEventDto,
-  TicketRefundDto,
-  UpdateEventDto
+  VerifyTicketRefundDto,
+  UpdateEventDto,
+  ProcessTicketRefundDto,
 } from './dto';
 import axios from 'axios';
 import { Event, EventCategory } from '@prisma/client';
@@ -14,6 +15,8 @@ import { initializeRedis } from '../common/config/redis-conf';
 import { Secrets } from '../common/env';
 import { MetricsService } from '@src/metrics/metrics.service';
 import { PaymentsService } from '@src/payments/payments.service';
+import { randomUUID } from 'crypto';
+import { TicketRefundInfo } from '@src/common/types';
 
 @Injectable()
 export class EventsService {
@@ -22,7 +25,7 @@ export class EventsService {
     private readonly metrics: MetricsService,
     private readonly payments: PaymentsService,
     @InjectQueue('events-queue') private readonly eventsQueue: Queue
-  ) {};
+  ) { };
 
   async exploreEvents(categories: EventCategory[]): Promise<Event[]> {
     try {
@@ -115,7 +118,7 @@ export class EventsService {
         });
         await this.eventsQueue.add(
           'event-alerts',
-          { 
+          {
             users,
             eventId: event.id,
           }
@@ -295,7 +298,7 @@ export class EventsService {
     }
   }
 
-  async initiateTicketRefund(eventId: number, dto: TicketRefundDto): Promise<void> {
+  async initiateTicketRefund(eventId: number, email: string): Promise<string> {
     try {
       // Verify that the event has been cancelled
       const event = await this.prisma.event.findUnique({
@@ -309,41 +312,105 @@ export class EventsService {
       const tickets = await this.prisma.ticket.findMany({
         where: {
           eventId,
-          attendee: dto.email,
+          attendee: email,
         }
       });
 
       if (tickets.length > 0) {
-        // Verify attendee's account details
-        await this.payments.verifyAccountDetails({ ...dto });
-
-        // Create recipient code to process transfer
-        const recipientCode = await this.payments.createTransferRecipient({ ...dto })
+        const requestId = randomUUID(); // Generate unique request ID
 
         // Calculate the refund amount in kobo
-        const refund = tickets.reduce((total, ticket) => {
+        const refundAmount = tickets.reduce((total, ticket) => {
           return total + (ticket.discountPrice ? ticket.discountPrice : ticket.price) * 100;
         }, 0);
 
-        // Initiate transfer of ticket refund
-        if (!Secrets.PAYSTACK_SECRET_KEY.includes('test')) {
-          await this.payments.initiateTransfer(
-            recipientCode,
-            refund,
-            'Ticket Refund',
-            {
-              email: dto.email,
-              eventTitle: event.title,
-            }
-          );
-        }
+        // Send verification OTP to validate request
+        await this.eventsQueue.add(
+          'ticket-refund-otp',
+          {
+            requestId,
+            email,
+            eventTitle: event.title,
+            refundAmount
+          }
+        );
 
-        return;
+        return requestId;
       } else {
-        throw new BadRequestException('Only attendees can initiate ticket refunds for this event. Check the email and try again')
+        throw new BadRequestException('Only attendees can process ticket refunds for this event. Check the email and try again');
       }
     } catch (error) {
       throw error;
+    }
+  }
+
+  async verifyTicketRefund(dto: VerifyTicketRefundDto): Promise<{ requestId: string; email: string }> {
+    // Initialize Redis connection
+    const redis: RedisClientType = await initializeRedis(
+      Secrets.REDIS_URL,
+      'Ticket Refund',
+      Secrets.TICKET_REFUND_STORE_INDEX,
+    );
+
+    try {
+      const requestId = await redis.get(dto.requestId);
+      if (!requestId) throw new BadRequestException('Invalid or expired request ID');
+
+      // Retrieve ticket refund info
+      const data = JSON.parse(requestId) as TicketRefundInfo;
+      if (data.otp !== dto.otp) throw new BadRequestException('Invalid OTP');
+
+      // Store the info with a new request ID after OTP verification
+      const verifiedRequestId = randomUUID();
+      await redis.setEx(verifiedRequestId, 3600, JSON.stringify(data));
+
+      return {
+        requestId: verifiedRequestId,
+        email: data.email,
+      };
+    } catch (error) {
+      throw error;
+    } finally {
+      await redis.disconnect();
+    }
+  }
+
+  async processTicketRefund(dto: ProcessTicketRefundDto) {
+    // Initialize Redis connection
+    const redis: RedisClientType = await initializeRedis(
+      Secrets.REDIS_URL,
+      'Ticket Refund',
+      Secrets.TICKET_REFUND_STORE_INDEX,
+    );
+
+    try {
+      const requestId = await redis.get(dto.requestId);
+      if (!requestId) throw new BadRequestException('Invalid or expired request ID');
+
+      // Retrieve ticket refund info
+      const { email, eventTitle, refundAmount } = JSON.parse(requestId) as TicketRefundInfo;
+
+      // Verify attendee's account details
+      await this.payments.verifyAccountDetails({ ...dto });
+
+      // Create recipient code to process transfer
+      const recipientCode = await this.payments.createTransferRecipient({ ...dto })
+
+      // Initiate transfer of ticket refund
+      if (!Secrets.PAYSTACK_SECRET_KEY.includes('test')) {
+        await this.payments.initiateTransfer(
+          recipientCode,
+          refundAmount,
+          'Ticket Refund',
+          { email, eventTitle }
+        );
+      }
+
+      return;
+    } catch (error) {
+      throw error
+    } finally {
+      await redis.disconnect();
     }
   }
 

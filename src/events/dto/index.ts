@@ -90,10 +90,20 @@ export class UpdateEventDto {
   capacity?: string;
 }
 
-export class TicketRefundDto {
+export class VerifyTicketRefundDto {
   @IsNotEmpty()
   @IsString()
-  email: string;
+  requestId: string;
+
+  @IsNotEmpty()
+  @IsString()
+  otp: string;
+}
+
+export class ProcessTicketRefundDto {
+  @IsNotEmpty()
+  @IsString()
+  requestId: string;
 
   @IsNotEmpty()
   @IsString()

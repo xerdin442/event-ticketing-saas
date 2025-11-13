@@ -7,14 +7,10 @@ import {
   User
 } from '@prisma/client';
 import { sanitizeUserOutput } from '../common/util/helper';
-import { MetricsService } from '@src/metrics/metrics.service';
 
 @Injectable()
 export class UserService {
-  constructor(
-    private readonly prisma: DbService,
-    private readonly metrics: MetricsService,
-  ) {};
+  constructor(private readonly prisma: DbService) {};
 
   async updateProfile(userId: number, dto: UpdateProfileDto): Promise<User> {
     try {

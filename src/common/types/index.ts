@@ -22,10 +22,14 @@ export type AccountDetails = {
   bankName: string
 }
 
-export type PasswordResetInfo = {
+export interface PasswordResetInfo {
   email: string
   otp: string
-  otpExpiration: number
+}
+
+export interface TicketRefundInfo extends PasswordResetInfo {
+  eventTitle: string,
+  refundAmount: number;
 }
 
 export type CloudinaryResource = {
