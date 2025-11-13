@@ -58,6 +58,10 @@ export class CreateDiscountDto {
 export class PurchaseTicketDto {
   @IsString()
   @IsNotEmpty()
+  email: string;
+
+  @IsString()
+  @IsNotEmpty()
   tier: string;
   
   @IsNumber()

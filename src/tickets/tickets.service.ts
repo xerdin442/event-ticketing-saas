@@ -19,7 +19,7 @@ export class TicketsService {
     @InjectQueue('tickets-queue') private readonly ticketsQueue: Queue
   ) { };
 
-  async findAllTickets(eventId: number): Promise<TicketTier[]> {
+  async getTicketTiers(eventId: number): Promise<TicketTier[]> {
     try {
       const event = await this.prisma.event.findUnique({
         where: { id: eventId },
@@ -160,13 +160,13 @@ export class TicketsService {
     }
   }
 
-  async purchaseTicket(dto: PurchaseTicketDto, eventId: number, userId: number): Promise<string> {
+  async purchaseTicket(dto: PurchaseTicketDto, eventId: number): Promise<string> {
     try {
       let amount: number;
       let discount: boolean = false;
 
       const user = await this.prisma.user.findUnique({
-        where: { id: userId }
+        where: { email: dto.email }
       });
       const event = await this.prisma.event.findUnique({
         where: { id: eventId },
@@ -198,7 +198,7 @@ export class TicketsService {
 
       // Configure metadata for purchase transaction
       const metadata = {
-        userId,
+        email: dto.email,
         eventId,
         tierId: tier.id,
         amount,

@@ -28,29 +28,28 @@ import { RedisClientType } from 'redis';
 import { initializeRedis } from '../common/config/redis-conf';
 import { Secrets } from '../common/env';
 
-@UseGuards(AuthGuard('jwt'))
 @Controller('events/:eventId/tickets')
 export class TicketsController {
   private readonly context: string = TicketsController.name;
 
   constructor(private readonly ticketsService: TicketsService) {};
 
-  @Get()
-  async getEventTickets(
+  @Get('tiers')
+  async getTicketTiers(
     @Param('eventId', ParseIntPipe) eventId: number
   ): Promise<{ tickets: TicketTier[] }> {
     try {
-      const tickets = await this.ticketsService.findAllTickets(eventId);
+      const tickets = await this.ticketsService.getTicketTiers(eventId);
       return { tickets };
     } catch (error) {
-      logger.error(`[${this.context}] An error occurred while deleting ticket tier. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occurred while fetching ticket tiers for event. Error: ${error.message}\n`);
       throw error;
     }
   }
 
   @HttpCode(HttpStatus.OK)
   @Post('add')
-  @UseGuards(EventOrganizerGuard)
+  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
   async addTicketTier(
     @Body() dto: AddTicketTierDto,
     @Param('eventId', ParseIntPipe) eventId: number
@@ -64,9 +63,8 @@ export class TicketsController {
     }
   }
 
-  @HttpCode(HttpStatus.OK)
   @Delete(':tierId')
-  @UseGuards(EventOrganizerGuard)
+  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
   async removeTicketTier(
     @Param('tierId', ParseIntPipe) tierId: number,
   ): Promise<{ message: string }> {
@@ -81,7 +79,7 @@ export class TicketsController {
 
   @HttpCode(HttpStatus.OK)
   @Post(':tierId/discount/create')
-  @UseGuards(EventOrganizerGuard)
+  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
   async createDiscount(
     @Param('tierId', ParseIntPipe) tierId: number,
     @Body() dto: CreateDiscountDto,
@@ -97,7 +95,7 @@ export class TicketsController {
 
   @HttpCode(HttpStatus.OK)
   @Post(':tierId/discount/remove')
-  @UseGuards(EventOrganizerGuard)
+  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
   async removeDiscount(
     @Param('tierId', ParseIntPipe) tierId: number,
   ): Promise<{ message: string }> {
@@ -115,7 +113,6 @@ export class TicketsController {
   async purchaseTicket(
     @Body() dto: PurchaseTicketDto,
     @Param('eventId', ParseIntPipe) eventId: number,
-    @GetUser() user: User,
     @Headers('Idempotency-Key') idempotencyKey: string
   ): Promise<{ checkout: string }> {
     // Check if request contains a valid idempotency key
@@ -133,15 +130,15 @@ export class TicketsController {
       // Return cached checkout URL if request has been processed before
       const existingTransaction = await redis.get(idempotencyKey);
       if (existingTransaction) {
-        logger.warn(`[${this.context}] Duplicate ticket purchase attempt by ${user.email}.\n`);
+        logger.warn(`[${this.context}] Duplicate ticket purchase attempt by ${dto.email}.\n`);
         return { checkout: JSON.parse(existingTransaction).checkout };
       };
 
       // Process ticket purchase and store checkout URL to prevent multiple payments
-      const checkout = await this.ticketsService.purchaseTicket(dto, eventId, user.id);
-      await redis.setEx(idempotencyKey, 3600, JSON.stringify({ checkout }));
+      const checkout = await this.ticketsService.purchaseTicket(dto, eventId);
+      await redis.setEx(idempotencyKey, 15 * 60, JSON.stringify({ checkout }));
 
-      logger.info(`[${this.context}] ${user.email} initiated ticket purchase.\n`);
+      logger.info(`[${this.context}] ${dto.email} initiated ticket purchase.\n`);
       return { checkout };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while intitiating ticket purchase. Error: ${error.message}\n`);
@@ -153,7 +150,7 @@ export class TicketsController {
 
   @HttpCode(HttpStatus.OK)
   @Post('validate')
-  @UseGuards(EventOrganizerGuard)
+  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
   async validateTicket(@Body() dto: ValidateTicketDto): Promise<{ message: string }> {
     try {
       await this.ticketsService.validateTicket(dto);

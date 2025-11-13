@@ -3,8 +3,6 @@ import axios from "axios";
 import { AccountDetails, BankData } from '../common/types';
 import { Secrets } from '../common/env';
 import logger from '../common/logger';
-import { RedisClientType } from 'redis';
-import { initializeRedis } from '../common/config/redis-conf';
 
 @Injectable()
 export class PaymentsService {
@@ -137,64 +135,6 @@ export class PaymentsService {
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while initiating transfer from balance. Error: ${error.message}\n`);
       throw error;
-    }
-  }
-
-  async retryTransfer(data: any, email: string): Promise<void> {
-    const { metadata, reason, recipientCode, amount, transferCode, date } = data;
-    const { retryKey } = metadata;
-    const MAX_RETRIES = 2;
-
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Transfer Management'
-    );
-
-    try {
-      await redis.select(Secrets.TRANSFER_RETRIES_STORE_INDEX);
-
-      // Use the retry key to check if the transfer has already been retried
-      const checkRetry = await redis.get(retryKey);
-      if (checkRetry) {
-        const retries = JSON.parse(checkRetry).retries;
-        if (retries < MAX_RETRIES) {
-          // Retry transfer for the last time
-          await this.initiateTransfer(recipientCode, amount, reason, metadata);
-
-          // Update number of retries for this transfer
-          const ttl = await redis.ttl(retryKey);
-          await redis.set(retryKey, JSON.stringify({ retries: retries + 1 }), { EX: ttl });
-
-          logger.info(`[${this.context}] ${reason}: Final transfer retry to ${email} initiated.\n`);
-          return;          
-        } else if (retries === MAX_RETRIES) {
-          // If retries are exhausted, store details of the failed transfer for 30 days
-          await redis.select(Secrets.FAILED_TRANSFERS_STORE_INDEX);
-          await redis.setEx(transferCode, 2592000, JSON.stringify({
-            email,
-            reason,
-            amount,
-            date
-          }));
-
-          await this.deleteTransferRecipient(recipientCode); // Delete recipient after failed transfer
-
-          logger.warn(`[${this.context}] ${reason}: Retries exhausted. Transfer has been marked and stored as a failed transfer.\n`);
-          return;
-        }
-      };
-
-      // Initiate first retry attempt and store the retry key to track the number of retries
-      await this.initiateTransfer(recipientCode, amount, reason, metadata);
-      await redis.setEx(retryKey, 86400, JSON.stringify({ retries: 1 }));
-
-      logger.info(`[${this.context}] ${reason}: Transfer retry to ${email} initiated.\n`);
-      return;
-    } catch (error) {
-      logger.error(`[${this.context}] ${reason}: An error occurred while processing transfer retry. Error: ${error.message}\n`);
-      throw error;
-    } finally {
-      await redis.disconnect();
     }
   }
 

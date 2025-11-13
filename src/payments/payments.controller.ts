@@ -4,10 +4,7 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  Req,
-  UseGuards
-} from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+  Req} from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import logger from '../common/logger';
 import { Request } from 'express';
@@ -26,7 +23,6 @@ export class PaymentsController {
   ) { };
 
   @Get('banks')
-  @UseGuards(AuthGuard('jwt'))
   async getBankNames(): Promise<string[]> {
     try {
       return this.payments.getBankNames();

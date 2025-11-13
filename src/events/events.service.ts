@@ -14,7 +14,6 @@ import { initializeRedis } from '../common/config/redis-conf';
 import { Secrets } from '../common/env';
 import { MetricsService } from '@src/metrics/metrics.service';
 import { PaymentsService } from '@src/payments/payments.service';
-import { randomUUID } from 'crypto';
 
 @Injectable()
 export class EventsService {
@@ -114,7 +113,7 @@ export class EventsService {
           ...(poster && { poster })
         },
         include: {
-          users: true,
+          tickets: true,
           organizer: true
         }
       });
@@ -184,7 +183,8 @@ export class EventsService {
       }
 
       delete event.organizer;
-      delete event.users;
+      delete event.tickets;
+
       return event;
     } catch (error) {
       throw error;
@@ -221,7 +221,6 @@ export class EventsService {
         },
         include: {
           tickets: true,
-          users: true,
           organizer: true
         }
       });
@@ -275,7 +274,7 @@ export class EventsService {
       const tickets = await this.prisma.ticket.findMany({
         where: {
           eventId,
-          user: { email: dto.email }
+          attendee: dto.email,
         }
       });
 
@@ -300,7 +299,6 @@ export class EventsService {
             {
               email: dto.email,
               eventTitle: event.title,
-              retryKey: randomUUID().replace(/-/g, '')
             }
           );
         }

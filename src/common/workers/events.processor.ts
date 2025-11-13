@@ -8,7 +8,6 @@ import logger from "../logger";
 import { MailService } from "../config/mail";
 import { DbService } from "@src/db/db.service";
 import { PaymentsService } from "@src/payments/payments.service";
-import { randomUUID } from "crypto";
 import { MetricsService } from "@src/metrics/metrics.service";
 
 @Injectable()
@@ -64,9 +63,9 @@ export class EventsProcessor {
         ${event.organizer.name}
         `
 
-      if (event.users.length > 0) {
-        for (const user of event.users) {
-          await this.mailService.sendEmail(user.email, subject, content);
+      if (event.tickets.length > 0) {
+        for (const ticket of event.tickets) {
+          await this.mailService.sendEmail(ticket.attendee, subject, content);
         }
 
         return;
@@ -93,8 +92,8 @@ export class EventsProcessor {
       // Update metrics value
       this.metrics.incrementCounter('total_events', ['cancelled']);
 
-      if (event.users.length > 0) {
-        for (let user of event.users) {
+      if (event.tickets.length > 0) {
+        for (let ticket of event.tickets) {
           // Notify all attendees of the event cancellation
           const subject = 'Event Cancellation'
           const content = `The event: ${event.title} has been cancelled. We sincerely apologize for any inconveniences
@@ -102,7 +101,7 @@ export class EventsProcessor {
 
           Best regards,
           ${event.organizer.name}`;
-          await this.mailService.sendEmail(user.email, subject, content);
+          await this.mailService.sendEmail(ticket.attendee, subject, content);
         }
       }
 
@@ -149,7 +148,6 @@ export class EventsProcessor {
           {
             email: event.organizer.email,
             eventTitle: event.title,
-            retryKey: randomUUID().replace(/-/g, '')
           }
         );
 

@@ -66,7 +66,7 @@ export class UserController {
         throw new BadRequestException('Missing "role" query parameter.')
       };
 
-      const events = await this.userService.getAllEvents(role, user.id)
+      const events = await this.userService.getAllEvents(role, user.email)
       logger.info(`[${this.context}] ${user.email} retrieved all events as an ${role}.\n`);
 
       return { events };
@@ -79,7 +79,7 @@ export class UserController {
   @Get('tickets')
   async getAllTickets(@GetUser() user: User): Promise<{ tickets: Ticket[] }> {
     try {
-      const tickets = await this.userService.getAllTickets(user.id)
+      const tickets = await this.userService.getAllTickets(user.email)
       logger.info(`[${this.context}] ${user.email} retrieved all purchased tickets.\n`);
 
       return { tickets };

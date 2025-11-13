@@ -17,7 +17,6 @@ import { EventsService } from './events.service';
 import { AuthGuard } from '@nestjs/passport';
 import {
   CreateEventDto,
-  NearbyEventsDto,
   TicketRefundDto,
   UpdateEventDto
 } from './dto';
@@ -28,7 +27,6 @@ import { Event, User } from '@prisma/client';
 import logger from '../common/logger';
 import { EventOrganizerGuard } from '../custom/guards';
 
-@UseGuards(AuthGuard('jwt'))
 @Controller('events')
 export class EventsController {
   private readonly context: string = EventsController.name;
@@ -36,6 +34,7 @@ export class EventsController {
   constructor(private readonly eventsService: EventsService) { };
 
   @Post('create')
+  @UseGuards(AuthGuard('jwt'))
   @UseInterceptors(
     FileInterceptor('poster', {
       fileFilter: UploadService.fileFilter,
@@ -85,7 +84,7 @@ export class EventsController {
   }
 
   @Patch(':eventId')
-  @UseGuards(EventOrganizerGuard)
+  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
   @UseInterceptors(
     FileInterceptor('poster', {
       fileFilter: UploadService.fileFilter,
@@ -112,13 +111,10 @@ export class EventsController {
 
   @Get(':eventId')
   async getEventDetails(
-    @GetUser() user: User,
     @Param('eventId', ParseIntPipe) eventId: number
   ): Promise<{ event: Event }> {
     try {
       const event = await this.eventsService.getEventDetails(eventId);
-      logger.info(`[${this.context}] Event details retrieved by ${user.email}.\n`);
-
       return { event };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while retrieving event details. Error: ${error.message}\n`);
@@ -128,7 +124,7 @@ export class EventsController {
 
   @HttpCode(HttpStatus.OK)
   @Post(':eventId/cancel')
-  @UseGuards(EventOrganizerGuard)
+  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
   async cancelEvent(
     @GetUser() user: User,
     @Param('eventId', ParseIntPipe) eventId: number

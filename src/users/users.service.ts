@@ -36,21 +36,25 @@ export class UserService {
     }
   }
 
-  async getAllEvents(role: string, userId: number): Promise<Event[]> {
+  async getAllEvents(role: string, email: string): Promise<Event[]> {
     try {
       switch (role) {
         case 'organizer':
           // Get the details of all events where the user is the organizer
           return await this.prisma.event.findMany({
-            where: { organizerId: userId }
+            where: {
+              organizer: {
+                user: { email }
+              }
+            }
           });
 
         case 'attendee':
           // Get all events where the user is an attendee
           return await this.prisma.event.findMany({
             where: {
-              users: {
-                some: { id: userId }
+              tickets: {
+                some: { attendee: email }
               }
             }
           });
@@ -63,10 +67,10 @@ export class UserService {
     }
   }
 
-  async getAllTickets(userId: number): Promise<Ticket[]> {
+  async getAllTickets(email: string): Promise<Ticket[]> {
     try {
       return this.prisma.ticket.findMany({
-        where: { attendee: userId }
+        where: { attendee: email }
       });
     } catch (error) {
       throw error;

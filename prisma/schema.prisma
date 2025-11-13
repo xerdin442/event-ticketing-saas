@@ -50,8 +50,6 @@ model User {
   password    String
   preferences EventCategory[]
 
-  tickets   Ticket[]
-  events    Event[]    @relation("Attendees")
   organizer Organizer?
 
   @@index([email])
@@ -67,15 +65,12 @@ model Ticket {
   price         Int
   accessKey     String       @unique
   status        TicketStatus @default(ACTIVE)
+  attendee      String
   discountPrice Int?
-
-  attendee Int
-  user     User @relation(fields: [attendee], references: [id], onDelete: Cascade)
 
   eventId Int
   event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  @@index([attendee])
   @@index([eventId])
   @@map("tickets")
 }
@@ -146,8 +141,6 @@ model Event {
 
   organizerId Int
   organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-
-  users User[] @relation("Attendees")
 
   ticketTiers TicketTier[]
   tickets     Ticket[]

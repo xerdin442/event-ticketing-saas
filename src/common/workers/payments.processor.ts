@@ -31,9 +31,9 @@ export class PaymentsProcessor {
   @Process('transaction')
   async finalizeTransaction(job: Job) {
     const { eventType, metadata } = job.data;
+    const attendee = metadata.email as string;
 
     const eventId = parseInt(metadata.eventId);
-    const userId = parseInt(metadata.userId);
     const tierId = parseInt(metadata.tierId);
     const amount = parseInt(metadata.amount);
     const quantity = parseInt(metadata.quantity);
@@ -51,9 +51,6 @@ export class PaymentsProcessor {
     const tier = event.ticketTiers.find(tier => tier.id === tierId);
     const price = tier.price;
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId }
-    });
     const userRefundRecipientCode = await this.payments.createTransferRecipient({
       accountName: user.accountName,
       accountNumber: user.accountNumber,
@@ -132,7 +129,6 @@ export class PaymentsProcessor {
               {
                 userId,
                 eventTitle: event.title,
-                retryKey: randomUUID().replace(/-/g, '')
               }
             );
           }
@@ -141,11 +137,11 @@ export class PaymentsProcessor {
           this.metrics.incrementCounter('transaction_refunds');
           this.metrics.incrementCounter('transaction_refunds_volume', [], amount);
 
-          logger.warn(`[${this.context}] Ticket purchase processing failed. Transaction refund to ${user.email} initiated. Error: ${error.message}\n`);
+          logger.warn(`[${this.context}] Ticket purchase processing failed. Transaction refund to ${attendee} initiated. Error: ${error.message}\n`);
 
           // Notify the user of the payment status
           return this.gateway.sendPaymentStatus(
-            user.email,
+            attendee,
             'refund',
             `Transaction failed: ${error.message}. This is due to too many purchase requests being processed simultaneously on our server.
               A refund of your initial purchase amount has been initiated. Please try again in a few minutes.`
@@ -162,14 +158,11 @@ export class PaymentsProcessor {
           split = amount * 0.975;  //2.5%
         };
 
-        // Add the organizer's split to the event's total revenue and the user to the attendee list
+        // Add the organizer's split to the event's total revenue
         await this.prisma.event.update({
           where: { id: eventId },
           data: {
             revenue: { increment: split },
-            users: {
-              connect: { id: userId }
-            }
           }
         });
 
@@ -198,7 +191,7 @@ export class PaymentsProcessor {
               price,            
               tier: tier.name,
               discountPrice: discount && (amount / quantity),
-              attendee: userId,
+              attendee,
               eventId
             }
           });
@@ -219,20 +212,20 @@ export class PaymentsProcessor {
         const subject = 'Ticket Purchase'
         const content = `You have purchased tickets for the event: ${event.title}.
           Attached to this email are your ticket(s). They'll be required for entry at the event, keep them safe!`
-        await this.mailService.sendEmail(user.email, subject, content, pdfs);
+        await this.mailService.sendEmail(attendee, subject, content, pdfs);
 
         this.metrics.incrementCounter('tickets_purchased');
         this.metrics.incrementCounter('tickets_purchased_volume', [], amount);
 
-        logger.info(`[${this.context}] Ticket purchase completed by ${user.email}.\n`);
+        logger.info(`[${this.context}] Ticket purchase completed by ${attendee}.\n`);
 
         // Notify the client of payment status
-        return this.gateway.sendPaymentStatus(user.email, 'success', 'Payment successful!');
+        return this.gateway.sendPaymentStatus(attendee, 'success', 'Payment successful!');
       } else if (eventType === 'charge.failed') {
-        logger.info(`[${this.context}] Ticket purchase failed: Email: ${user.email}\n`);
+        logger.info(`[${this.context}] Ticket purchase failed: Email: ${attendee}\n`);
 
         // Notify the client of payment status
-        return this.gateway.sendPaymentStatus(user.email, 'failed', 'Payment unsuccessful!');;
+        return this.gateway.sendPaymentStatus(attendee, 'failed', 'Payment unsuccessful!');;
       }
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing ticket purchase. Error: ${error.message}\n`);
@@ -270,15 +263,6 @@ export class PaymentsProcessor {
         this.metrics.incrementCounter('unsuccessful_transfers');
 
         logger.info(`[${this.context}] ${reason}: Transfer to ${email} failed or reversed.\n`);
-
-        // Initiate transfer retry after 30 minutes
-        setTimeout(async () => {
-          try {
-            await this.payments.retryTransfer(job.data, email);
-          } catch (error) {
-            throw error;
-          }
-        }, 30 * 60 * 1000);
 
         return;
       }
