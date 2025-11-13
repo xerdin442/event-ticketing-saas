@@ -28,11 +28,6 @@ export type PasswordResetInfo = {
   otpExpiration: number
 }
 
-export type FailedTransfer = {
-  transferCode: string
-  details: any
-}
-
 export type CloudinaryResource = {
   asset_id: string
   public_id: string
