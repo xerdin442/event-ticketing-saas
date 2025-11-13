@@ -14,6 +14,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TasksModule } from './tasks/tasks.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { AppController } from './app.controller';
+import { OrganizerModule } from './organizer/organizer.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { AppController } from './app.controller';
     ScheduleModule.forRoot(),
     TasksModule,
     MetricsModule,
+    OrganizerModule,
   ],
 
   providers: [{

@@ -4,30 +4,23 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
-  HttpStatus,
   Patch,
-  Post,
   Query,
   UploadedFile,
   UseGuards,
   UseInterceptors
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { Event, Organizer, Ticket, User } from '@prisma/client';
+import { Event, Ticket, User } from '@prisma/client';
 import { GetUser } from '../custom/decorators';
-import {
-  CreateOrganizerProfileDto,
-  UpdateOrganizerProfileDto,
-  UpdateProfileDto
-} from './dto';
+import { UpdateProfileDto } from './dto';
 import { UserService } from './users.service';
 import logger from '../common/logger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from '../common/config/upload';
 
 @UseGuards(AuthGuard('jwt'))
-@Controller('users')
+@Controller('user')
 export class UserController {
   private context = UserController.name;
 
@@ -70,51 +63,6 @@ export class UserController {
       return { message: 'Account deleted successfully' };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while deleting user profile. Error: ${error.message}\n`);
-      throw error;
-    }
-  }
-
-  @Get('organizer')
-  async getOrganizerProfile(@GetUser() user: User): Promise<{ organizer: Organizer }> {
-    try {
-      const organizer = await this.userService.getOrganizerProfile(user.id);
-      logger.info(`[${this.context}] Orgnaizer profile viewed by ${user.email}\n`);
-
-      return { organizer };
-    } catch (error) {
-      logger.error(`[${this.context}] An error occurred while retrieving organizer profile. Error: ${error.message}.\n`);
-      throw error;
-    }
-  }
-
-  @Post('organizer')
-  async createOrganizerProfile(
-    @GetUser() user: User,
-    @Body() dto: CreateOrganizerProfileDto
-  ): Promise<{ organizer: Organizer }> {
-    try {
-      const organizer = await this.userService.createOrganizerProfile(user.id, dto);
-      logger.info(`[${this.context}] Organizer profile created by ${user.email}.\n`);
-
-      return { organizer };
-    } catch (error) {
-      logger.error(`[${this.context}] An error occurred while creating organizer profile. Error: ${error.message}.\n`);
-      throw error;
-    }
-  }
-
-  @Patch('organizer')
-  async updateOrganizerProfile(
-    @GetUser() user: User,
-    @Body() dto: UpdateOrganizerProfileDto
-  ): Promise<{ organizer: Organizer }> {
-    try {
-      const organizer = await this.userService.updateOrganizerProfile(user.id, dto);
-      logger.info(`[${this.context}] Organizer profile updated by ${user.email}.\n`);
-
-      return { organizer };
-    } catch (error) {
-      logger.error(`[${this.context}] An error occurred while updating organizer profile. Error: ${error.message}.\n`);
       throw error;
     }
   }

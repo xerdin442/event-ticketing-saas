@@ -1,25 +1,16 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
-import {
-  CreateOrganizerProfileDto,
-  UpdateOrganizerProfileDto,
-  UpdateProfileDto
-} from './dto';
+import { UpdateProfileDto } from './dto';
 import {
   Event,
-  Organizer,
   Ticket,
   User
 } from '@prisma/client';
-import { PaymentsService } from '../payments/payments.service';
-import { sanitizeUserOutput, validateWebsiteUrl } from '../common/util/helper';
+import { sanitizeUserOutput } from '../common/util/helper';
 
 @Injectable()
 export class UserService {
-  constructor(
-    private prisma: DbService,
-    private readonly payments: PaymentsService
-  ) { };
+  constructor(private prisma: DbService) {};
 
   async updateProfile(userId: number, dto: UpdateProfileDto, filePath?: string): Promise<User> {
     try {
@@ -43,81 +34,6 @@ export class UserService {
       await this.prisma.user.delete({
         where: { id: userId }
       })
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async getOrganizerProfile(userId: number): Promise<Organizer> {
-    try {
-      return this.prisma.organizer.findUnique({
-        where: { userId }
-      })
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async createOrganizerProfile(userId: number, dto: CreateOrganizerProfileDto): Promise<Organizer> {
-    try {
-      const organizer = await this.prisma.organizer.findUnique({
-        where: { userId }
-      });
-
-      if (organizer) {
-        throw new BadRequestException('This user already has an organizer profile');
-      };
-
-      if (dto.website && !validateWebsiteUrl(dto.website)) {
-        throw new BadRequestException('Please enter a valid webiste URL');
-      };
-
-      // Verify organizer's account details before creating transfer recipient for revenue splits
-      const details = {
-        accountName: dto.accountName,
-        accountNumber: dto.accountNumber,
-        bankName: dto.bankName
-      };
-      await this.payments.verifyAccountDetails(details);
-      const recipientCode = await this.payments.createTransferRecipient(details);
-
-      return this.prisma.organizer.create({
-        data: {
-          ...dto,
-          recipientCode,
-          userId
-        }
-      });
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async updateOrganizerProfile(userId: number, dto: UpdateOrganizerProfileDto): Promise<Organizer> {
-    try {
-      let recipientCode: string;
-      // Verify updated account details and create a new transfer recipient for revenue splits
-      if (dto.accountNumber) {
-        const details = {
-          accountName: dto.accountName,
-          accountNumber: dto.accountNumber,
-          bankName: dto.bankName
-        };
-        await this.payments.verifyAccountDetails(details);
-        recipientCode = await this.payments.createTransferRecipient(details);
-      };
-
-      if (dto.website && !validateWebsiteUrl(dto.website)) {
-        throw new BadRequestException('Please enter a valid webiste URL');
-      };
-
-      return this.prisma.organizer.update({
-        where: { userId },
-        data: {
-          ...dto,
-          recipientCode
-        }
-      });
     } catch (error) {
       throw error;
     }
