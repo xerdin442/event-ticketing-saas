@@ -63,8 +63,7 @@ export class AuthService {
     }
   }
 
-  async login(dto: LoginDto)
-    : Promise<{ token: string, twoFactorAuth: boolean }> {
+  async login(dto: LoginDto): Promise<string> {
     try {
       const user = await this.prisma.user.findUnique({
         where: { email: dto.email }
@@ -80,13 +79,11 @@ export class AuthService {
         throw new BadRequestException('Invalid password')
       }
 
-      // Create JWT payload
-      const payload = { sub: user.id, email: user.email }
+      // Create and sign JWT payload
+      const payload = { sub: user.id, email: user.email };
+      const token = await this.jwt.signAsync(payload);
 
-      return {
-        token: await this.jwt.signAsync(payload),
-        twoFactorAuth: user.twoFAEnabled
-      };
+      return token;
     } catch (error) {
       throw error;
     }

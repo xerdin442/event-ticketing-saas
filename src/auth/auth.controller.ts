@@ -39,13 +39,12 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  async login(@Body() dto: LoginDto)
-    : Promise<{ token: string, twoFactorAuth: boolean }> {
+  async login(@Body() dto: LoginDto): Promise<{ token: string }> {
     try {
-      const response = await this.authService.login(dto);
+      const token = await this.authService.login(dto);
       logger.info(`[${this.context}] User login successful. Email: ${dto.email}\n`);
 
-      return response;
+      return { token };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred during user login. Error: ${error.message}\n`);
 
