@@ -23,37 +23,26 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from '../common/config/upload';
 import { GetUser } from '../custom/decorators';
-import { Event, User } from '@prisma/client';
+import { Event, EventCategory, User } from '@prisma/client';
 import logger from '../common/logger';
 import { EventOrganizerGuard } from '../custom/guards';
+import { EventCategoryPipe } from '@src/custom/pipes';
 
 @Controller('events')
 export class EventsController {
   private readonly context: string = EventsController.name;
 
-  constructor(private readonly eventsService: EventsService) { };
+  constructor(private readonly eventsService: EventsService) {};
 
-  @Post('create')
-  @UseGuards(AuthGuard('jwt'))
-  @UseInterceptors(
-    FileInterceptor('poster', {
-      fileFilter: UploadService.fileFilter,
-      limits: { fileSize: 10 * 1024 * 1024 }, // Limit each file to 10MB
-      storage: UploadService.storage('events', 'image')
-    })
-  )
-  async createEvent(
-    @Body() dto: CreateEventDto,
-    @GetUser() user: User,
-    @UploadedFile() poster: Express.Multer.File
-  ): Promise<{ event: Event }> {
+  @Get()
+  async exploreEvents(
+    @Query('category', EventCategoryPipe) categories: EventCategory[]
+  ): Promise<{ events: Event[] }> {
     try {
-      const event = await this.eventsService.createEvent(dto, user.id, poster.path);
-      logger.info(`[${this.context}] ${user.email} created a new event: ${event.title}.\n`);
-
-      return { event };
+      const events = await this.eventsService.exploreEvents(categories);
+      return { events };
     } catch (error) {
-      logger.error(`[${this.context}] An error occurred while creating new event. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occurred while fetching nearby events. Error: ${error.message}\n`);
       throw error;
     }
   }
@@ -83,6 +72,44 @@ export class EventsController {
     }
   }
 
+  @Post('create')
+  @UseGuards(AuthGuard('jwt'))
+  @UseInterceptors(
+    FileInterceptor('poster', {
+      fileFilter: UploadService.fileFilter,
+      limits: { fileSize: 10 * 1024 * 1024 }, // Limit each file to 10MB
+      storage: UploadService.storage('events', 'image')
+    })
+  )
+  async createEvent(
+    @Body() dto: CreateEventDto,
+    @GetUser() user: User,
+    @UploadedFile() poster: Express.Multer.File
+  ): Promise<{ event: Event }> {
+    try {
+      const event = await this.eventsService.createEvent(dto, user.id, poster.path);
+      logger.info(`[${this.context}] ${user.email} created a new event: ${event.title}.\n`);
+
+      return { event };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while creating new event. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @Get(':eventId')
+  async getEventDetails(
+    @Param('eventId', ParseIntPipe) eventId: number
+  ): Promise<{ event: Event }> {
+    try {
+      const event = await this.eventsService.getEventDetails(eventId);
+      return { event };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while retrieving event details. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
   @Patch(':eventId')
   @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
   @UseInterceptors(
@@ -105,19 +132,6 @@ export class EventsController {
       return { event };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while upadting event details. Error: ${error.message}\n`);
-      throw error;
-    }
-  }
-
-  @Get(':eventId')
-  async getEventDetails(
-    @Param('eventId', ParseIntPipe) eventId: number
-  ): Promise<{ event: Event }> {
-    try {
-      const event = await this.eventsService.getEventDetails(eventId);
-      return { event };
-    } catch (error) {
-      logger.error(`[${this.context}] An error occurred while retrieving event details. Error: ${error.message}\n`);
       throw error;
     }
   }

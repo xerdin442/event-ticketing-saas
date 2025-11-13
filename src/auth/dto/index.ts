@@ -2,6 +2,7 @@ import { EventCategory } from "@prisma/client";
 import { 
   IsArray,
   IsEmail,
+  IsEnum,
   IsNotEmpty,
   IsString,
   IsStrongPassword
@@ -24,6 +25,7 @@ export class CreateUserDto {
   password: string;
 
   @IsArray()
+  @IsEnum(EventCategory, { each: true })
   preferences: EventCategory[];
 }
 

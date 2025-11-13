@@ -5,9 +5,9 @@ import { MailService } from "../config/mail";
 import logger from "../logger";
 
 @Injectable()
-@Processor('mail-queue')
-export class MailProcessor {
-  private context = MailProcessor.name
+@Processor('auth-queue')
+export class AuthProcessor {
+  private context = AuthProcessor.name
 
   constructor(private readonly mailService: MailService) {}
 
@@ -33,7 +33,7 @@ export class MailProcessor {
   
       await this.mailService.sendEmail(email, subject, content);
     } catch (error) {
-      logger.error(`[${this.context}] An error occured while processing "${job.name}" email. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occured while processing password reset email. Error: ${error.message}\n`);
       throw error;
     }
   }

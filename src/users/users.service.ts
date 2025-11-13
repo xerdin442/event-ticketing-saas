@@ -7,10 +7,14 @@ import {
   User
 } from '@prisma/client';
 import { sanitizeUserOutput } from '../common/util/helper';
+import { MetricsService } from '@src/metrics/metrics.service';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: DbService) {};
+  constructor(
+    private readonly prisma: DbService,
+    private readonly metrics: MetricsService,
+  ) {};
 
   async updateProfile(userId: number, dto: UpdateProfileDto): Promise<User> {
     try {
@@ -71,6 +75,19 @@ export class UserService {
     try {
       return this.prisma.ticket.findMany({
         where: { attendee: email }
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async toggleAlertSubscription(userId: number, mode: 'on' | 'off'): Promise<void> {
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          // **subscription toggle here**
+        }
       });
     } catch (error) {
       throw error;

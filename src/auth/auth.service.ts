@@ -25,7 +25,7 @@ export class AuthService {
   constructor(
     private readonly prisma: DbService,
     private readonly jwt: JwtService,
-    @InjectQueue('mail-queue') private readonly mailQueue: Queue
+    @InjectQueue('auth-queue') private readonly authQueue: Queue
   ) { }
 
   async signup(dto: CreateUserDto)
@@ -46,7 +46,7 @@ export class AuthService {
       const payload = { sub: user.id, email };
 
       // Send an onboarding email to the new user
-      await this.mailQueue.add('signup', email);
+      await this.authQueue.add('signup', email);
 
       return {
         user: sanitizeUserOutput(user),
@@ -113,7 +113,7 @@ export class AuthService {
         await redis.set(resetId, JSON.stringify(data))
 
         // Send the OTP via email
-        await this.mailQueue.add('otp', {
+        await this.authQueue.add('otp', {
           email: user.email,
           otp: data.otp
         });
@@ -154,7 +154,7 @@ export class AuthService {
         }))
 
         // Send another email with the new OTP
-        await this.mailQueue.add('otp', {
+        await this.authQueue.add('otp', {
           email: data.email,
           otp: data.otp
         })

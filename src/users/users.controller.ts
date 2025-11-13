@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Patch,
+  Post,
   Query,
   UseGuards} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -63,7 +64,7 @@ export class UserController {
   ): Promise<{ events: Event[] }> {
     try {
       if (!role) {
-        throw new BadRequestException('Missing "role" query parameter.')
+        throw new BadRequestException('Missing required "role" parameter.')
       };
 
       const events = await this.userService.getAllEvents(role, user.email)
@@ -85,6 +86,35 @@ export class UserController {
       return { tickets };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while retrieving all purchased tickets. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @Post('alerts')
+  async toggleAlertSubscription(
+    @GetUser() user: User,
+    @Query('action') action: string,
+  ): Promise<{ message: string }> {
+    try {
+      if (!action) {
+        throw new BadRequestException('Missing required "action" parameter.')
+      };
+
+      if (action === 'subscribe') {
+        await this.userService.toggleAlertSubscription(user.id, 'on');
+        logger.info(`[${this.context}] ${user.email} subscribed to event alerts\n`);
+
+        return { message: 'Event alerts subscription successful' };
+      } else if (action === 'unsubscribe') {
+        await this.userService.toggleAlertSubscription(user.id, 'off');
+        logger.info(`[${this.context}] ${user.email} unsubscribed from event alerts\n`);
+
+        return { message: 'Event alerts turned off successfully' };
+      } else {
+        throw new BadRequestException('Invalid "action" value. Expected "subscribe" or "unsubscribe"')
+      }
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while retrieving all user events. Error: ${error.message}\n`);
       throw error;
     }
   }

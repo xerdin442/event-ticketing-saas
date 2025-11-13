@@ -6,7 +6,7 @@ import {
   UpdateEventDto
 } from './dto';
 import axios from 'axios';
-import { Event } from '@prisma/client';
+import { Event, EventCategory } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { RedisClientType } from 'redis';
@@ -22,7 +22,25 @@ export class EventsService {
     private readonly metrics: MetricsService,
     private readonly payments: PaymentsService,
     @InjectQueue('events-queue') private readonly eventsQueue: Queue
-  ) { };
+  ) {};
+
+  async exploreEvents(categories: EventCategory[]): Promise<Event[]> {
+    try {
+      const categoryFilters: { category: EventCategory }[] = [];
+      if (categories.length > 0) {
+        // Aggregate the catgory filters
+        for (let i = 0; i < categories.length - 1; i++) {
+          categoryFilters.push({ category: categories[i] });
+        }
+      }
+
+      return await this.prisma.event.findMany({
+        where: { OR: categoryFilters }
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
 
   async createEvent(
     dto: CreateEventDto,
@@ -83,6 +101,23 @@ export class EventsService {
           {
             jobId: `event-${event.id}-completed`,
             delay: Math.max(0, new Date(event.endTime).getTime() - new Date().getTime() + 1500)
+          }
+        );
+
+        // Send alerts to users that are subscribed to this event category
+        const users = await this.prisma.user.findMany({
+          where: {
+            // **ADD SUBSCRIBED FIELD**
+            preferences: {
+              has: event.category,
+            }
+          }
+        });
+        await this.eventsQueue.add(
+          'event-alerts',
+          { 
+            users,
+            eventId: event.id,
           }
         );
 

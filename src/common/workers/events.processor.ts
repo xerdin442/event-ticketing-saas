@@ -9,6 +9,7 @@ import { MailService } from "../config/mail";
 import { DbService } from "@src/db/db.service";
 import { PaymentsService } from "@src/payments/payments.service";
 import { MetricsService } from "@src/metrics/metrics.service";
+import { Ticket } from "@prisma/client";
 
 @Injectable()
 @Processor('events-queue')
@@ -63,15 +64,15 @@ export class EventsProcessor {
         ${event.organizer.name}
         `
 
+      // Notify all attendees of the event update
       if (event.tickets.length > 0) {
-        for (const ticket of event.tickets) {
-          await this.mailService.sendEmail(ticket.attendee, subject, content);
+        const attendees: string[] = [];
+        event.tickets.forEach((ticket: Ticket) => attendees.push(ticket.attendee));
+
+        for (let attendee of [...new Set(attendees)]) {
+          await this.mailService.sendEmail(attendee, subject, content);
         }
-
-        return;
       }
-
-      return;
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while completing update of event details. Error: ${error.message}.\n`)
       throw error;
@@ -93,15 +94,19 @@ export class EventsProcessor {
       this.metrics.incrementCounter('total_events', ['cancelled']);
 
       if (event.tickets.length > 0) {
-        for (let ticket of event.tickets) {
-          // Notify all attendees of the event cancellation
-          const subject = 'Event Cancellation'
-          const content = `The event: ${event.title} has been cancelled. We sincerely apologize for any inconveniences
+        const attendees: string[] = [];
+        event.tickets.forEach((ticket: Ticket) => attendees.push(ticket.attendee));
+
+        const subject = 'Event Cancellation'
+        const content = `The event: ${event.title} has been cancelled. We sincerely apologize for any inconveniences
           caused by this cancellation. You can initiate a ticket refund here: .
 
           Best regards,
           ${event.organizer.name}`;
-          await this.mailService.sendEmail(ticket.attendee, subject, content);
+
+        // Notify all attendees of the event cancellation
+        for (let attendee of [...new Set(attendees)]) {
+          await this.mailService.sendEmail(attendee, subject, content);
         }
       }
 
@@ -158,6 +163,39 @@ export class EventsProcessor {
       this.metrics.incrementCounter('payout_volume', [], event.revenue);
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing COMPLETED event status update. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @Process('event-alerts')
+  async sendEventAlerts(job: Job) {
+    try {
+      const { users, eventId } = job.data;
+
+      const event = await this.prisma.event.findUnique({
+        where: { id: eventId },
+        include: { organizer: true }
+      });
+
+      const subject = 'NEW EVENT ALERT!'
+      const content =  `Hey there! \nA new ${event.category.toLowerCase()} event is coming up soon! Here are the details:\n
+        Title: ${event.title}
+        Venue: ${event.venue}
+        Address: ${event.address}
+        Date: ${event.date}
+        Time: ${event.startTime} - ${event.endTime}
+
+        Get your tickets here: 
+
+        Best regards,
+        The ${Secrets.APP_NAME} team
+        `;
+
+      for (let user of users) {
+        await this.mailService.sendEmail(user.email, subject, content);
+      }
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while sending event alerts. Error: ${error.message}.\n`);
       throw error;
     }
   }
