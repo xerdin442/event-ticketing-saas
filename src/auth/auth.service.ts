@@ -6,19 +6,15 @@ import {
   LoginDto,
   NewPasswordDto,
   PasswordResetDto,
-  Verify2FADto,
   VerifyOTPDto
 } from './dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { JwtService } from '@nestjs/jwt';
 import { User } from '@prisma/client';
-import * as speakeasy from 'speakeasy';
-import * as qrcode from 'qrcode';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { SessionData } from '../common/types';
 import { SessionService } from '../common/session';
-import { Secrets } from '../common/env';
 import { sanitizeUserOutput } from '../common/util/helper';
 import { MetricsService } from '../metrics/metrics.service';
 
@@ -32,7 +28,7 @@ export class AuthService {
     @InjectQueue('mail-queue') private readonly mailQueue: Queue
   ) {}
 
-  async signup(dto: CreateUserDto, filePath?: string)
+  async signup(dto: CreateUserDto)
     : Promise<{ user: User, token: string }> {
     try {
       const { email, password } = dto;
@@ -43,7 +39,6 @@ export class AuthService {
         data: {
           ...dto,
           password: hash,
-          profileImage: filePath || Secrets.DEFAULT_IMAGE,
         }
       });
 
@@ -100,65 +95,6 @@ export class AuthService {
   async logout(email: string): Promise<void> {
     try {
       await this.sessionService.delete(email);
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async enable2FA(userId: number): Promise<string> {
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId }
-      });
-      const secret = speakeasy.generateSecret({
-        name: `${Secrets.APP_NAME}:${user.email}`,
-      });
-
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          twoFAEnabled: true,
-          twoFASecret: secret.base32
-        }
-      });
-
-      this.metrics.updateGauge('two_fa_enabled_users', 'inc'); // Update metrics value
-
-      // Create a QRcode image with the generated secret
-      return await qrcode.toDataURL(secret.otpauth_url, { errorCorrectionLevel: 'high' });
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async disable2FA(userId: number): Promise<void> {
-    try {
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: {
-          twoFAEnabled: false,
-          twoFASecret: null
-        }
-      });
-
-      this.metrics.updateGauge('two_fa_enabled_users', 'dec'); // Update metrics value
-      return;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async verify2FA(userId: number, dto: Verify2FADto): Promise<boolean> {
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId }
-      });
-
-      return speakeasy.totp.verify({
-        secret: user.twoFASecret,
-        token: dto.token,
-        encoding: 'base32'
-      });
     } catch (error) {
       throw error;
     }

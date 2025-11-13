@@ -6,18 +6,13 @@ import {
   Get,
   Patch,
   Query,
-  UploadedFile,
-  UseGuards,
-  UseInterceptors
-} from '@nestjs/common';
+  UseGuards} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Event, Ticket, User } from '@prisma/client';
 import { GetUser } from '../custom/decorators';
 import { UpdateProfileDto } from './dto';
 import { UserService } from './users.service';
 import logger from '../common/logger';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { UploadService } from '../common/config/upload';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('user')
@@ -33,18 +28,12 @@ export class UserController {
   }
 
   @Patch('profile')
-  @UseInterceptors(FileInterceptor('profileImage', {
-    fileFilter: UploadService.fileFilter,
-    limits: { fieldSize: 5 * 1024 * 1024 }, // File sizes must be less than 5MB
-    storage: UploadService.storage('profile-images', 'image'),
-  }))
   async updateProfile(
     @GetUser() user: User,
     @Body() dto: UpdateProfileDto,
-    @UploadedFile() file?: Express.Multer.File
   ): Promise<{ user: User }> {
     try {
-      const updatedUser = await this.userService.updateProfile(user.id, dto, file?.path);
+      const updatedUser = await this.userService.updateProfile(user.id, dto);
       logger.info(`[${this.context}] User profile updated by ${user.email}.\n`);
 
       return { user: updatedUser };

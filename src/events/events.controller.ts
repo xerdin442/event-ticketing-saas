@@ -38,7 +38,7 @@ export class EventsController {
   @UseInterceptors(
     FileInterceptor('poster', {
       fileFilter: UploadService.fileFilter,
-      limits: { fileSize: 5 * 1024 * 1024 }, // Limit each file to 5MB
+      limits: { fileSize: 10 * 1024 * 1024 }, // Limit each file to 10MB
       storage: UploadService.storage('events', 'image')
     })
   )

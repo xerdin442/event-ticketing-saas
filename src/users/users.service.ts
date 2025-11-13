@@ -12,15 +12,12 @@ import { sanitizeUserOutput } from '../common/util/helper';
 export class UserService {
   constructor(private prisma: DbService) {};
 
-  async updateProfile(userId: number, dto: UpdateProfileDto, filePath?: string): Promise<User> {
+  async updateProfile(userId: number, dto: UpdateProfileDto): Promise<User> {
     try {
       // Update user's details
       const user = await this.prisma.user.update({
         where: { id: userId },
-        data: {
-          preferences: dto.preferences,
-          ...(filePath && { profileImage: filePath })
-        }
+        data: { ...dto }
       });
 
       return sanitizeUserOutput(user);

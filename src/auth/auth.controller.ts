@@ -1,26 +1,19 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   HttpCode,
   HttpStatus,
   Post,
-  UploadedFile,
-  UseGuards,
-  UseInterceptors
-} from '@nestjs/common';
+  UseGuards} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   CreateUserDto,
   LoginDto,
   NewPasswordDto,
   PasswordResetDto,
-  Verify2FADto,
   VerifyOTPDto
 } from './dto';
 import { User } from '@prisma/client';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { UploadService } from '../common/config/upload';
 import { AuthGuard } from '@nestjs/passport';
 import { GetUser } from '../custom/decorators';
 import logger from '../common/logger';
@@ -34,17 +27,11 @@ export class AuthController {
   constructor(private readonly authService: AuthService) { };
 
   @Post('signup')
-  @UseInterceptors(FileInterceptor('profileImage', {
-    fileFilter: UploadService.fileFilter,
-    limits: { fieldSize: 5 * 1024 * 1024 }, // File sizes must be less than 5MB
-    storage: UploadService.storage('profile-images', 'image'),
-  }))
   async signup(
     @Body() dto: CreateUserDto,
-    @UploadedFile() file?: Express.Multer.File
   ): Promise<{ user: User, token: string }> {
     try {
-      const response = await this.authService.signup(dto, file?.path);
+      const response = await this.authService.signup(dto);
       logger.info(`[${this.context}] User signup successful. Email: ${dto.email}\n`);
       
       return response;
@@ -83,61 +70,6 @@ export class AuthController {
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while logging out. Error: ${error.message}\n`);
 
-      throw error;
-    }
-  }
-
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard('jwt'))
-  @Post('2fa/enable')
-  async enable2FA(@GetUser() user: User)
-    : Promise<{ qrcode: string }> {
-    try {
-      const qrcode = await this.authService.enable2FA(user.id);
-      logger.info(`[${this.context}] ${user.email} enabled two factor authentication.\n`);
-
-      return { qrcode };
-    } catch (error) {
-      logger.error(`[${this.context}] An error occurred while enabling two factor authentication. Error: ${error.message}\n`);
-
-      throw error;
-    }
-  }
-
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard('jwt'))
-  @Post('2fa/disable')
-  async disable2FA(@GetUser() user: User)
-    : Promise<{ message: string }> {
-    try {
-      await this.authService.disable2FA(user.id);
-      logger.info(`[${this.context}] ${user.email} disabled two factor authentication.\n`);
-
-      return { message: '2FA disabled successfully' };
-    } catch (error) {
-      logger.error(`[${this.context}] An error occurred while disabling two factor authentication. Error: ${error.message}\n`);
-
-      throw error;
-    }
-  }
-
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(AuthGuard('jwt'))
-  @Post('2fa/verify')
-  async verify2FA(
-    @GetUser() user: User,
-    @Body() dto: Verify2FADto
-  ): Promise<{ message: string }> {
-    try {
-      const verified = await this.authService.verify2FA(user.id, dto);
-
-      if (verified) {
-        return { message: '2FA token verified successfully' };
-      } else {
-        throw new BadRequestException('Invalid token');
-      }
-    } catch (error) {
-      logger.error(`[${this.context}] An error occurred while verifying 2FA token. Error: ${error.message}\n`);
       throw error;
     }
   }
