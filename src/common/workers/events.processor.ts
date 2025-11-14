@@ -45,7 +45,7 @@ export class EventsProcessor {
       logger.error(`[${this.context}] An error occurred while adding location coordinates to Redis store. Error: ${error.message}.\n`)
       throw error;
     } finally {
-      await redis.disconnect();
+      redis.destroy();
     };
   }
 
@@ -194,7 +194,7 @@ export class EventsProcessor {
       logger.error(`[${this.context}] An error occurred while sending verification mail for ticket refund. Error: ${error.message}.\n`);
       throw error;
     } finally {
-      await redis.disconnect();
+      redis.destroy();
     }
   }
 

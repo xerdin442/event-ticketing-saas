@@ -61,11 +61,11 @@ export class TasksService {
     )
 
     try {
-      let index = 0;
+      let cursor = '0';
       let allKeys: string[] = [];
 
       do {
-        const { cursor, keys } = await redis.scan(index, {
+        const { cursor: nextCursor, keys } = await redis.scan(cursor, {
           MATCH: 'event_log:*',
           COUNT: 500,
         });
@@ -74,8 +74,8 @@ export class TasksService {
         allKeys = allKeys.concat(keys);
 
         // Update the cursor for the next iteration
-        index = cursor;
-      } while (index !== 0);
+        cursor = nextCursor;
+      } while (cursor !== '0');
 
       if (allKeys.length === 0) return;
 
@@ -96,7 +96,7 @@ export class TasksService {
       logger.error(`[${this.context}] An error occurred while updating trending event rankings. Error: ${error.message}\n`);
       throw error;
     } finally {
-      await redis.disconnect();
+      redis.destroy();
     }
   }
 }

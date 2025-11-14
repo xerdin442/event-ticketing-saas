@@ -1,10 +1,12 @@
-import { Body, Controller, Delete, Get, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Patch, Post, UseGuards } from '@nestjs/common';
 import { OrganizerService } from './organizer.service';
 import { User, Organizer } from '@prisma/client';
 import logger from '@src/common/logger';
 import { GetUser } from '@src/custom/decorators';
 import { CreateOrganizerProfileDto, UpdateOrganizerProfileDto } from './dto';
+import { AuthGuard } from '@nestjs/passport';
 
+@UseGuards(AuthGuard('jwt'))
 @Controller('organizer')
 export class OrganizerController {
   private readonly context: string = OrganizerController.name;
