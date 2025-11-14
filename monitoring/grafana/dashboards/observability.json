@@ -12,12 +12,12 @@
   "panels": [
     {
       "type": "singlestat",
-      "title": "2FA Enabled Users",
-      "description": "Current count of users who have 2FA enabled",
+      "title": "Subscribed Users",
+      "description": "Current count of users who are subscribed to event alerts",
       "targets": [
         {
           "refId": "A",
-          "expr": "two_fa_enabled_users",
+          "expr": "subscribed_users",
           "legendFormat": "Current Count",
           "instant": true
         }
@@ -161,30 +161,6 @@
       }
     },
     {
-      "type": "singlestat",
-      "title": "Subscribed Users",
-      "description": "Current count of users who are subscribed to event alerts",
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "subscribed_users",
-          "legendFormat": "Current Count",
-          "instant": true
-        }
-      ],
-      "gauge": {
-        "show": true,
-        "minValue": 0,
-        "maxValue": 10000
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 16
-      }
-    },
-    {
       "type": "graph",
       "title": "Ticket Refunds",
       "description": "The current cumulative number of ticket refunds across all time",
@@ -198,8 +174,8 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 0,
-        "y": 24
+        "x": 16,
+        "y": 16
       }
     },
     {
@@ -216,7 +192,7 @@
       "gridPos": {
         "h": 8,
         "w": 8,
-        "x": 8,
+        "x": 0,
         "y": 24
       }
     }
