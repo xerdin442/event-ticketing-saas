@@ -130,8 +130,10 @@ export class TicketsController {
       // Return cached checkout URL if request has been processed before
       const existingTransaction = await redis.get(idempotencyKey);
       if (existingTransaction) {
+        const data = JSON.parse(existingTransaction as string);
         logger.warn(`[${this.context}] Duplicate ticket purchase attempt by ${dto.email}.\n`);
-        return { checkout: JSON.parse(existingTransaction).checkout };
+
+        return { checkout: data.checkout };
       };
 
       // Process ticket purchase and store checkout URL to prevent multiple payments
@@ -144,7 +146,7 @@ export class TicketsController {
       logger.error(`[${this.context}] An error occurred while intitiating ticket purchase. Error: ${error.message}\n`);
       throw error;
     } finally {
-      await redis.disconnect();
+      redis.destroy();
     }
   }
 

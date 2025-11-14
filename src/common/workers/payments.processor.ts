@@ -216,7 +216,7 @@ export class PaymentsProcessor {
       logger.error(`[${this.context}] An error occured while processing ticket purchase. Error: ${error.message}\n`);
       throw error;
     } finally {
-      await redis.disconnect();
+      redis.destroy();
     }
   }
 

@@ -38,7 +38,7 @@ export class EventsController {
 
   @Get()
   async exploreEvents(
-    @Query('category', EventCategoryPipe) categories: EventCategory[]
+    @Query('category', EventCategoryPipe) categories?: EventCategory[]
   ): Promise<{ events: Event[] }> {
     try {
       const events = await this.eventsService.exploreEvents(categories);

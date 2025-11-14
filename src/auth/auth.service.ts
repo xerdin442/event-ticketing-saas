@@ -125,7 +125,7 @@ export class AuthService {
     } catch (error) {
       throw error;
     } finally {
-      await redis.disconnect();
+      redis.destroy();
     }
   }
 
@@ -138,7 +138,7 @@ export class AuthService {
 
     try {
       // Verify password reset ID
-      const resetIdCheck = await redis.get(resetId);
+      const resetIdCheck = await redis.get(resetId) as string;
 
       if (resetIdCheck) {
         // Fetch existing reset info
@@ -163,7 +163,7 @@ export class AuthService {
     } catch (error) {
       throw error;
     } finally {
-      await redis.disconnect();
+      redis.destroy();
     }
   }
 
@@ -176,7 +176,7 @@ export class AuthService {
 
     try {
       // Verify password reset ID
-      const resetIdCheck = await redis.get(dto.resetId);
+      const resetIdCheck = await redis.get(dto.resetId) as string;
 
       if (resetIdCheck) {
         // Fetch existing reset info
@@ -194,7 +194,7 @@ export class AuthService {
     } catch (error) {
       throw error;
     } finally {
-      await redis.disconnect();
+      redis.destroy();
     }
   }
 
@@ -207,7 +207,7 @@ export class AuthService {
 
     try {
       // Verify password reset ID
-      const resetIdCheck = await redis.get(dto.resetId);
+      const resetIdCheck = await redis.get(dto.resetId) as string;
 
       if (resetIdCheck) {
         // Fetch existing reset info
@@ -240,7 +240,7 @@ export class AuthService {
     } catch (error) {
       throw error;
     } finally {
-      await redis.disconnect();
+      redis.destroy();
     }
   }
 }

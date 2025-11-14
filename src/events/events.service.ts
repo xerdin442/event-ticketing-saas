@@ -274,7 +274,7 @@ export class EventsService {
     }
   }
 
-  async findNearbyEvents(latitude: string, longitude: string): Promise<Event[]> {
+  async findNearbyEvents(lat: string, lon: string): Promise<Event[]> {
     const redis: RedisClientType = await initializeRedis(
       Secrets.REDIS_URL,
       'Geolocation Search',
@@ -282,7 +282,7 @@ export class EventsService {
     );
 
     try {
-      const events = await redis.geoRadius('events', { latitude, longitude }, 5, 'km');
+      const events = await redis.geoRadius('events', { latitude: +lat, longitude: +lon }, 5, 'km');
       const nearbyEvents = await Promise.all(
         events.map(async (event) => {
           const eventId = event.split(':')[1];
@@ -296,7 +296,7 @@ export class EventsService {
     } catch (error) {
       throw error;
     } finally {
-      await redis.disconnect();
+      redis.destroy();
     }
   }
 
@@ -359,7 +359,7 @@ export class EventsService {
       if (!requestId) throw new BadRequestException('Invalid or expired request ID');
 
       // Retrieve ticket refund info
-      const data = JSON.parse(requestId) as TicketRefundInfo;
+      const data = JSON.parse(requestId as string) as TicketRefundInfo;
       if (data.otp !== dto.otp) throw new BadRequestException('Invalid OTP');
 
       // Store the info with a new request ID after OTP verification
@@ -373,7 +373,7 @@ export class EventsService {
     } catch (error) {
       throw error;
     } finally {
-      await redis.disconnect();
+      redis.destroy();
     }
   }
 
@@ -390,7 +390,7 @@ export class EventsService {
       if (!requestId) throw new BadRequestException('Invalid or expired request ID');
 
       // Retrieve ticket refund info
-      const { email, eventTitle, refundAmount } = JSON.parse(requestId) as TicketRefundInfo;
+      const { email, eventTitle, refundAmount } = JSON.parse(requestId as string) as TicketRefundInfo;
 
       // Verify attendee's account details
       await this.payments.verifyAccountDetails({ ...dto });
@@ -412,7 +412,7 @@ export class EventsService {
     } catch (error) {
       throw error
     } finally {
-      await redis.disconnect();
+      redis.destroy();
     }
   }
 
@@ -445,7 +445,7 @@ export class EventsService {
     } catch (error) {
       throw error;
     } finally {
-      await redis.disconnect();
+      redis.destroy();
     }
   }
 }
