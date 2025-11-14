@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   HttpCode,
@@ -10,7 +11,6 @@ import {
   CreateUserDto,
   LoginDto,
   NewPasswordDto,
-  PasswordResetDto,
   VerifyOTPDto
 } from './dto';
 import { User } from '@prisma/client';
@@ -55,11 +55,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @Post('password/reset')
   async requestPasswordReset(
-    @Body() dto: PasswordResetDto
+    @Query('email') email: string,
   ): Promise<{ resetId: string; message: string }> {
     try {
-      const resetId = await this.authService.requestPasswordReset(dto);
-      logger.info(`[${this.context}] Password reset requested by ${dto.email}.\n`);
+      if (!email) throw new BadRequestException('Missing required "email" parameter')
+
+      const resetId = await this.authService.requestPasswordReset(email);
+      logger.info(`[${this.context}] Password reset requested by ${email}.\n`);
 
       return {
         resetId,

@@ -77,14 +77,14 @@ The database schema is located [here](prisma/schema.prisma). If no schema change
 
 ## Auth API
 
-| Method | Path                        | Description               |
-| ------ | --------------------------- | ------------------------- |
-| POST   | /auth/signup                | Sign up a new user        |
-| POST   | /auth/login                 | Sign in an existing user  |
-| POST   | /auth/password/reset        | Request a password reset  |
-| POST   | /auth/password/reset/resend | Resend password reset OTP |
-| POST   | /auth/password/reset/verify | Verify password reset OTP |
-| POST   | /auth/password/reset/new    | Change current password   |
+| Method | Path                                | Description               |
+| ------ | ----------------------------------- | ------------------------- |
+| POST   | /auth/signup                        | Sign up a new user        |
+| POST   | /auth/login                         | Sign in an existing user  |
+| POST   | /auth/password/reset?email          | Request a password reset  |
+| POST   | /auth/password/reset/resend?resetId | Resend password reset OTP |
+| POST   | /auth/password/reset/verify         | Verify password reset OTP |
+| POST   | /auth/password/reset/new            | Change current password   |
 
 ## Users API
 

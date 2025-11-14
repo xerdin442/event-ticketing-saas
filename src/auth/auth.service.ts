@@ -5,7 +5,6 @@ import {
   CreateUserDto,
   LoginDto,
   NewPasswordDto,
-  PasswordResetDto,
   VerifyOTPDto
 } from './dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
@@ -90,7 +89,7 @@ export class AuthService {
     }
   }
 
-  async requestPasswordReset(dto: PasswordResetDto): Promise<string> {
+  async requestPasswordReset(email: string): Promise<string> {
     const redis: RedisClientType = await initializeRedis(
       Secrets.REDIS_URL,
       'Password Reset',
@@ -99,12 +98,12 @@ export class AuthService {
 
     try {
       const user = await this.prisma.user.findUnique({
-        where: { email: dto.email }
+        where: { email }
       });
 
       if (user) {
         const data: PasswordResetInfo = {
-          email: dto.email,
+          email,
           otp: `${Math.random() * 10 ** 16}`.slice(3, 7),
         }
 
@@ -114,7 +113,7 @@ export class AuthService {
 
         // Send the OTP via email
         await this.authQueue.add('otp', {
-          email: user.email,
+          email,
           otp: data.otp
         });
 
