@@ -8,6 +8,7 @@ import { AuthProcessor } from '../common/workers/auth.processor';
 import { Secrets } from '../common/env';
 import { PaymentsService } from '../payments/payments.service';
 import { MetricsService } from '../metrics/metrics.service';
+import { MailService } from '@src/common/config/mail';
 
 @Module({
   imports: [
@@ -25,7 +26,8 @@ import { MetricsService } from '../metrics/metrics.service';
     JwtStrategy,
     AuthProcessor,
     PaymentsService,
-    MetricsService
+    MetricsService,
+    MailService,
   ]
 })
 export class AuthModule {}

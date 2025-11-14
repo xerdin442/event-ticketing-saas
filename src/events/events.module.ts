@@ -3,6 +3,7 @@ import { EventsController } from './events.controller';
 import { EventsService } from './events.service';
 import { BullModule } from '@nestjs/bull';
 import { EventsProcessor } from '../common/workers/events.processor';
+import { MailService } from '@src/common/config/mail';
 
 @Module({
   imports: [
@@ -13,7 +14,8 @@ import { EventsProcessor } from '../common/workers/events.processor';
   controllers: [EventsController],
   providers: [
     EventsService,
-    EventsProcessor
+    EventsProcessor,
+    MailService,
   ]
 })
 export class EventsModule { }

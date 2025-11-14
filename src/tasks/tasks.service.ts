@@ -2,7 +2,6 @@ import { Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import logger from "../common/logger";
 import { DbService } from "../db/db.service";
-import { MailService } from "../common/config/mail";
 import { RedisClientType } from "redis";
 import { initializeRedis } from "../common/config/redis-conf";
 import { Secrets } from "../common/env";
@@ -12,10 +11,7 @@ import { UploadService } from "../common/config/upload";
 export class TasksService {
   private readonly context: string = TasksService.name;
 
-  constructor(
-    private readonly prisma: DbService,
-    private readonly mailService: MailService,
-  ) { };
+  constructor(private readonly prisma: DbService) { };
 
   @Cron(CronExpression.EVERY_WEEK)
   async deleteUnusedCloudinaryResources(): Promise<void> {
