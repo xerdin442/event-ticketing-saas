@@ -6,12 +6,12 @@ This API is a robust backend service designed to facilitate the creation and man
 
 - **User Authentication**: Secure user authentication system, with a guest user feature and role-based access control for organizers and attendees.
 - **Event Management**: Creation, update, and cancelllation of events with support for rich metadata like venues, dates, categories and ticket tiers.
-  **Trending Events**: Live ranking of trending events based on ticket sales within the last 72hrs.
-  **Event Alerts**: Real-time alerts for registered users based on their preferences.
+- **Trending Events**: Live ranking of trending events based on ticket sales within the last 72hrs.
+- **Event Alerts**: Real-time alerts for registered users based on their preferences.
 - **Ticketing System**: Support for multiple ticket types with customizable pricing, discounts and validation at event venues.
 - **Payments**: Secure and idempotent payment processing for ticket purchases using Paystack.
 - **Refunds**: Secure refund process for attendees after event cancellation or unsuccessful ticket purchases.
-  **Payouts**: Efficient revenue payout to organizers upon event completion.
+- **Payouts**: Efficient revenue payout to organizers upon event completion.
 - **Metrics and Analytics**: Tracks important metrics like ticket sales, refunds, and unsuccessful transactions.
 
 ## Deployment
