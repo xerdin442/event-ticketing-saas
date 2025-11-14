@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -54,6 +55,10 @@ export class EventsController {
     @Query('longitude') longitude: string,
   ): Promise<{ events: Event[] }> {
     try {
+      if (!latitude || !longitude) {
+        throw new BadRequestException('Missing required "latitude" or "longitude" parameters');
+      }
+
       const events = await this.eventsService.findNearbyEvents(latitude, longitude);
       return { events };
     } catch (error) {
@@ -162,6 +167,8 @@ export class EventsController {
     @Query('email') email: string,
   ): Promise<{ requestId: string; message: string }> {
     try {
+      if (!email) throw new BadRequestException('Missing required "email" parameter');
+
       const requestId = await this.eventsService.initiateTicketRefund(eventId, email);
       logger.info(`[${this.context}] Ticket refund initiated by ${email}.\n`);
 

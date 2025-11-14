@@ -4,14 +4,15 @@ This API is a robust backend service designed to facilitate the creation and man
 
 ## Features
 
-- **User Authentication**: Secure user authentication system, with an option to enable 2FA for added security, and role-based access control for organizers and attendees.
-- **Event Management**: Create, update, and cancel events with support for rich metadata like venues, dates, and ticket categories.
-- **Ticketing System**: Supports multiple ticket types with customizable pricing, discounts and validation at event venues.
+- **User Authentication**: Secure user authentication system, with a guest user feature and role-based access control for organizers and attendees.
+- **Event Management**: Creation, update, and cancelllation of events with support for rich metadata like venues, dates, categories and ticket tiers.
+  **Trending Events**: Live ranking of trending events based on ticket sales within the last 72hrs.
+  **Event Alerts**: Real-time alerts for registered users based on their preferences.
+- **Ticketing System**: Support for multiple ticket types with customizable pricing, discounts and validation at event venues.
 - **Payments**: Secure and idempotent payment processing for ticket purchases using Paystack.
-- **Refund and Revenue Splitting**: Automated refunds to attendees after event cancellation or unsuccessful ticket purchases, and revenue distribution for organizers.
-- **Metrics and Analytics**: Tracks important metrics like refunds and unsuccessful transactions using Prometheus-compatible endpoints.
-- **Websockets**: Real-time event updates via websockets for status of ticket purchase transactions.
-- **Queue Management**: Optimized asynchronous processing using queues for abstracting purchases, refunds and notifications from the main application workflow.
+- **Refunds**: Secure refund process for attendees after event cancellation or unsuccessful ticket purchases.
+  **Payouts**: Efficient revenue payout to organizers upon event completion.
+- **Metrics and Analytics**: Tracks important metrics like ticket sales, refunds, and unsuccessful transactions.
 
 ## Deployment
 
@@ -76,55 +77,61 @@ The database schema is located [here](prisma/schema.prisma). If no schema change
 
 ## Auth API
 
-| Method | Path                      | Description                        |
-| ------ | ------------------------- | ---------------------------------- |
-| POST   | /auth/signup              | Sign up a new user                 |
-| POST   | /auth/login               | Sign in an existing user           |
-| POST   | /auth/logout              | Sign out a logged in user          |
-| POST   | /auth/2fa/enable          | Enable 2FA                         |
-| POST   | /auth/2fa/disable         | Disable 2FA                        |
-| POST   | /auth/2fa/verify          | Verify code from authenticator app |
-| POST   | /auth/password/reset      | Request a password reset           |
-| POST   | /auth/password/resend-otp | Resend password reset OTP          |
-| POST   | /auth/password/verify-otp | Verify password reset OTP          |
-| POST   | /auth/password/new        | Change current password            |
+| Method | Path                        | Description               |
+| ------ | --------------------------- | ------------------------- |
+| POST   | /auth/signup                | Sign up a new user        |
+| POST   | /auth/login                 | Sign in an existing user  |
+| POST   | /auth/password/reset        | Request a password reset  |
+| POST   | /auth/password/reset/resend | Resend password reset OTP |
+| POST   | /auth/password/reset/verify | Verify password reset OTP |
+| POST   | /auth/password/reset/new    | Change current password   |
 
 ## Users API
 
-| Method | Path               | Description                                |
-| ------ | ------------------ | ------------------------------------------ |
-| GET    | /users/profile     | Get user profile                           |
-| PATCH  | /users/profile     | Update user profile                        |
-| DELETE | /users/profile     | Delete user profile                        |
-| GET    | /users/tickets     | Get all event tickets for user             |
-| GET    | /users/events?role | Get all events as an attendee or organizer |
+| Method | Path                | Description                                |
+| ------ | ------------------- | ------------------------------------------ |
+| GET    | /user/profile       | Get user profile                           |
+| PATCH  | /user/profile       | Update user profile                        |
+| DELETE | /user/profile       | Delete user profile                        |
+| GET    | /user/tickets       | Get all event tickets for user             |
+| GET    | /user/events?role   | Get all events as an attendee or organizer |
+| POST   | /user/alerts?action | Toggle event alerts subscription           |
 
 ## Organizer API
 
-| Method | Path             | Description              |
-| ------ | ---------------- | ------------------------ |
-| GET    | /users/organizer | Get organizer profile    |
-| POST   | /users/organizer | Create organizer profile |
-| PATCH  | /users/organizer | Update organizer profile |
+| Method | Path               | Description              |
+| ------ | ------------------ | ------------------------ |
+| GET    | /organizer/profile | Get organizer profile    |
+| POST   | /organizer/profile | Create organizer profile |
+| PATCH  | /organizer/profile | Update organizer profile |
+| DELETE | /organizer/profile | Delete organizer profile |
 
 ## Events API
 
-| Method | Path                    | Description              |
-| ------ | ----------------------- | ------------------------ |
-| POST   | /events/create          | Create new event         |
-| GET    | /events/:eventId        | Get event details        |
-| PATCH  | /events/:eventId        | Update event details     |
-| POST   | /events/:eventId/cancel | Cancel event             |
-| POST   | /events/nearby          | Search for nearby events |
+| Method | Path                                | Description                              |
+| ------ | ----------------------------------- | ---------------------------------------- |
+| POST   | /events/create                      | Create new event                         |
+| GET    | /events/?category                   | Get all events (by category, if present) |
+| GET    | /events/:eventId                    | Get event details                        |
+| PATCH  | /events/:eventId                    | Update event details                     |
+| POST   | /events/:eventId/cancel             | Cancel event                             |
+| GET    | /events/nearby?latitude=&longitude= | Search for nearby events                 |
+| GET    | /events/trending                    | Get trending events                      |
+| POST   | /events/:eventId/refund?email       | Initiate ticket refund                   |
+| POST   | /events/:eventId/refund/verify      | Verify ticket refund request             |
+| POST   | /events/:eventId/refund/process     | Process ticket refund                    |
 
 ## Tickets API
 
-| Method | Path                                          | Description                            |
-| ------ | --------------------------------------------- | -------------------------------------- |
-| POST   | /events/:eventId/tickets/add                  | Add a ticket tier                      |
-| POST   | /events/:eventId/tickets/remove-discount?tier | Remove discount offer from ticket tier |
-| POST   | /events/:eventId/tickets/purchase             | Initiate ticket purchase               |
-| POST   | /events/:eventId/tickets/validate             | Validate ticket                        |
+| Method | Path                                             | Description                       |
+| ------ | ------------------------------------------------ | --------------------------------- |
+| GET    | /events/:eventId/tickets/tiers                   | Get all ticket tiers for an event |
+| POST   | /events/:eventId/tickets/add                     | Add a ticket tier                 |
+| DELETE | /events/:eventId/tickets/:tierId                 | Delete a ticket tier              |
+| POST   | /events/:eventId/tickets/:tierId/discount/create | Create discount offer             |
+| POST   | /events/:eventId/tickets/:tierId/discount/remove | Remove discount offer             |
+| POST   | /events/:eventId/tickets/purchase                | Initiate ticket purchase          |
+| POST   | /events/:eventId/tickets/validate                | Validate ticket                   |
 
 ## Payments API
 

@@ -103,7 +103,7 @@ export class AuthController {
   }
 
   @HttpCode(HttpStatus.OK)
-  @Post('password/new')
+  @Post('password/reset/new')
   async changePassword(@Body() dto: NewPasswordDto): Promise<{ message: string }> {
     try {
       const email = await this.authService.changePassword(dto);
