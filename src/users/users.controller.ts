@@ -15,8 +15,9 @@ import { UpdateProfileDto } from './dto';
 import { UserService } from './users.service';
 import logger from '../common/logger';
 import { MetricsService } from '@src/metrics/metrics.service';
+import { TokenBlacklistGuard } from '@src/custom/guards';
 
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
 @Controller('user')
 export class UserController {
   private readonly context = UserController.name;

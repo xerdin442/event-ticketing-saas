@@ -5,7 +5,9 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  Query} from '@nestjs/common';
+  Query,
+  Req,
+  UseGuards} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   CreateUserDto,
@@ -15,6 +17,10 @@ import {
 } from './dto';
 import { User } from '@prisma/client';
 import logger from '../common/logger';
+import { TokenBlacklistGuard } from '@src/custom/guards';
+import { AuthGuard } from '@nestjs/passport';
+import { Request } from 'express';
+import { GetUser } from '@src/custom/decorators';
 
 @Controller('auth')
 export class AuthController {
@@ -47,6 +53,28 @@ export class AuthController {
       return { token };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred during user login. Error: ${error.message}\n`);
+
+      throw error;
+    }
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
+  @Post('logout')
+  async logout(
+    @Req() req: Request,
+    @GetUser() user: User,
+  ): Promise<{ message: string }> {
+    try {
+      const header = req.headers['authorization'];
+      const token = header.split(' ')[1];
+
+      await this.authService.logout(token);
+      logger.info(`[${this.context}] User logout successful. Email: ${user.email}\n`);
+
+      return { message: 'Logout successful!' };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred during user logout. Error: ${error.message}\n`);
 
       throw error;
     }

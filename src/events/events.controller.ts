@@ -27,7 +27,7 @@ import { UploadService } from '../common/config/upload';
 import { GetUser } from '../custom/decorators';
 import { Event, EventCategory, User } from '@prisma/client';
 import logger from '../common/logger';
-import { EventOrganizerGuard } from '../custom/guards';
+import { EventOrganizerGuard, TokenBlacklistGuard } from '../custom/guards';
 import { EventCategoryPipe } from '@src/custom/pipes';
 
 @Controller('events')
@@ -79,7 +79,7 @@ export class EventsController {
   }
 
   @Post('create')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
   @UseInterceptors(
     FileInterceptor('poster', {
       fileFilter: UploadService.fileFilter,
@@ -117,7 +117,7 @@ export class EventsController {
   }
 
   @Patch(':eventId')
-  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'), EventOrganizerGuard)
   @UseInterceptors(
     FileInterceptor('poster', {
       fileFilter: UploadService.fileFilter,
@@ -144,7 +144,7 @@ export class EventsController {
 
   @HttpCode(HttpStatus.OK)
   @Post(':eventId/cancel')
-  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'), EventOrganizerGuard)
   async cancelEvent(
     @GetUser() user: User,
     @Param('eventId', ParseIntPipe) eventId: number

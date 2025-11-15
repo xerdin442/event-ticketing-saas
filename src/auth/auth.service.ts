@@ -47,7 +47,7 @@ export class AuthService {
       await this.authQueue.add('signup', email);
 
       delete user.password; // Sanitize user details
-      
+
       return {
         user,
         token: await this.jwt.signAsync(payload)
@@ -86,6 +86,30 @@ export class AuthService {
       return token;
     } catch (error) {
       throw error;
+    }
+  }
+
+  async logout(token: string): Promise<void> {
+    const redis: RedisClientType = await initializeRedis(
+      Secrets.REDIS_URL,
+      'Blacklisted Tokens',
+      Secrets.BLACKLISTED_TOKENS_STORE_INDEX,
+    );
+
+    try {
+      // Calculate the cache ttl based on the token expiration time
+      const decoded = await this.jwt.decode(token);
+      const exp = decoded.exp * 1000;
+      const ttl = Math.max(1, Math.floor((exp - Date.now()) / 1000)) + 600;
+
+      // Blacklist the token against future use until it expires
+      await redis.setEx(token, ttl, JSON.stringify({ blacklisted: true }));
+
+      return;
+    } catch (error) {
+      throw error;
+    } finally {
+      redis.destroy();
     }
   }
 

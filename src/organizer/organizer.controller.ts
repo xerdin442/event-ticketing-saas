@@ -5,8 +5,9 @@ import logger from '@src/common/logger';
 import { GetUser } from '@src/custom/decorators';
 import { CreateOrganizerProfileDto, UpdateOrganizerProfileDto } from './dto';
 import { AuthGuard } from '@nestjs/passport';
+import { TokenBlacklistGuard } from '@src/custom/guards';
 
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
 @Controller('organizer')
 export class OrganizerController {
   private readonly context: string = OrganizerController.name;

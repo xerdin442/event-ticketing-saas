@@ -21,7 +21,7 @@ import {
   ValidateTicketDto
 } from './dto';
 import { GetUser } from '../custom/decorators';
-import { EventOrganizerGuard } from '../custom/guards';
+import { EventOrganizerGuard, TokenBlacklistGuard } from '../custom/guards';
 import { TicketTier, User } from '@prisma/client';
 import logger from '../common/logger';
 import { RedisClientType } from 'redis';
@@ -49,7 +49,7 @@ export class TicketsController {
 
   @HttpCode(HttpStatus.OK)
   @Post('add')
-  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'), EventOrganizerGuard)
   async addTicketTier(
     @Body() dto: AddTicketTierDto,
     @Param('eventId', ParseIntPipe) eventId: number
@@ -64,7 +64,7 @@ export class TicketsController {
   }
 
   @Delete(':tierId')
-  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'), EventOrganizerGuard)
   async removeTicketTier(
     @Param('tierId', ParseIntPipe) tierId: number,
   ): Promise<{ message: string }> {
@@ -79,7 +79,7 @@ export class TicketsController {
 
   @HttpCode(HttpStatus.OK)
   @Post(':tierId/discount/create')
-  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'), EventOrganizerGuard)
   async createDiscount(
     @Param('tierId', ParseIntPipe) tierId: number,
     @Body() dto: CreateDiscountDto,
@@ -95,7 +95,7 @@ export class TicketsController {
 
   @HttpCode(HttpStatus.OK)
   @Post(':tierId/discount/remove')
-  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'), EventOrganizerGuard)
   async removeDiscount(
     @Param('tierId', ParseIntPipe) tierId: number,
   ): Promise<{ message: string }> {
@@ -152,7 +152,7 @@ export class TicketsController {
 
   @HttpCode(HttpStatus.OK)
   @Post('validate')
-  @UseGuards(AuthGuard('jwt'), EventOrganizerGuard)
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'), EventOrganizerGuard)
   async validateTicket(@Body() dto: ValidateTicketDto): Promise<{ message: string }> {
     try {
       await this.ticketsService.validateTicket(dto);
