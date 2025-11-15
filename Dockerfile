@@ -10,9 +10,9 @@ RUN if [ "$NODE_ENV" = "development" ] || [ "$NODE_ENV" = "test" ]; \
       else npm install --only=production; \
       fi
 
-RUN npm run build
-
 COPY . .
+
+RUN npm run build
 
 EXPOSE 3000
 
