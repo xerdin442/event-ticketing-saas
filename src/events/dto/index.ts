@@ -1,7 +1,9 @@
 import { EventCategory } from "@prisma/client";
 import { 
+  IsDate,
   IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString
 } from "class-validator";
@@ -19,21 +21,21 @@ export class CreateEventDto {
   @IsNotEmpty()
   category: EventCategory;
 
-  @IsString()
+  @IsDate()
   @IsNotEmpty()
-  date: string;
+  date: Date;
 
-  @IsString()
+  @IsDate()
   @IsNotEmpty()
-  startTime: string; 
+  startTime: Date;
 
-  @IsString()
+  @IsDate()
   @IsNotEmpty()
-  endTime: string;
+  endTime: Date;
 
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  ageRestriction?: string
+  ageRestriction?: number;
   
   @IsString()
   @IsNotEmpty()
@@ -43,9 +45,9 @@ export class CreateEventDto {
   @IsNotEmpty()
   address: string;
 
-  @IsString()
+  @IsNumber()
   @IsNotEmpty()
-  capacity: string;
+  capacity: number;
 }
 
 export class UpdateEventDto {
@@ -61,22 +63,22 @@ export class UpdateEventDto {
   @IsOptional()
   category?: EventCategory;
 
-  @IsString()
+  @IsDate()
   @IsOptional()
-  date?: string;
+  date?: Date;
 
-  @IsString()
+  @IsDate()
   @IsOptional()
-  startTime?: string; 
+  startTime?: Date; 
 
-  @IsString()
+  @IsDate()
   @IsOptional()
-  endTime?: string;
+  endTime?: Date;
 
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  ageRestriction?: string
-  
+  ageRestriction?: number;
+
   @IsString()
   @IsOptional()
   venue?: string;
@@ -85,9 +87,9 @@ export class UpdateEventDto {
   @IsOptional()
   address?: string;
 
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  capacity?: string;
+  capacity?: number;
 }
 
 export class VerifyTicketRefundDto {

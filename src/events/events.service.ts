@@ -51,6 +51,16 @@ export class EventsService {
     poster: string
   ): Promise<Event> {
     try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        include: { organizer: true }
+      });
+
+      // Check if the user has an organizer profile
+      if (!user.organizer) {
+        throw new BadRequestException('An Organizer profile is required to create an event')
+      };
+
       // Encode event location in URL format and generate coordinates
       const location = `${dto.venue}+${dto.address}`.replace(/(,)/g, '').replace(/\s/g, '+');
       const response = await axios.get(
@@ -60,22 +70,11 @@ export class EventsService {
         }
       });
 
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        include: { organizer: true }
-      });
-
-      if (!user.organizer) {
-        throw new BadRequestException('An organizer profile is required to create an event')
-      };
-
       if (response.status === 200 && response.data.length > 0) {
         const event = await this.prisma.event.create({
           data: {
             ...dto,
             organizerId: user.organizer.id,
-            ageRestriction: +dto.ageRestriction,
-            capacity: +dto.capacity,
             poster,
             revenue: 0
           }
@@ -89,7 +88,7 @@ export class EventsService {
           eventId: event.id
         });
 
-        // Set automatic status updates, 1.5 seconds after the start and end of the event
+        // Set automatic status updates 1.5 seconds after the start and end of the event
         await this.eventsQueue.add(
           'ongoing-status-update',
           { eventId: event.id },
@@ -130,9 +129,9 @@ export class EventsService {
         this.metrics.incrementCounter('total_events', ['created']);
 
         return event;
-      } else {
-        throw new BadRequestException('Failed to generate coordinates for the event location. Please enter correct values for "venue" and "address"');
       };
+
+      throw new BadRequestException('Failed to generate coordinates for the event location. Please enter correct values for "venue" and "address"');
     } catch (error) {
       throw error;
     }
@@ -143,28 +142,24 @@ export class EventsService {
     eventId: number,
     poster?: string
   ): Promise<Event> {
+    // Initialize Redis connection
+    const redis: RedisClientType = await initializeRedis(
+      Secrets.REDIS_URL,
+      'Geolocation Search',
+      Secrets.GEOLOCATION_STORE_INDEX,
+    );
+
     try {
       const event = await this.prisma.event.update({
         where: { id: eventId },
         data: {
           ...dto,
-          ...(dto.capacity !== undefined && { capacity: +dto.capacity }),
-          ...(dto.ageRestriction !== undefined && { ageRestriction: +dto.ageRestriction }),
           ...(poster && { poster })
         },
-        include: {
-          tickets: true,
-          organizer: true
-        }
       });
 
       if (dto.address || dto.venue || dto.date || dto.endTime || dto.startTime) {
         if (dto.address || dto.venue) {
-          const redis: RedisClientType = await initializeRedis(
-            Secrets.REDIS_URL,
-            'Geolocation Search',
-            Secrets.GEOLOCATION_STORE_INDEX,
-          );
           await redis.zRem('events', `ID:${event.id}`);
 
           const location = `${dto.venue}+${dto.address}`.replace(/(,)/g, '').replace(/\s/g, '+');
@@ -222,12 +217,11 @@ export class EventsService {
         await this.eventsQueue.add('event-update', { event });
       }
 
-      delete event.organizer;
-      delete event.tickets;
-
       return event;
     } catch (error) {
       throw error;
+    } finally {
+      redis.destroy();
     }
   }
 
@@ -338,9 +332,9 @@ export class EventsService {
         );
 
         return requestId;
-      } else {
-        throw new BadRequestException('Only attendees can process ticket refunds for this event. Check the email and try again');
-      }
+      };
+
+      throw new BadRequestException('Only attendees can process ticket refunds for this event. Check the email and try again');
     } catch (error) {
       throw error;
     }

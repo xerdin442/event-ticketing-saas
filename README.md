@@ -39,7 +39,7 @@ Clone this repository and follow the instructions to set up the project locally:
 
 ### 2. Environment Variables
 
-- [Use the sample here](./.env.example) to create three files - `.env`, `.env.test` and `.env.local` - for storing and managing the required global environment variables in test and development environments.
+- [Use the sample here](./.env.example) to create two files - `.env` & `.env.test` - for storing and managing the required global environment variables in test and development environments.
 - `localhost` should be the hostname for all external service urls (database and redis) in the `.env.test` file. This will connect the test environment to the same docker instances as `docker.host.internal` in the `compose.test.yml` file.
 
 ### 3. Database Migrations

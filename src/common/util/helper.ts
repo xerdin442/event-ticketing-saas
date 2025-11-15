@@ -1,8 +1,3 @@
-export const validateWebsiteUrl = (url: string): boolean => {
-  const pattern: RegExp = /^(https:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-._~:/?#[\]@!$&'()*+,;=]*)?$/;
-  return pattern.test(url);
-}
-
 export const formatDate = (date: Date, output: 'date' | 'time'): string => {
   const options: Intl.DateTimeFormatOptions = {
     hour: 'numeric',

@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Organizer } from '@prisma/client';
-import { validateWebsiteUrl } from '@src/common/util/helper';
 import { DbService } from '@src/db/db.service';
 import { PaymentsService } from '@src/payments/payments.service';
 import { CreateOrganizerProfileDto, UpdateOrganizerProfileDto } from './dto';
+import { isURL } from 'class-validator';
 
 @Injectable()
 export class OrganizerService {
@@ -32,7 +32,8 @@ export class OrganizerService {
         throw new BadRequestException('This user already has an organizer profile');
       };
 
-      if (dto.website && !validateWebsiteUrl(dto.website)) {
+      const isValidUrl: boolean = isURL(dto.website, { protocols: ['https'] });
+      if (dto.website && !isValidUrl) {
         throw new BadRequestException('Please enter a valid webiste URL');
       };
 
@@ -67,7 +68,8 @@ export class OrganizerService {
         recipientCode = await this.payments.createTransferRecipient(details);
       };
 
-      if (dto.website && !validateWebsiteUrl(dto.website)) {
+      const isValidUrl: boolean = isURL(dto.website, { protocols: ['https'] });
+      if (dto.website && !isValidUrl) {
         throw new BadRequestException('Please enter a valid webiste URL');
       };
 
