@@ -1,40 +1,12 @@
 import {
   CanActivate,
   ExecutionContext,
-  ForbiddenException,
   Injectable,
   UnauthorizedException
 } from "@nestjs/common";
 import { initializeRedis } from "@src/common/config/redis-conf";
 import { Secrets } from "@src/common/env";
-import { DbService } from "@src/db/db.service";
 import { RedisClientType } from "redis";
-
-@Injectable()
-export class EventOrganizerGuard implements CanActivate {
-  constructor(private readonly prisma: DbService) { }
-
-  async canActivate(context: ExecutionContext): Promise<boolean> {
-    try {
-      const request = context.switchToHttp().getRequest();
-      // Fetch the event and its organizer profile
-      const event = await this.prisma.event.findUnique({
-        where: { id: +request.params.eventId }
-      });
-      const organizer = await this.prisma.organizer.findUnique({
-        where: { userId: request.user.id }
-      })
-
-      if (organizer && event.organizerId === organizer.id) {
-        return true;
-      } else {
-        throw new ForbiddenException('Only the organizer of this event can perform this operation');
-      }
-    } catch (error) {
-      throw error;
-    }
-  }
-}
 
 @Injectable()
 export class TokenBlacklistGuard implements CanActivate {

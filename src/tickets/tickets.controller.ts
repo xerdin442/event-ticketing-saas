@@ -20,13 +20,13 @@ import {
   PurchaseTicketDto,
   ValidateTicketDto
 } from './dto';
-import { GetUser } from '../custom/decorators';
-import { EventOrganizerGuard, TokenBlacklistGuard } from '../custom/guards';
-import { TicketTier, User } from '@prisma/client';
+import { TokenBlacklistGuard } from '../custom/guards/token.guard';
+import { TicketTier } from '@prisma/client';
 import logger from '../common/logger';
 import { RedisClientType } from 'redis';
 import { initializeRedis } from '../common/config/redis-conf';
 import { Secrets } from '../common/env';
+import { EventOrganizerGuard } from '@src/custom/guards/organizer.guard';
 
 @Controller('events/:eventId/tickets')
 export class TicketsController {

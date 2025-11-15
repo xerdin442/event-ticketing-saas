@@ -2,10 +2,10 @@ import { Body, Controller, Delete, Get, Patch, Post, UseGuards } from '@nestjs/c
 import { OrganizerService } from './organizer.service';
 import { User, Organizer } from '@prisma/client';
 import logger from '@src/common/logger';
-import { GetUser } from '@src/custom/decorators';
+import { GetUser } from '@src/custom/decorators/user.decorator';
 import { CreateOrganizerProfileDto, UpdateOrganizerProfileDto } from './dto';
 import { AuthGuard } from '@nestjs/passport';
-import { TokenBlacklistGuard } from '@src/custom/guards';
+import { TokenBlacklistGuard } from '@src/custom/guards/token.guard';
 
 @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
 @Controller('organizer')

@@ -10,12 +10,12 @@ import {
   UseGuards} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Event, Ticket, User } from '@prisma/client';
-import { GetUser } from '../custom/decorators';
+import { GetUser } from '../custom/decorators/user.decorator';
 import { UpdateProfileDto } from './dto';
 import { UserService } from './users.service';
 import logger from '../common/logger';
 import { MetricsService } from '@src/metrics/metrics.service';
-import { TokenBlacklistGuard } from '@src/custom/guards';
+import { TokenBlacklistGuard } from '@src/custom/guards/token.guard';
 
 @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
 @Controller('user')

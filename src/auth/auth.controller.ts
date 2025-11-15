@@ -17,10 +17,10 @@ import {
 } from './dto';
 import { User } from '@prisma/client';
 import logger from '../common/logger';
-import { TokenBlacklistGuard } from '@src/custom/guards';
+import { TokenBlacklistGuard } from '@src/custom/guards/token.guard';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
-import { GetUser } from '@src/custom/decorators';
+import { GetUser } from '@src/custom/decorators/user.decorator';
 
 @Controller('auth')
 export class AuthController {

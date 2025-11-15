@@ -24,11 +24,12 @@ import {
 } from './dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from '../common/config/upload';
-import { GetUser } from '../custom/decorators';
+import { GetUser } from '../custom/decorators/user.decorator';
 import { Event, EventCategory, User } from '@prisma/client';
 import logger from '../common/logger';
-import { EventOrganizerGuard, TokenBlacklistGuard } from '../custom/guards';
-import { EventCategoryPipe } from '@src/custom/pipes';
+import { TokenBlacklistGuard } from '../custom/guards/token.guard';
+import { EventCategoryPipe } from '@src/custom/pipes/event-category.pipe';
+import { EventOrganizerGuard } from '@src/custom/guards/organizer.guard';
 
 @Controller('events')
 export class EventsController {
