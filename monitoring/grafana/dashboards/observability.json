@@ -108,7 +108,7 @@
     },
     {
       "type": "graph",
-      "title": "Total Transaction Refunds",
+      "title": "Transaction Refunds",
       "description": "The current cumulative number of transaction refunds across all time",
       "targets": [
         {

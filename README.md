@@ -71,20 +71,21 @@ The database schema is located [here](prisma/schema.prisma). If no schema change
 <br>
 
 > If you make changes to any of the compose files in test or development, restart the containers using: `npm run compose:restart`.
-> To kill the containers, run `npm run compose:down`.
+> To stop the containers, run `npm run compose:down`.
 
 ## Endpoints
 
 ## Auth API
 
-| Method | Path                                | Description               |
-| ------ | ----------------------------------- | ------------------------- |
-| POST   | /auth/signup                        | Sign up a new user        |
-| POST   | /auth/login                         | Sign in an existing user  |
-| POST   | /auth/password/reset?email          | Request a password reset  |
-| POST   | /auth/password/reset/resend?resetId | Resend password reset OTP |
-| POST   | /auth/password/reset/verify         | Verify password reset OTP |
-| POST   | /auth/password/reset/new            | Change current password   |
+| Method | Path                                | Description                |
+| ------ | ----------------------------------- | -------------------------- |
+| POST   | /auth/signup                        | Sign up a new user         |
+| POST   | /auth/login                         | Sign in an existing user   |
+| POST   | /auth/logout                        | Log out of current session |
+| POST   | /auth/password/reset?email          | Request a password reset   |
+| POST   | /auth/password/reset/resend?resetId | Resend password reset OTP  |
+| POST   | /auth/password/reset/verify         | Verify password reset OTP  |
+| POST   | /auth/password/reset/new            | Change current password    |
 
 ## Users API
 
