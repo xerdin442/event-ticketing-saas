@@ -15,11 +15,13 @@ import { Attachment } from "resend";
 import { RedisClientType } from "redis";
 import { initializeRedis } from "../config/redis-conf";
 import { formatDate } from "../util/helper";
+import { TicketLockInfo } from "../types";
 
 @Injectable()
 @Processor('payments-queue')
 export class PaymentsProcessor {
   private readonly context: string = PaymentsProcessor.name;
+  private redis: RedisClientType;
 
   constructor(
     private readonly gateway: PaymentsGateway,
@@ -33,6 +35,7 @@ export class PaymentsProcessor {
   async finalizeTransaction(job: Job) {
     const { eventType, metadata, transactionReference } = job.data;
     const attendee = metadata.email as string;
+    const lockId = metadata.lockId as string;
 
     const eventId = parseInt(metadata.eventId);
     const tierId = parseInt(metadata.tierId);
@@ -41,6 +44,9 @@ export class PaymentsProcessor {
 
     let discount: boolean;
     metadata.discount === 'false' ? discount = false : discount = true;
+
+    let trending: boolean;
+    metadata.trending === 'false' ? trending = false : trending = true;
 
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
@@ -52,52 +58,61 @@ export class PaymentsProcessor {
     const tier = event.ticketTiers.find(tier => tier.id === tierId);
     const price = tier.price;
 
-    // Initialize Redis store to track trending events
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Trending Events',
-      Secrets.TRENDING_EVENTS_STORE_INDEX,
-    );
-
     try {
       if (eventType === 'charge.success') {
         try {
           await this.prisma.$transaction(async (tx) => {
-            // Check total number of tickets left
-            if (tier.totalNumberOfTickets < quantity) {
-              throw new Error(`Insufficient ${tier.name} tickets`);
-            };
+            if (trending) {
+              // Initialize Redis store to check expiration time of ticket lock
+              this.redis = await initializeRedis(
+                Secrets.REDIS_URL,
+                'Ticket Lock',
+                Secrets.TICKET_LOCK_STORE_INDEX,
+              );
 
-            if (discount) {
-              // Check number of discount tickets left
-              if (tier.numberOfDiscountTickets < quantity) {
-                throw new Error(`Discount ${tier.name} tickets are sold out! Please, browse other ticket tiers`);
-              };
+              // Get ticket lock data
+              const rawLockData = await this.redis.get(lockId) as string;
+              const parsedLockData = JSON.parse(rawLockData) as TicketLockInfo;
 
-              // Check if the discount offer has expired
-              const currentTime = new Date().getTime();
-              const expirationDate = new Date(tier.discountExpiration).getTime();
-              if (currentTime > expirationDate) {
-                throw new Error(`Discount offer for ${tier.name} tickets has expired. Please, browse other ticket tiers`);
-              };
+              // Check if purchase window has expired
+              if (Date.now() > parsedLockData.expirationTime) {
+                // Update ticket lock status
+                const updatedLockData: TicketLockInfo = {
+                  ...parsedLockData,
+                  status: 'unlocked',
+                };
+                await this.redis.set(lockId, JSON.stringify(updatedLockData));
 
-              // Decrement the number of discount tickets and total number of tickets left in the tier
-              await tx.ticketTier.update({
-                where: { id: tier.id },
-                data: {
-                  numberOfDiscountTickets: { decrement: quantity },
-                  totalNumberOfTickets: { decrement: quantity }
-                }
-              });
+                throw new Error('Your purchase window has expired. Please restart the process');
+              }
             } else {
-              // Decrement the total number of tickets left in the tier
+              // Check total number of tickets left
+              if (tier.totalNumberOfTickets < quantity) {
+                throw new Error(`Insufficient ${tier.name} tickets`);
+              };
+
+              if (discount) {
+                // Check number of discount tickets left
+                if (tier.numberOfDiscountTickets < quantity) {
+                  throw new Error(`Discount ${tier.name} tickets are sold out! Please check other ticket tiers`);
+                };
+
+                // Check if the discount offer has expired
+                const expirationDate = new Date(tier.discountExpiration).getTime();
+                if (Date.now() > expirationDate) {
+                  throw new Error(`Discount offer for ${tier.name} tickets has expired. Please check other ticket tiers`);
+                };
+              }
+
+              // Update total number of tickets left in the tier
               await tx.ticketTier.update({
                 where: { id: tier.id },
                 data: {
+                  numberOfDiscountTickets: (discount && { decrement: quantity }),
                   totalNumberOfTickets: { decrement: quantity }
                 }
               });
-            };
+            }
 
             // Check the number of discount tickets left and update status of the discount offer
             if (tier.numberOfDiscountTickets === 0) {
@@ -129,7 +144,7 @@ export class PaymentsProcessor {
           return this.gateway.sendPaymentStatus(
             attendee,
             'refund',
-            `Transaction unsuccessful: ${error.message}. Please try again in a few minutes.`
+            `Transaction unsuccessful: ${error.message}`
           );
         };
 
@@ -185,9 +200,16 @@ export class PaymentsProcessor {
           const ticketPDF = await generateTicketPDF(ticket, qrcodeImage, event);
           pdfs.push(ticketPDF);
 
-          // Record ticket sale for ranking in trending events
+          // Initialize Redis store to track trending events
+          this.redis = await initializeRedis(
+            Secrets.REDIS_URL,
+            'Trending Events',
+            Secrets.TRENDING_EVENTS_STORE_INDEX,
+          );
+
+          // Record ticket sale to update event ranking in trending events
           const trendingWindow = Date.now() - (72 * 60 * 60 * 1000);
-          redis.multi()
+          this.redis.multi()
             .zAdd(`event_log:${eventId}`, [{ score: trendingWindow, value: ticket.id.toString() }]) // Add new entry
             .zRemRangeByScore(`event_log:${eventId}`, 0, trendingWindow) // Remove all entries older than 72 hours
             .exec();
@@ -216,7 +238,7 @@ export class PaymentsProcessor {
       logger.error(`[${this.context}] An error occured while processing ticket purchase. Error: ${error.message}\n`);
       throw error;
     } finally {
-      redis.destroy();
+      this.redis.destroy();
     }
   }
 

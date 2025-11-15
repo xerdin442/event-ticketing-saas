@@ -10,12 +10,19 @@ import { PaymentsService } from '../payments/payments.service';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { TicketTier } from '@prisma/client';
+import { EventsService } from '@src/events/events.service';
+import { initializeRedis } from '@src/common/config/redis-conf';
+import { Secrets } from '@src/common/env';
+import { RedisClientType } from 'redis';
+import { randomUUID } from 'crypto';
+import { TicketLockInfo } from '@src/common/types';
 
 @Injectable()
 export class TicketsService {
   constructor(
     private readonly prisma: DbService,
     private readonly payments: PaymentsService,
+    private readonly eventsService: EventsService,
     @InjectQueue('tickets-queue') private readonly ticketsQueue: Queue
   ) { };
 
@@ -161,22 +168,36 @@ export class TicketsService {
   }
 
   async purchaseTicket(dto: PurchaseTicketDto, eventId: number): Promise<string> {
+    // Initialize Redis connection
+    const redis: RedisClientType = await initializeRedis(
+      Secrets.REDIS_URL,
+      'Ticket Lock',
+      Secrets.TICKET_LOCK_STORE_INDEX,
+    );
+
     try {
+      const { tier: ticketTier, quantity, email } = dto;
+
+      let lockId: string = "";
       let amount: number;
       let discount: boolean = false;
 
       const user = await this.prisma.user.findUnique({
-        where: { email: dto.email }
+        where: { email }
       });
       const event = await this.prisma.event.findUnique({
         where: { id: eventId },
         include: { ticketTiers: true }
       });
-      const tier = event.ticketTiers.find(tier => tier.name === dto.tier);
+      const tier = event.ticketTiers.find(tier => tier.name === ticketTier);
+
+      // Check if event is trending
+      const trendingEvents = await this.eventsService.getTrendingEvents();
+      const trendingEventIds = trendingEvents.map(event => event.id);
+      const trending = trendingEventIds.includes(eventId);
 
       // Check if the number of tickets left is greater than or equal to the purchase quantity
-      if (tier.totalNumberOfTickets >= dto.quantity) {
-        // Check if a discount is available
+      if (tier.totalNumberOfTickets >= quantity) {
         if (tier.discount) {
           discount = true; // Specify that this purchase was made on discount
 
@@ -184,13 +205,45 @@ export class TicketsService {
           const expirationDate = new Date(tier.discountExpiration).getTime();
 
           // Check if the discount has expired and if the discount tickets left is greater than or equal to the purchase quantity
-          if (currentTime < expirationDate && tier.numberOfDiscountTickets >= dto.quantity) {
+          if (currentTime < expirationDate && tier.numberOfDiscountTickets >= quantity) {
             // Calculate the ticket purchase amount using the discount price
-            amount = tier.discountPrice * dto.quantity;
+            amount = tier.discountPrice * quantity;
           }
         } else {
           // Calculate the ticket purchase amount using the original price
-          amount = tier.price * dto.quantity;
+          amount = tier.price * quantity;
+        }
+
+        if (trending) {
+          lockId = randomUUID(); // Generate a lock ID to reserve the tickets
+          const purchaseWindow = 185 * 1000 // Add a 5-second buffer to the 3-minute purchase window
+
+          const lockData: TicketLockInfo = {
+            tierId: tier.id,
+            discount: tier.discount,
+            numberOfTickets: quantity,
+            expirationTime: Date.now() + purchaseWindow, 
+            status: 'locked',
+          };
+
+          // Store ticket lock info in cache
+          await redis.set(lockId, JSON.stringify(lockData));
+
+          // Update number of tickets
+          await this.prisma.ticketTier.update({
+            where: { id: tier.id },
+            data: {
+              numberOfDiscountTickets: (tier.discount && { decrement: quantity }),
+              totalNumberOfTickets: { decrement: quantity }
+            }
+          });
+
+          // Check ticket lock status after the purchase window expires
+          await this.ticketsQueue.add(
+            'ticket-lock',
+            { lockId },
+            { delay: purchaseWindow + 1000 }
+          );
         }
       } else {
         throw new BadRequestException(`Insufficient ${tier.name} tickets. Check out other ticket tiers`);
@@ -198,18 +251,22 @@ export class TicketsService {
 
       // Configure metadata for purchase transaction
       const metadata = {
-        email: dto.email,
+        email,
         eventId,
         tierId: tier.id,
         amount,
         discount,
-        quantity: dto.quantity
+        quantity,
+        trending,
+        lockId
       };
 
       // Initialize ticket purchase
       return this.payments.initializeTransaction(user.email, amount * 100, metadata);
     } catch (error) {
       throw error;
+    } finally {
+      redis.destroy();
     }
   }
 
