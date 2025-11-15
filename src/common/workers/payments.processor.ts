@@ -76,15 +76,15 @@ export class PaymentsProcessor {
 
               // Check if purchase window has expired
               if (Date.now() > parsedLockData.expirationTime) {
+                // Update ticket lock status
+                const updatedLockData: TicketLockInfo = {
+                  ...parsedLockData,
+                  status: 'unlocked',
+                };
+                await this.redis.set(lockId, JSON.stringify(updatedLockData));
+
                 throw new Error('Your purchase window has expired. Please restart the process');
               }
-
-              // Update ticket lock status
-              const updatedLockData: TicketLockInfo = {
-                ...parsedLockData,
-                status: 'unlocked',
-              };
-              await this.redis.set(lockId, JSON.stringify(updatedLockData));
             } else {
               // Check total number of tickets left
               if (tier.totalNumberOfTickets < quantity) {

@@ -62,6 +62,7 @@ export class TicketsProcessor {
 
       return;
     } catch (error) {
+      logger.error(`[${this.context}] An error occured while verifying ticket lock status. Error: ${error.message}\n`);
       throw error;
     } finally {
       this.redis.destroy();
