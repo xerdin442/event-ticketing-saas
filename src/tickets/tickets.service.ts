@@ -204,7 +204,7 @@ export class TicketsService {
           amount = tier.price * quantity;
         }
 
-        if (!amount) throw new BadRequestException("Unable to calculate ticket amount");
+        if (!amount) throw new BadRequestException("Unable to calculate purchase amount");
 
         if (trending) {
           lockId = randomUUID(); // Generate a lock ID to reserve the tickets

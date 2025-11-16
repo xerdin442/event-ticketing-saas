@@ -54,7 +54,7 @@ export class TasksService {
     }
   }
 
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @Cron(CronExpression.EVERY_5_MINUTES)
   async updateTrendingEvents() {
     try {
       let cursor = '0';
