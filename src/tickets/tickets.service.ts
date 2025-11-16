@@ -175,9 +175,6 @@ export class TicketsService {
 
       const { tier: ticketTier, quantity, email } = dto;
 
-      const user = await this.prisma.user.findUnique({
-        where: { email }
-      });
       const event = await this.prisma.event.findUnique({
         where: { id: eventId },
         include: { ticketTiers: true }
@@ -207,14 +204,31 @@ export class TicketsService {
           amount = tier.price * quantity;
         }
 
+        if (!amount) throw new BadRequestException("Unable to calculate ticket amount");
+
         if (trending) {
           lockId = randomUUID(); // Generate a lock ID to reserve the tickets
           const purchaseWindow = 185 * 1000 // Add a 5-second buffer to the 3-minute purchase window
 
+          // Update number of tickets
+          try {
+            await this.prisma.$transaction(async (tx) => {
+              await tx.ticketTier.update({
+                where: { id: tier.id },
+                data: {
+                  numberOfDiscountTickets: (discount && { decrement: quantity }),
+                  totalNumberOfTickets: { decrement: quantity }
+                }
+              });
+            });
+          } catch (error) {
+            throw new BadRequestException('Unable to reserve tickets. Please try again');
+          }
+
           const lockData: TicketLockInfo = {
             status: "locked",
             tierId: tier.id,
-            discount: tier.discount,
+            discount,
             numberOfTickets: quantity,
           };
 
@@ -225,20 +239,11 @@ export class TicketsService {
             JSON.stringify(lockData)
           );
 
-          // Update number of tickets
-          await this.prisma.ticketTier.update({
-            where: { id: tier.id },
-            data: {
-              numberOfDiscountTickets: (tier.discount && { decrement: quantity }),
-              totalNumberOfTickets: { decrement: quantity }
-            }
-          });
-
           // Unlock tickets once the purchase window expires
           await this.ticketsQueue.add(
             'ticket-lock',
             { lockId, ...lockData },
-            { delay: purchaseWindow + 1500 } // Add a 1.5s delay to ensure Redis cache has cleared the lock info
+            { delay: purchaseWindow + 3000 } // Add a 3s delay to ensure Redis cache has cleared the lock info
           );
         }
       } else {
@@ -258,7 +263,23 @@ export class TicketsService {
       };
 
       // Initialize ticket purchase
-      return this.payments.initializeTransaction(user.email, amount * 100, metadata);
+      const { authorization_url, reference } = await this.payments.initializeTransaction(email, amount * 100, metadata);
+
+      // Store transaction reference
+      await this.prisma.transaction.create({
+        data: {
+          amount,
+          reference,
+          email,
+          source: "PURCHASE",
+          status: "PENDING",
+          eventId,
+          lockId,
+          lockStatus: trending ? "LOCKED" : null,
+        }
+      });
+
+      return authorization_url;
     } catch (error) {
       throw error;
     }

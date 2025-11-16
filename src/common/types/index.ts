@@ -1,4 +1,4 @@
-export type BankData = {
+export interface BankData {
   id: number
   name: string
   slug: string
@@ -16,7 +16,7 @@ export type BankData = {
   updatedAt: string
 }
 
-export type AccountDetails = {
+export interface AccountDetails {
   accountName: string
   accountNumber: string
   bankName: string
@@ -41,7 +41,13 @@ export interface TicketLockInfo {
   numberOfTickets: number;
 }
 
-export type CloudinaryResource = {
+export interface PaystackCheckoutResponse {
+  authorization_url: string;
+  access_code: string;
+  reference: string;
+}
+
+export interface CloudinaryResource {
   asset_id: string
   public_id: string
   format: string

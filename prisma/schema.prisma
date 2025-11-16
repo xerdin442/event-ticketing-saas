@@ -41,6 +41,25 @@ enum DiscountStatus {
   ENDED
 }
 
+enum TransactionStatus {
+  PENDING
+  FAILED
+  SUCCESS
+  REFUNDED
+}
+
+enum TransactionSource {
+  PURCHASE
+  REFUND
+  PAYOUT
+}
+
+enum LockStatus {
+  LOCKED
+  EXPIRED
+  PAID
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
@@ -143,10 +162,30 @@ model Event {
   organizerId Int
   organizer   Organizer @relation(fields: [organizerId], references: [id], onDelete: Cascade)
 
-  ticketTiers TicketTier[]
-  tickets     Ticket[]
+  ticketTiers  TicketTier[]
+  tickets      Ticket[]
+  transactions Transaction[]
 
   @@index([category])
   @@index([status])
   @@map("events")
+}
+
+model Transaction {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reference  String            @unique
+  status     TransactionStatus
+  source     TransactionSource
+  amount     Float
+  email      String
+  lockId     String?
+  lockStatus LockStatus?
+
+  eventId Int
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("transactions")
 }

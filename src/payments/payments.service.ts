@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { AccountDetails, BankData } from '../common/types';
+import { AccountDetails, BankData, PaystackCheckoutResponse } from '../common/types';
 import { Secrets } from '../common/secrets';
 import logger from '../common/logger';
 import axios, { AxiosInstance } from 'axios';
@@ -157,13 +157,13 @@ export class PaymentsService {
   }
 
   async initializeTransaction(email: string, amount: number, metadata: Record<string, any>)
-    : Promise<string> {
+    : Promise<PaystackCheckoutResponse> {
     try {
       const response = await this.httpInstance.post('/transaction/initialize',
         {amount, email, metadata },
       )
 
-      return response.data.data.authorization_url as string;
+      return response.data.data as PaystackCheckoutResponse;
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while initializing transaction. Error: ${error.message}\n`);
       throw error;
