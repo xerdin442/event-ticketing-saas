@@ -16,6 +16,7 @@ import { MailService } from '@src/common/config/mail';
     EventsService,
     EventsProcessor,
     MailService,
-  ]
+  ],
+  exports: [EventsService]
 })
 export class EventsModule { }
