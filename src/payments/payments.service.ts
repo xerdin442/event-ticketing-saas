@@ -130,7 +130,7 @@ export class PaymentsService {
   ): Promise<string> {
     try {
       const response = await this.httpInstance.post('/transfer', {
-        amount,
+        amount: amount * 100,
         reason,
         source: 'balance',
         recipient,
@@ -138,7 +138,7 @@ export class PaymentsService {
         metadata,
       });
 
-      return response.data.data.transfer_code as string;
+      return response.data.data.reference as string;
     } catch (error) {
       logger.error(
         `[${this.context}] An error occurred while initiating transfer from balance. Error: ${error.message}\n`,
@@ -160,7 +160,11 @@ export class PaymentsService {
     : Promise<PaystackCheckoutResponse> {
     try {
       const response = await this.httpInstance.post('/transaction/initialize',
-        {amount, email, metadata },
+        {
+          amount: amount * 100,
+          email,
+          metadata
+        },
       )
 
       return response.data.data as PaystackCheckoutResponse;

@@ -210,8 +210,8 @@ export class TicketsService {
           lockId = randomUUID(); // Generate a lock ID to reserve the tickets
           const purchaseWindow = 185 * 1000 // Add a 5-second buffer to the 3-minute purchase window
 
-          // Update number of tickets
           try {
+            // Update number of tickets
             await this.prisma.$transaction(async (tx) => {
               await tx.ticketTier.update({
                 where: { id: tier.id },
@@ -263,7 +263,7 @@ export class TicketsService {
       };
 
       // Initialize ticket purchase
-      const { authorization_url, reference } = await this.payments.initializeTransaction(email, amount * 100, metadata);
+      const { authorization_url, reference } = await this.payments.initializeTransaction(email, amount, metadata);
 
       // Store transaction reference
       await this.prisma.transaction.create({
@@ -272,7 +272,7 @@ export class TicketsService {
           reference,
           email,
           source: "PURCHASE",
-          status: "PENDING",
+          status: "TX_PENDING",
           eventId,
           lockId,
           lockStatus: trending ? "LOCKED" : null,

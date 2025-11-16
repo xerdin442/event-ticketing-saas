@@ -30,7 +30,7 @@ export interface PasswordResetInfo {
 }
 
 export interface TicketRefundInfo extends PasswordResetInfo {
-  eventTitle: string,
+  eventId: number,
   refundAmount: number;
 }
 

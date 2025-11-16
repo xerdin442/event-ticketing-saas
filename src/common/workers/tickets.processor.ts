@@ -60,7 +60,7 @@ export class TicketsProcessor {
         // Clear cache if payment was completed within purchase window
         await this.redis.del(cacheKey);
       } else {
-        // Purchase window has expired but there's delay in cache cleanup
+        // Purchase window has expired but queue job is fired before cache cleanup
         await unlockTickets();
         await this.redis.del(cacheKey);
       }

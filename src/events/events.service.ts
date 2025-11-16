@@ -307,7 +307,7 @@ export class EventsService {
           {
             requestId,
             email,
-            eventTitle: event.title,
+            eventId,
             refundAmount
           }
         );
@@ -350,7 +350,7 @@ export class EventsService {
 
       // Retrieve ticket refund info
       const data = JSON.parse(cacheResult as string);
-      const { email, eventTitle, refundAmount } = data as TicketRefundInfo;
+      const { email, eventId, refundAmount } = data as TicketRefundInfo;
 
       // Verify attendee's account details
       await this.payments.verifyAccountDetails({ ...dto });
@@ -358,14 +358,26 @@ export class EventsService {
       // Create recipient code to process transfer
       const recipientCode = await this.payments.createTransferRecipient({ ...dto })
 
-      // Initiate transfer of ticket refund
       if (!Secrets.PAYSTACK_SECRET_KEY.includes('test')) {
-        await this.payments.initiateTransfer(
+        // Initiate transfer of ticket refund
+        const reference = await this.payments.initiateTransfer(
           recipientCode,
           refundAmount,
           'Ticket Refund',
-          { email, eventTitle }
+          { email, eventId }
         );
+
+        // Record transfer details
+        await this.prisma.transaction.create({
+          data: {
+            email,
+            amount: refundAmount,
+            reference,
+            source: "REFUND",
+            status: "TRANSFER_PENDING",
+            eventId
+          }
+        });
       }
 
       return;

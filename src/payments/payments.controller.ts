@@ -34,7 +34,7 @@ export class PaymentsController {
 
   @HttpCode(HttpStatus.OK)
   @Post('callback')
-  async paymentCallback(@Req() req: Request) {
+  async handleWebhooks(@Req() req: Request) {
     try {
       const hash = crypto.createHmac('sha512', Secrets.PAYSTACK_SECRET_KEY)
         .update(JSON.stringify(req.body)).digest('hex');
@@ -55,12 +55,11 @@ export class PaymentsController {
         if (event.includes('transfer')) {
           await this.paymentsQueue.add('transfer', {
             eventType: event,
-            transferCode: data.transfer_code,
             metadata: data.metadata,
             recipientCode: data.recipient.recipient_code,
             reason: data.reason,
             amount: data.amount,
-            date: data.updated_at
+            transactionReference: data.reference,
           });
         };
 
@@ -71,6 +70,7 @@ export class PaymentsController {
             amount: data.amount,
             refundId: data.refund_reference,
             metadata: data.metadata,
+            transactionReference: data.transaction_reference,
           });
         };
 

@@ -140,16 +140,27 @@ export class EventsProcessor {
 
       // Intitiate transfer of revenue split to event orgnaizer
       if (!Secrets.PAYSTACK_SECRET_KEY.includes('test')) {
-        await this.payments.initiateTransfer(
+        const reference = await this.payments.initiateTransfer(
           event.organizer.recipientCode,
-          event.revenue * 100,
+          event.revenue,
           'Revenue Split',
           {
             email: event.organizer.email,
-            eventTitle: event.title,
+            eventId: event.id,
           }
         );
 
+        // Record payout details
+        await this.prisma.transaction.create({
+          data: {
+            email: event.organizer.email,
+            amount: event.revenue,
+            reference,
+            source: "PAYOUT",
+            status: "TRANSFER_PENDING",
+            eventId: event.id
+          }
+        });
       }
 
       // Update metrics value

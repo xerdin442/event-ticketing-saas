@@ -42,10 +42,15 @@ enum DiscountStatus {
 }
 
 enum TransactionStatus {
-  PENDING
-  FAILED
-  SUCCESS
-  REFUNDED
+  TX_PENDING
+  TX_FAILED
+  TX_SUCCESS
+  TRANSFER_PENDING
+  TRANSFER_FAILED
+  TRANSFER_SUCCESS
+  REFUND_PENDING
+  REFUND_FAILED
+  REFUND_SUCCESS
 }
 
 enum TransactionSource {
@@ -183,6 +188,7 @@ model Transaction {
   email      String
   lockId     String?
   lockStatus LockStatus?
+  refundId   String?
 
   eventId Int
   event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)

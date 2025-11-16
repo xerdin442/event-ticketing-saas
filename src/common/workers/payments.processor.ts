@@ -15,6 +15,7 @@ import { Attachment } from "resend";
 import { RedisClientType } from "redis";
 import { formatDate } from "../util/helper";
 import { TicketLockInfo } from "../types";
+import { TicketTier } from "@prisma/client";
 
 @Injectable()
 @Processor('payments-queue')
@@ -58,72 +59,108 @@ export class PaymentsProcessor {
     const price = tier.price;
 
     try {
+      // Idempotent processing to skip transactions that have been settled
+      const transaction = await this.prisma.transaction.findUnique({
+        where: { reference: transactionReference }
+      });
+      if (transaction && transaction.status !== "TX_PENDING") return;
+
       if (eventType === 'charge.success') {
         try {
-          await this.prisma.$transaction(async (tx) => {
-            if (trending) {
-              // Get ticket lock data
-              const cacheKey = `ticket_lock:${lockId}`;
-              const cacheResult = await this.redis.get(cacheKey) as string;
+          let updatedTier: TicketTier;
 
-              // Reject request if payment occurs after purchase window has expired
-              if (!cacheResult) {
-                throw new Error('Your purchase window has expired. Please restart the process');
-              }
+          if (trending) {
+            // Get ticket lock data
+            const cacheKey = `ticket_lock:${lockId}`;
+            const cacheResult = await this.redis.get(cacheKey) as string;
 
-              // If payment occurs within the window, extend the TTL by 60 seconds so the queue job can process the ticket unlock
-              const lockData = JSON.parse(cacheResult) as TicketLockInfo;
-              await this.redis.setEx(
-                cacheKey,
-                60,
-                JSON.stringify({ ...lockData, status: "paid" })
-              );
-            } else {
+            // Reject request if payment occurs after purchase window has expired
+            if (!cacheResult) {
+              // Update status of ticket lock
+              await this.prisma.transaction.update({
+                where: { reference: transactionReference },
+                data: { lockStatus: "EXPIRED" }
+              });
+
+              throw new Error('Your purchase window has expired. Please restart the process');
+            }
+
+            // If payment occurs within the window, extend the TTL by 60 seconds so the queue job can process the ticket unlock
+            const lockData = JSON.parse(cacheResult) as TicketLockInfo;
+            await this.redis.setEx(
+              cacheKey,
+              60,
+              JSON.stringify({ ...lockData, status: "paid" })
+            );
+
+            // Update status of ticket lock
+            await this.prisma.transaction.update({
+              where: { reference: transactionReference },
+              data: { lockStatus: "PAID" }
+            });
+          } else {
+            await this.prisma.$transaction(async (tx) => {
+              const selectedTier = await this.prisma.ticketTier.findUnique({
+                where: { id: tier.id },
+              });
+
               // Check total number of tickets left
-              if (tier.totalNumberOfTickets < quantity) {
-                throw new Error(`Insufficient ${tier.name} tickets`);
+              if (selectedTier.totalNumberOfTickets < quantity) {
+                throw new Error(`Insufficient ${selectedTier.name} tickets`);
               };
 
               if (discount) {
                 // Check number of discount tickets left
-                if (tier.numberOfDiscountTickets < quantity) {
-                  throw new Error(`Discount ${tier.name} tickets are sold out! Please check other ticket tiers`);
+                if (selectedTier.numberOfDiscountTickets < quantity) {
+                  throw new Error(`Discount ${selectedTier.name} tickets are sold out! Please check other ticket tiers`);
                 };
 
                 // Check if the discount offer has expired
-                const expirationDate = new Date(tier.discountExpiration).getTime();
+                const expirationDate = new Date(selectedTier.discountExpiration).getTime();
                 if (Date.now() > expirationDate) {
-                  throw new Error(`Discount offer for ${tier.name} tickets has expired. Please check other ticket tiers`);
+                  throw new Error(`Discount offer for ${selectedTier.name} tickets has expired. Please check other ticket tiers`);
                 };
               }
 
               // Update total number of tickets left in the tier
-              await tx.ticketTier.update({
-                where: { id: tier.id },
+              updatedTier = await tx.ticketTier.update({
+                where: { id: selectedTier.id },
                 data: {
                   numberOfDiscountTickets: (discount && { decrement: quantity }),
                   totalNumberOfTickets: { decrement: quantity }
                 }
               });
-            }
+            });
+          }
 
-            // Check the number of discount tickets left and update status of the discount offer
-            if (tier.numberOfDiscountTickets === 0) {
-              await tx.ticketTier.update({
-                where: { id: tier.id },
-                data: { discountStatus: "ENDED" }
-              });
-            };
+          // Check the number of discount tickets left and update status of the discount offer
+          if (updatedTier.numberOfDiscountTickets === 0) {
+            await this.prisma.ticketTier.update({
+              where: { id: updatedTier.id },
+              data: { discountStatus: "ENDED" }
+            });
+          };
 
-            // Check the total number of tickets left and update status of the ticket tier
-            if (tier.totalNumberOfTickets === 0) {
-              await tx.ticketTier.update({
-                where: { id: tier.id },
-                data: { soldOut: true }
-              });
-            };
+          // Check the total number of tickets left and update status of the ticket tier
+          if (updatedTier.totalNumberOfTickets === 0) {
+            await this.prisma.ticketTier.update({
+              where: { id: updatedTier.id },
+              data: { soldOut: true }
+            });
+          };
+
+          // Update transaction status
+          await this.prisma.transaction.update({
+            where: { reference: transactionReference },
+            data: { status: "TX_SUCCESS" }
           });
         } catch (error) {
+          // Update transaction status
+          await this.prisma.transaction.update({
+            where: { reference: transactionReference },
+            data: { status: "REFUND_PENDING" }
+          });
+
           // Initiate refund of transaction amount
           await this.payments.initiateRefund(transactionReference, {
             email: attendee,
@@ -216,6 +253,12 @@ export class PaymentsProcessor {
         // Notify the client of payment status
         return this.gateway.sendPaymentStatus(attendee, 'success', 'Payment successful!');
       } else if (eventType === 'charge.failed') {
+        // Update transaction status
+        await this.prisma.transaction.update({
+          where: { reference: transactionReference },
+          data: { status: "TX_FAILED" }
+        });
+
         logger.warn(`[${this.context}] Ticket purchase failed: Email: ${attendee}\n`);
 
         // Notify the client of payment status
@@ -229,14 +272,24 @@ export class PaymentsProcessor {
 
   @Process('transfer')
   async finalizeTransfer(job: Job) {
-    const { eventType, metadata, reason, recipientCode, amount } = job.data;
-    const { email, eventTitle } = metadata;
+    const { eventType, metadata, reason, recipientCode, amount, transactionReference } = job.data;
+    const { email, eventId } = metadata;
+
+    const event = await this.prisma.event.findUnique({
+      where: { id: parseInt(eventId) }
+    });
 
     try {
+      // Idempotent processing to skip transfers that have been settled
+      const transaction = await this.prisma.transaction.findUnique({
+        where: { reference: transactionReference }
+      });
+      if (transaction && transaction.status !== "TRANSFER_PENDING") return;
+
       if (eventType === 'transfer.success') {
         if (reason === 'Ticket Refund') {
           // Notify the attendee of the ticket refund
-          const content = `Ticket refund has been completed for the cancelled event: ${eventTitle}. Thanks for your patience.`;
+          const content = `Ticket refund has been completed for the cancelled event: ${event.title}. Thanks for your patience.`;
           await this.mailService.sendEmail(email, reason, content);
 
           // Remove attendee as a transfer recipient after ticket refund
@@ -246,8 +299,8 @@ export class PaymentsProcessor {
           this.metrics.incrementCounter('ticket_refunds');
           this.metrics.incrementCounter('ticket_refund_volume', [], amount);
         } else if (reason === 'Revenue Split') {
-          // Notify the organizer of the transfer of the revenue split
-          const content = `Congratulations on the success of your event: ${eventTitle}. Payout of your event revenue has been initiated.
+          // Notify the organizer of revenue payout
+          const content = `Congratulations on the success of your event: ${event.title}. Payout of your event revenue has been initiated.
             Thank you for choosing our platform!`;
           await this.mailService.sendEmail(email, reason, content);
 
@@ -255,14 +308,25 @@ export class PaymentsProcessor {
           this.metrics.incrementCounter('payout_volume', [], amount);
         }
 
+        // Update transfer status
+        await this.prisma.transaction.update({
+          where: { reference: transactionReference },
+          data: { status: "TRANSFER_SUCCESS" }
+        });
+
         logger.info(`[${this.context}] ${reason}: Transfer to ${email} was successful!\n`)
         return;
       } else if (eventType === 'transfer.failed' || eventType === 'transfer.reversed') {
+        // Update transfer status
+        await this.prisma.transaction.update({
+          where: { reference: transactionReference },
+          data: { status: "TRANSFER_FAILED" }
+        });
+
         // Update metrics value
         this.metrics.incrementCounter('unsuccessful_transfers');
 
         logger.warn(`[${this.context}] ${reason}: Transfer to ${email} failed or reversed.\n`);
-
         return;
       }
     } catch (error) {
@@ -273,23 +337,40 @@ export class PaymentsProcessor {
 
   @Process('refund')
   async processRefund(job: Job) {
-    const { eventType, metadata, amount, refundId } = job.data;
+    const { eventType, metadata, amount, refundId, transactionReference } = job.data;
     const { email, eventTitle, date } = metadata;
 
     try {
+      // Idempotent processing to skip refunds that have been settled
+      const transaction = await this.prisma.transaction.findUnique({
+        where: { reference: transactionReference }
+      });
+      if (transaction && transaction.status !== "REFUND_PENDING") return;
+
       if (eventType === 'refund.processed') {
+        // Update transaction status
+        await this.prisma.transaction.update({
+          where: { reference: transactionReference },
+          data: { refundId, status: "REFUND_SUCCESS" }
+        });
+
         // Update metrics value
         this.metrics.incrementCounter('transaction_refunds');
       } else if (eventType === 'refund.failed') {
+        // Update transaction status
+        await this.prisma.transaction.update({
+          where: { reference: transactionReference },
+          data: { refundId, status: "REFUND_FAILED" }
+        });
+
         // Update metrics value
         this.metrics.incrementCounter('failed_refunds');
 
         const content = `A transaction refund has failed. Here are the details: \n
+          Amount: ${amount}\n
           Email: ${email}\n
           Event Title: ${eventTitle}\n
           Date: ${date}\n
-          Amount: ${amount}\n
-          Paystack Reference: ${refundId}\n
 
           Please, follow this up to ensure the attendee is refunded.
           `;
