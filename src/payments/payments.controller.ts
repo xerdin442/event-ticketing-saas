@@ -9,7 +9,7 @@ import { PaymentsService } from './payments.service';
 import logger from '../common/logger';
 import { Request } from 'express';
 import crypto from 'crypto';
-import { Secrets } from '../common/env';
+import { Secrets } from '../common/secrets';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 

@@ -1,6 +1,6 @@
 import { Test } from "@nestjs/testing";
 import { AppModule } from "@src/app.module";
-import { Secrets } from "@src/common/env";
+import { Secrets } from "@src/common/secrets";
 import { PaymentsService } from "@src/payments/payments.service";
 import { AccountDetails } from "@src/common/types";
 

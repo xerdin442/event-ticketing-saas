@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import {
   CreateEventDto,
@@ -11,12 +11,12 @@ import { Event, EventCategory } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { RedisClientType } from 'redis';
-import { initializeRedis } from '../common/config/redis-conf';
-import { Secrets } from '../common/env';
+import { Secrets } from '../common/secrets';
 import { MetricsService } from '@src/metrics/metrics.service';
 import { PaymentsService } from '@src/payments/payments.service';
 import { randomUUID } from 'crypto';
 import { TicketRefundInfo } from '@src/common/types';
+import { REDIS_CLIENT } from '@src/redis/redis.module';
 
 @Injectable()
 export class EventsService {
@@ -24,6 +24,7 @@ export class EventsService {
     private readonly prisma: DbService,
     private readonly metrics: MetricsService,
     private readonly payments: PaymentsService,
+    @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
     @InjectQueue('events-queue') private readonly eventsQueue: Queue
   ) { };
 
@@ -142,13 +143,6 @@ export class EventsService {
     eventId: number,
     poster?: string
   ): Promise<Event> {
-    // Initialize Redis connection
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Geolocation Search',
-      Secrets.GEOLOCATION_STORE_INDEX,
-    );
-
     try {
       const event = await this.prisma.event.update({
         where: { id: eventId },
@@ -160,8 +154,6 @@ export class EventsService {
 
       if (dto.address || dto.venue || dto.date || dto.endTime || dto.startTime) {
         if (dto.address || dto.venue) {
-          await redis.zRem('events', `ID:${event.id}`);
-
           const location = `${dto.venue}+${dto.address}`.replace(/(,)/g, '').replace(/\s/g, '+');
           const response = await axios.get(
             `https://nominatim.openstreetmap.org/search?q=${location}&format=json`, {
@@ -171,6 +163,9 @@ export class EventsService {
           });
 
           if (response.status === 200 && response.data.length > 0) {
+            // Clear existing location coordinates
+            await this.redis.zRem('nearby_events', `ID:${event.id}`);
+
             // Add coordinates to Redis geolocation store
             const { lat, lon } = response.data[0];
             await this.eventsQueue.add('geolocation-store', {
@@ -220,29 +215,17 @@ export class EventsService {
       return event;
     } catch (error) {
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 
   async getEventDetails(eventId: number): Promise<Event> {
-    return this.prisma.event.findUnique({
-      where: { id: eventId },
-      include: {
-        organizer: {
-          select: {
-            email: true,
-            events: { select: { id: true, title: true, poster: true } },
-            name: true,
-            instagram: true,
-            phone: true,
-            whatsapp: true,
-            website: true,
-            twitter: true,
-          }
-        }
-      }
-    });
+    try {
+      return this.prisma.event.findUnique({
+        where: { id: eventId },
+      });
+    } catch (error) {
+      throw error;
+    }
   }
 
   async cancelEvent(eventId: number): Promise<void> {
@@ -269,14 +252,14 @@ export class EventsService {
   }
 
   async findNearbyEvents(lat: string, lon: string): Promise<Event[]> {
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Geolocation Search',
-      Secrets.GEOLOCATION_STORE_INDEX,
-    );
-
     try {
-      const events = await redis.geoRadius('events', { latitude: +lat, longitude: +lon }, 5, 'km');
+      const events = await this.redis.geoRadius(
+        'nearby_events',
+        { latitude: +lat, longitude: +lon },
+        5,
+        'km'
+      );
+
       const nearbyEvents = await Promise.all(
         events.map(async (event) => {
           const eventId = event.split(':')[1];
@@ -289,8 +272,6 @@ export class EventsService {
       return nearbyEvents.filter(event => event.status !== "CANCELLED");
     } catch (error) {
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 
@@ -341,24 +322,17 @@ export class EventsService {
   }
 
   async verifyTicketRefund(dto: VerifyTicketRefundDto): Promise<{ requestId: string; email: string }> {
-    // Initialize Redis connection
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Ticket Refund',
-      Secrets.TICKET_REFUND_STORE_INDEX,
-    );
-
     try {
-      const requestId = await redis.get(dto.requestId);
-      if (!requestId) throw new BadRequestException('Invalid or expired request ID');
+      const cacheResult = await this.redis.get(`ticket_refund:${dto.requestId}`);
+      if (!cacheResult) throw new BadRequestException('Invalid or expired request ID');
 
       // Retrieve ticket refund info
-      const data = JSON.parse(requestId as string) as TicketRefundInfo;
+      const data = JSON.parse(cacheResult as string) as TicketRefundInfo;
       if (data.otp !== dto.otp) throw new BadRequestException('Invalid OTP');
 
       // Store the info with a new request ID after OTP verification
       const verifiedRequestId = randomUUID();
-      await redis.setEx(verifiedRequestId, 3600, JSON.stringify(data));
+      await this.redis.setEx(`ticket_refund:${verifiedRequestId}`, 3600, JSON.stringify(data));
 
       return {
         requestId: verifiedRequestId,
@@ -366,25 +340,17 @@ export class EventsService {
       };
     } catch (error) {
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 
   async processTicketRefund(dto: ProcessTicketRefundDto) {
-    // Initialize Redis connection
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Ticket Refund',
-      Secrets.TICKET_REFUND_STORE_INDEX,
-    );
-
     try {
-      const requestId = await redis.get(dto.requestId);
-      if (!requestId) throw new BadRequestException('Invalid or expired request ID');
+      const cacheResult = await this.redis.get(`ticket_refund:${dto.requestId}`);
+      if (!cacheResult) throw new BadRequestException('Invalid or expired request ID');
 
       // Retrieve ticket refund info
-      const { email, eventTitle, refundAmount } = JSON.parse(requestId as string) as TicketRefundInfo;
+      const data = JSON.parse(cacheResult as string);
+      const { email, eventTitle, refundAmount } = data as TicketRefundInfo;
 
       // Verify attendee's account details
       await this.payments.verifyAccountDetails({ ...dto });
@@ -405,22 +371,14 @@ export class EventsService {
       return;
     } catch (error) {
       throw error
-    } finally {
-      redis.destroy();
     }
   }
 
   async getTrendingEvents(): Promise<Event[]> {
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Trending Events',
-      Secrets.TRENDING_EVENTS_STORE_INDEX,
-    )
-
     try {
       // Fetch the top ten trending events
       const LIMIT = 10;
-      const results = await redis.zRange('trending-list', 0, LIMIT - 1, {
+      const results = await this.redis.zRange('trending_events', 0, LIMIT - 1, {
         REV: true,
         BY: 'SCORE',
       });
@@ -438,8 +396,6 @@ export class EventsService {
       return trendingEvents;
     } catch (error) {
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 }

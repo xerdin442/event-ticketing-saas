@@ -110,4 +110,23 @@ export class OrganizerService {
       throw error;
     }
   }
+
+  async getProfileById(organizerId: number): Promise<Organizer> {
+    try {
+      return this.prisma.organizer.findUnique({
+        where: { id: organizerId },
+        include: {
+          events: {
+            select: {
+              id: true,
+              title: true,
+              poster: true,
+            }
+          }
+        }
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
 }

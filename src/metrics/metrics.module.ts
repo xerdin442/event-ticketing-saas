@@ -2,7 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { MetricsController } from './metrics.controller';
 import { MetricsService } from './metrics.service';
 import { Registry } from 'prom-client';
-import { Secrets } from '../common/env';
+import { Secrets } from '../common/secrets';
 
 @Global()
 @Module({

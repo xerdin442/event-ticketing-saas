@@ -7,7 +7,7 @@ import {
   UpdateOrganizerProfileDto,
   UpdateProfileDto
 } from "@src/users/dto";
-import { Secrets } from "@src/common/env";
+import { Secrets } from "@src/common/secrets";
 import { User } from "@prisma/client";
 
 describe('User Service', () => {

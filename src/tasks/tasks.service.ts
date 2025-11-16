@@ -1,17 +1,19 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import logger from "../common/logger";
 import { DbService } from "../db/db.service";
 import { RedisClientType } from "redis";
-import { initializeRedis } from "../common/config/redis-conf";
-import { Secrets } from "../common/env";
 import { UploadService } from "../common/config/upload";
+import { REDIS_CLIENT } from "@src/redis/redis.module";
 
 @Injectable()
 export class TasksService {
   private readonly context: string = TasksService.name;
 
-  constructor(private readonly prisma: DbService) { };
+  constructor(
+    private readonly prisma: DbService,
+    @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
+  ) { };
 
   @Cron(CronExpression.EVERY_WEEK)
   async deleteUnusedCloudinaryResources(): Promise<void> {
@@ -54,18 +56,12 @@ export class TasksService {
 
   @Cron(CronExpression.EVERY_10_MINUTES)
   async updateTrendingEvents() {
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Trending Events',
-      Secrets.TRENDING_EVENTS_STORE_INDEX,
-    )
-
     try {
       let cursor = '0';
       let allKeys: string[] = [];
 
       do {
-        const { cursor: nextCursor, keys } = await redis.scan(cursor, {
+        const { cursor: nextCursor, keys } = await this.redis.scan(cursor, {
           MATCH: 'event_log:*',
           COUNT: 500,
         });
@@ -79,10 +75,11 @@ export class TasksService {
 
       if (allKeys.length === 0) return;
 
+      // Pair every event and its ticket sales score
       const rankingUpdates = [];
       for (const key of allKeys) {
         const eventId = key.split(':')[1];
-        const ticketCount = await redis.zCard(key);
+        const ticketCount = await this.redis.zCard(key);
 
         rankingUpdates.push({
           score: ticketCount,
@@ -91,12 +88,10 @@ export class TasksService {
       }
 
       // Rank the events by ticket sales within the last 72 hours
-      await redis.zAdd('trending-list', rankingUpdates);
+      await this.redis.zAdd('trending_events', rankingUpdates);
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while updating trending event rankings. Error: ${error.message}\n`);
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 }

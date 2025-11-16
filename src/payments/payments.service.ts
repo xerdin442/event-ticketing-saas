@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { AccountDetails, BankData } from '../common/types';
-import { Secrets } from '../common/env';
+import { Secrets } from '../common/secrets';
 import logger from '../common/logger';
 import axios, { AxiosInstance } from 'axios';
 

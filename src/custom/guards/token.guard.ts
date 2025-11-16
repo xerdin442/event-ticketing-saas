@@ -1,23 +1,20 @@
 import {
   CanActivate,
   ExecutionContext,
+  Inject,
   Injectable,
   UnauthorizedException
 } from "@nestjs/common";
-import { initializeRedis } from "@src/common/config/redis-conf";
-import { Secrets } from "@src/common/env";
+import { REDIS_CLIENT } from "@src/redis/redis.module";
 import { RedisClientType } from "redis";
 
 @Injectable()
 export class TokenBlacklistGuard implements CanActivate {
+  constructor(
+    @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Blacklisted Tokens',
-      Secrets.BLACKLISTED_TOKENS_STORE_INDEX,
-    );
-
     try {
       const request = context.switchToHttp().getRequest();
 
@@ -26,11 +23,13 @@ export class TokenBlacklistGuard implements CanActivate {
       const [type, jwt] = header.split(' ');
       const token = type === 'Bearer' ? jwt : null;
 
-      // JWT auth guard will reject request since token is missing
+      // JWT auth guard will reject the request since token is missing
       if (!token) return true;
 
       // Check cache if the token is blacklisted
-      const isBlacklisted = await redis.get(token) as string;
+      const cacheKey = `blacklisted_tokens:${token}`
+      const isBlacklisted = await this.redis.get(cacheKey) as string;
+
       if (isBlacklisted) {
         throw new UnauthorizedException('Session expired. Please log in.');
       }
@@ -38,8 +37,6 @@ export class TokenBlacklistGuard implements CanActivate {
       return true;
     } catch (error) {
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 }

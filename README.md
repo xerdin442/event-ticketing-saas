@@ -100,12 +100,13 @@ The database schema is located [here](prisma/schema.prisma). If no schema change
 
 ## Organizer API
 
-| Method | Path               | Description              |
-| ------ | ------------------ | ------------------------ |
-| GET    | /organizer/profile | Get organizer profile    |
-| POST   | /organizer/profile | Create organizer profile |
-| PATCH  | /organizer/profile | Update organizer profile |
-| DELETE | /organizer/profile | Delete organizer profile |
+| Method | Path                    | Description                             |
+| ------ | ----------------------- | --------------------------------------- |
+| GET    | /organizer/profile      | Get organizer profile of logged in user |
+| GET    | /organizer/:organizerId | Get profile of an organizer by ID       |
+| POST   | /organizer/profile      | Create organizer profile                |
+| PATCH  | /organizer/profile      | Update organizer profile                |
+| DELETE | /organizer/profile      | Delete organizer profile                |
 
 ## Events API
 

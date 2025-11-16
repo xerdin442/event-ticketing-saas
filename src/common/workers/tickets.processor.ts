@@ -1,20 +1,21 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { Process, Processor } from "@nestjs/bull";
 import { Job } from "bull";
 import logger from "../logger";
 import { DbService } from "@src/db/db.service";
 import { TicketLockInfo } from "../types";
+import { REDIS_CLIENT } from "@src/redis/redis.module";
 import { RedisClientType } from "redis";
-import { initializeRedis } from "../config/redis-conf";
-import { Secrets } from "../env";
 
 @Injectable()
 @Processor('tickets-queue')
 export class TicketsProcessor {
   private readonly context: string = TicketsProcessor.name;
-  private redis: RedisClientType;
 
-  constructor(private readonly prisma: DbService) { };
+  constructor(
+    private readonly prisma: DbService,
+    @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
+  ) { }
 
   @Process('discount-status-update')
   async updateDiscountExpiration(job: Job) {
@@ -30,24 +31,13 @@ export class TicketsProcessor {
   }
 
   @Process('ticket-lock')
-  async unlockTickets(job: Job): Promise<void> {
+  async processTicketUnlock(job: Job): Promise<void> {
     try {
-      // Initialize Redis store to check ticket lock status
-      this.redis = await initializeRedis(
-        Secrets.REDIS_URL,
-        'Ticket Lock',
-        Secrets.TICKET_LOCK_STORE_INDEX,
-      );
-      const { lockId } = job.data;
+      const { lockId, discount, numberOfTickets, tierId } = job.data;
+      const cacheKey = `ticket_lock:${lockId}`;
+      const cacheResult = await this.redis.get(cacheKey) as string;
 
-      // Get ticket lock data
-      const rawLockData = await this.redis.get(lockId) as string;
-      const parsedLockData = JSON.parse(rawLockData) as TicketLockInfo;
-      const { discount, numberOfTickets, tierId, status } = parsedLockData;
-
-      // Check lock status
-      if (status === 'unlocked') {
-        // Unlock tickets and add them to the ticket pool
+      const unlockTickets = async () => {
         await this.prisma.ticketTier.update({
           where: { id: tierId },
           data: {
@@ -57,15 +47,28 @@ export class TicketsProcessor {
         });
       }
 
-      // Delete ticket lock data from cache
-      await this.redis.del(lockId);
+      // Purchase window has expired before payment
+      if (!cacheResult) {
+        await unlockTickets();
+        return;
+      }
+
+      const lockData = JSON.parse(cacheResult) as TicketLockInfo;
+      const { status } = lockData;
+
+      if (status === "paid") {
+        // Clear cache if payment was completed within purchase window
+        await this.redis.del(cacheKey);
+      } else {
+        // Purchase window has expired but there's delay in cache cleanup
+        await unlockTickets();
+        await this.redis.del(cacheKey);
+      }
 
       return;
     } catch (error) {
-      logger.error(`[${this.context}] An error occured while verifying ticket lock status. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occured while processing ticket unlock after purchase window. Error: ${error.message}\n`);
       throw error;
-    } finally {
-      this.redis.destroy();
     }
   }
 }

@@ -35,11 +35,10 @@ export interface TicketRefundInfo extends PasswordResetInfo {
 }
 
 export interface TicketLockInfo {
-  expirationTime: number;
+  status: "locked" | "paid";
   tierId: number;
   discount: boolean;
   numberOfTickets: number;
-  status: 'locked' | 'unlocked';
 }
 
 export type CloudinaryResource = {

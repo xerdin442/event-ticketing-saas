@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import * as argon from 'argon2'
 import {
@@ -14,15 +14,15 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { PasswordResetInfo } from '../common/types';
 import { RedisClientType } from 'redis';
-import { initializeRedis } from '@src/common/config/redis-conf';
-import { Secrets } from '@src/common/env';
 import { randomUUID } from 'crypto';
+import { REDIS_CLIENT } from '@src/redis/redis.module';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: DbService,
     private readonly jwt: JwtService,
+    @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
     @InjectQueue('auth-queue') private readonly authQueue: Queue
   ) { }
 
@@ -70,7 +70,7 @@ export class AuthService {
       })
       // Check if user is found with given email address
       if (!user) {
-        throw new BadRequestException('No user found with that email address')
+        throw new BadRequestException('No user found with email address')
       }
 
       // Check if password is valid
@@ -90,12 +90,6 @@ export class AuthService {
   }
 
   async logout(token: string): Promise<void> {
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Blacklisted Tokens',
-      Secrets.BLACKLISTED_TOKENS_STORE_INDEX,
-    );
-
     try {
       // Calculate the cache ttl based on the token expiration time
       const decoded = await this.jwt.decode(token);
@@ -103,141 +97,108 @@ export class AuthService {
       const ttl = Math.max(1, Math.floor((exp - Date.now()) / 1000)) + 600;
 
       // Blacklist the token against future use until it expires
-      await redis.setEx(token, ttl, JSON.stringify({ blacklisted: true }));
+      const cacheKey = `blacklisted_tokens:${token}`
+      await this.redis.setEx(cacheKey, ttl, JSON.stringify({ blacklisted: true }));
 
       return;
     } catch (error) {
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 
   async requestPasswordReset(email: string): Promise<string> {
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Password Reset',
-      Secrets.PASSWORD_RESET_STORE_INDEX,
-    );
-
     try {
       const user = await this.prisma.user.findUnique({
         where: { email }
       });
 
       if (user) {
-        const data: PasswordResetInfo = {
+        const resetInfo: PasswordResetInfo = {
           email,
           otp: `${Math.random() * 10 ** 16}`.slice(3, 7),
         }
 
-        const resetId = randomUUID();
         // Cache the reset OTP for one hour
-        await redis.setEx(resetId, 3600, JSON.stringify(data))
+        const resetId = randomUUID();
+        const cacheKey = `password_reset:${resetId}`
+        await this.redis.setEx(cacheKey, 3600, JSON.stringify(resetInfo));
 
         // Send the OTP via email
-        await this.authQueue.add('otp', {
-          email,
-          otp: data.otp
-        });
+        await this.authQueue.add('otp', { ...resetInfo });
 
         return resetId;
       } else {
-        throw new BadRequestException('No user found with that email address')
+        throw new BadRequestException('No user found with email address')
       }
     } catch (error) {
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 
   async resendOTP(resetId: string): Promise<string> {
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Password Reset',
-      Secrets.PASSWORD_RESET_STORE_INDEX,
-    );
-
     try {
       // Verify password reset ID
-      const resetIdCheck = await redis.get(resetId) as string;
+      const cacheKey = `password_reset:${resetId}`
+      const cacheResult = await this.redis.get(cacheKey) as string;
 
-      if (resetIdCheck) {
+      if (cacheResult) {
         // Fetch existing reset info
-        const data = JSON.parse(resetIdCheck) as PasswordResetInfo;
+        const resetInfo = JSON.parse(cacheResult) as PasswordResetInfo;
 
         // Reset the OTP value
-        await redis.setEx(resetId, 3600, JSON.stringify({
-          email: data.email,
+        await this.redis.setEx(cacheKey, 3600, JSON.stringify({
+          ...resetInfo,
           otp: `${Math.random() * 10 ** 16}`.slice(3, 7),
         }));
 
         // Send another email with the new OTP
-        await this.authQueue.add('otp', {
-          email: data.email,
-          otp: data.otp
-        })
+        await this.authQueue.add('otp', { ...resetInfo });
 
-        return data.email;
+        return resetInfo.email;
       } else {
         throw new BadRequestException('Invalid or expired password reset ID');
       }
     } catch (error) {
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 
   async verifyOTP(dto: VerifyOTPDto): Promise<string> {
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Password Reset',
-      Secrets.PASSWORD_RESET_STORE_INDEX,
-    );
-
     try {
       // Verify password reset ID
-      const resetIdCheck = await redis.get(dto.resetId) as string;
+      const cacheKey = `password_reset:${dto.resetId}`
+      const cacheResult = await this.redis.get(cacheKey) as string;
 
-      if (resetIdCheck) {
+      if (cacheResult) {
         // Fetch existing reset info
-        const data = JSON.parse(resetIdCheck) as PasswordResetInfo;
+        const resetInfo = JSON.parse(cacheResult) as PasswordResetInfo;
 
         // Check if OTP is invalid or expired
-        if (data.otp !== dto.otp) {
+        if (resetInfo.otp !== dto.otp) {
           throw new BadRequestException('Invalid OTP')
         };
 
-        return data.email;
+        return resetInfo.email;
       } else {
         throw new BadRequestException('Invalid or expired password reset ID');
       }
     } catch (error) {
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 
   async changePassword(dto: NewPasswordDto): Promise<string> {
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Password Reset',
-      Secrets.PASSWORD_RESET_STORE_INDEX,
-    );
-
     try {
       // Verify password reset ID
-      const resetIdCheck = await redis.get(dto.resetId) as string;
+      const cacheKey = `password_reset:${dto.resetId}`
+      const cacheResult = await this.redis.get(cacheKey) as string;
 
-      if (resetIdCheck) {
+      if (cacheResult) {
         // Fetch existing reset info
-        const data = JSON.parse(resetIdCheck) as PasswordResetInfo;
+        const resetInfo = JSON.parse(cacheResult) as PasswordResetInfo;
 
         const user = await this.prisma.user.findUnique({
-          where: { email: data.email }
+          where: { email: resetInfo.email }
         });
 
         // Check if the user's previous password is same as the new password
@@ -249,12 +210,12 @@ export class AuthService {
         // Hash new password and update user details
         const hash = await argon.hash(dto.newPassword);
         await this.prisma.user.update({
-          where: { email: data.email },
+          where: { email: resetInfo.email },
           data: { password: hash }
         });
 
         // Clear reset info
-        await redis.del(dto.resetId);
+        await this.redis.del(cacheKey);
 
         return user.email;
       } else {
@@ -262,8 +223,6 @@ export class AuthService {
       }
     } catch (error) {
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 }

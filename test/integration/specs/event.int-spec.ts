@@ -1,7 +1,7 @@
 import { Test } from "@nestjs/testing";
 import { AppModule } from "@src/app.module";
 import { DbService } from "@src/db/db.service";
-import { Secrets } from "@src/common/env";
+import { Secrets } from "@src/common/secrets";
 import { Event, User } from "@prisma/client";
 import { EventsService } from "@src/events/events.service";
 import {

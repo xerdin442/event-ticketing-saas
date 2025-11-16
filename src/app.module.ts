@@ -6,7 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler'
 import { APP_GUARD } from '@nestjs/core';
 import { BullModule } from '@nestjs/bull';
-import { Secrets } from './common/env';
+import { Secrets } from './common/secrets';
 import { EventsModule } from './events/events.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -15,6 +15,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { AppController } from './app.controller';
 import { OrganizerModule } from './organizer/organizer.module';
+import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
@@ -24,12 +25,16 @@ import { OrganizerModule } from './organizer/organizer.module';
     EventsModule,
     TicketsModule,
     PaymentsModule,
+    TasksModule,
+    MetricsModule,
+    OrganizerModule,
+    RedisModule,
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     BullModule.forRoot({
       redis: {
         host: Secrets.REDIS_HOST,
         port: Secrets.REDIS_PORT,
-        db: Secrets.QUEUE_STORE_INDEX,
         password: Secrets.REDIS_PASSWORD,
         family: 0
       }
@@ -43,10 +48,6 @@ import { OrganizerModule } from './organizer/organizer.module';
       ttl: 60000,
       limit: Secrets.RATE_LIMITING_PER_MINUTE
     }]),
-    ScheduleModule.forRoot(),
-    TasksModule,
-    MetricsModule,
-    OrganizerModule,
   ],
 
   providers: [{

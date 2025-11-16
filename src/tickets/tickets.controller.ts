@@ -7,6 +7,7 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   ParseIntPipe,
   Post,
@@ -24,15 +25,17 @@ import { TokenBlacklistGuard } from '../custom/guards/token.guard';
 import { TicketTier } from '@prisma/client';
 import logger from '../common/logger';
 import { RedisClientType } from 'redis';
-import { initializeRedis } from '../common/config/redis-conf';
-import { Secrets } from '../common/env';
 import { EventOrganizerGuard } from '@src/custom/guards/organizer.guard';
+import { REDIS_CLIENT } from '@src/redis/redis.module';
 
 @Controller('events/:eventId/tickets')
 export class TicketsController {
   private readonly context: string = TicketsController.name;
 
-  constructor(private readonly ticketsService: TicketsService) {};
+  constructor(
+    private readonly ticketsService: TicketsService,
+    @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
+  ) {};
 
   @Get('tiers')
   async getTicketTiers(
@@ -120,33 +123,25 @@ export class TicketsController {
       throw new BadRequestException('Idempotency-Key header is required');
     }
 
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Idempotency Keys',
-      Secrets.IDEMPOTENCY_KEYS_STORE_INDEX,
-    );
-
     try {
-      // Return cached checkout URL if request has been processed before
-      const existingTransaction = await redis.get(idempotencyKey);
-      if (existingTransaction) {
-        const data = JSON.parse(existingTransaction as string);
+      // Return cached checkout URL if request has already been processed
+      const cacheKey = `idempotency_keys:${idempotencyKey}`
+      const cacheResult = await this.redis.get(cacheKey);
+      if (cacheResult) {
         logger.warn(`[${this.context}] Duplicate ticket purchase attempt by ${dto.email}.\n`);
 
-        return { checkout: data.checkout };
+        return { checkout: JSON.parse(cacheResult as string) };
       };
 
       // Process ticket purchase and store checkout URL to prevent multiple payments
       const checkout = await this.ticketsService.purchaseTicket(dto, eventId);
-      await redis.setEx(idempotencyKey, 15 * 60, JSON.stringify({ checkout }));
+      await this.redis.setEx(cacheKey, 10 * 60, checkout);
 
-      logger.info(`[${this.context}] ${dto.email} initiated ticket purchase.\n`);
+      logger.info(`[${this.context}] ${dto.email} initiated a ticket purchase.\n`);
       return { checkout };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while intitiating ticket purchase. Error: ${error.message}\n`);
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 

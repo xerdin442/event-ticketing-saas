@@ -2,7 +2,7 @@ import { v2 } from "cloudinary";
 import { Request } from "express";
 import { FileFilterCallback } from "multer";
 import { CloudinaryStorage } from "@fluidjs/multer-cloudinary";
-import { Secrets } from "../env";
+import { Secrets } from "../secrets";
 import { randomUUID } from "crypto";
 import { CloudinaryResource } from "../types";
 import logger from "../logger";

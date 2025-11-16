@@ -1,9 +1,8 @@
 import { Process, Processor } from "@nestjs/bull";
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { Job } from "bull";
 import { RedisClientType } from "redis";
-import { initializeRedis } from "../config/redis-conf";
-import { Secrets } from "../env";
+import { Secrets } from "../secrets";
 import logger from "../logger";
 import { MailService } from "../config/mail";
 import { DbService } from "@src/db/db.service";
@@ -12,6 +11,7 @@ import { MetricsService } from "@src/metrics/metrics.service";
 import { Ticket } from "@prisma/client";
 import { TicketRefundInfo } from "../types";
 import { formatDate } from "../util/helper";
+import { REDIS_CLIENT } from "@src/redis/redis.module";
 
 @Injectable()
 @Processor('events-queue')
@@ -23,20 +23,14 @@ export class EventsProcessor {
     private readonly metrics: MetricsService,
     private readonly payments: PaymentsService,
     private readonly mailService: MailService,
+    @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
   ) { };
 
   @Process('geolocation-store')
   async addToGeolocationStore(job: Job) {
-    const { longitude, latitude, eventId } = job.data;
-
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Geolocation Search',
-      Secrets.GEOLOCATION_STORE_INDEX,
-    );
-
     try {
-      await redis.geoAdd('events', [
+      const { longitude, latitude, eventId } = job.data;
+      await this.redis.geoAdd('nearby_events', [
         { longitude, latitude, member: `ID:${eventId}` }
       ]);
 
@@ -44,9 +38,7 @@ export class EventsProcessor {
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while adding location coordinates to Redis store. Error: ${error.message}.\n`)
       throw error;
-    } finally {
-      redis.destroy();
-    };
+    }
   }
 
   @Process('event-update')
@@ -170,13 +162,6 @@ export class EventsProcessor {
 
   @Process('ticket-refund-otp')
   async sendTicketRefundOtp(job: Job) {
-    // Initialize Redis connection
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Ticket Refund',
-      Secrets.TICKET_REFUND_STORE_INDEX,
-    );
-
     try {
       const otp = `${Math.random() * 10 ** 16}`.slice(3, 9);
       const content = `Here's the OTP to verify your ticket refund request: ${otp}
@@ -187,14 +172,13 @@ export class EventsProcessor {
 
       // Cache the OTP for the next 10mins
       const refundInfo: TicketRefundInfo = { ...job.data, otp };
-      await redis.setEx(job.data.requestId, 600, JSON.stringify(refundInfo));
+      const cacheKey = `ticket_refund:${job.data.requestId}`
+      await this.redis.setEx(cacheKey, 600, JSON.stringify(refundInfo));
 
       return;
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while sending verification mail for ticket refund. Error: ${error.message}.\n`);
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 
@@ -213,8 +197,8 @@ export class EventsProcessor {
         Title: ${event.title}
         Venue: ${event.venue}
         Address: ${event.address}
-        Date: ${event.date}
-        Time: ${event.startTime} - ${event.endTime}
+        Date: ${formatDate(event.date, 'date')}
+        Time: ${formatDate(event.startTime, 'time')} - ${formatDate(event.endTime, 'time')}
 
         Get your tickets here: 
 

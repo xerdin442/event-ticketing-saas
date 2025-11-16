@@ -1,5 +1,5 @@
 import { createLogger, format, Logger, transports } from "winston";
-import { Secrets } from "../env";
+import { Secrets } from "../secrets";
 
 const { combine, timestamp, label, printf } = format;
 

@@ -16,7 +16,7 @@ import {
   UpdateProfileDto
 } from '@src/users/dto';
 import { SessionService } from '@src/common/session';
-import { Secrets } from '@src/common/env';
+import { Secrets } from '@src/common/secrets';
 import { WsAdapter } from '@nestjs/platform-ws';
 import request from 'supertest'
 import path from 'path';

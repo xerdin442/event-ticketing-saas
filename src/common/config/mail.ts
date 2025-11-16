@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as cheerio from 'cheerio';
 import { Attachment, Resend } from 'resend';
 import logger from '../logger';
-import { Secrets } from '../env';
+import { Secrets } from '../secrets';
 
 @Injectable()
 export class MailService {

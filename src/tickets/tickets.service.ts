@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import {
   AddTicketTierDto,
@@ -11,11 +11,10 @@ import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { TicketTier } from '@prisma/client';
 import { EventsService } from '@src/events/events.service';
-import { initializeRedis } from '@src/common/config/redis-conf';
-import { Secrets } from '@src/common/env';
 import { RedisClientType } from 'redis';
 import { randomUUID } from 'crypto';
 import { TicketLockInfo } from '@src/common/types';
+import { REDIS_CLIENT } from '@src/redis/redis.module';
 
 @Injectable()
 export class TicketsService {
@@ -23,6 +22,7 @@ export class TicketsService {
     private readonly prisma: DbService,
     private readonly payments: PaymentsService,
     private readonly eventsService: EventsService,
+    @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
     @InjectQueue('tickets-queue') private readonly ticketsQueue: Queue
   ) { };
 
@@ -168,19 +168,12 @@ export class TicketsService {
   }
 
   async purchaseTicket(dto: PurchaseTicketDto, eventId: number): Promise<string> {
-    // Initialize Redis connection
-    const redis: RedisClientType = await initializeRedis(
-      Secrets.REDIS_URL,
-      'Ticket Lock',
-      Secrets.TICKET_LOCK_STORE_INDEX,
-    );
-
     try {
-      const { tier: ticketTier, quantity, email } = dto;
-
       let lockId: string = "";
       let amount: number;
       let discount: boolean = false;
+
+      const { tier: ticketTier, quantity, email } = dto;
 
       const user = await this.prisma.user.findUnique({
         where: { email }
@@ -219,15 +212,18 @@ export class TicketsService {
           const purchaseWindow = 185 * 1000 // Add a 5-second buffer to the 3-minute purchase window
 
           const lockData: TicketLockInfo = {
+            status: "locked",
             tierId: tier.id,
             discount: tier.discount,
             numberOfTickets: quantity,
-            expirationTime: Date.now() + purchaseWindow, 
-            status: 'locked',
           };
 
           // Store ticket lock info in cache
-          await redis.set(lockId, JSON.stringify(lockData));
+          await this.redis.setEx(
+            `ticket_lock:${lockId}`,
+            purchaseWindow / 1000,
+            JSON.stringify(lockData)
+          );
 
           // Update number of tickets
           await this.prisma.ticketTier.update({
@@ -238,11 +234,11 @@ export class TicketsService {
             }
           });
 
-          // Check ticket lock status after the purchase window expires
+          // Unlock tickets once the purchase window expires
           await this.ticketsQueue.add(
             'ticket-lock',
-            { lockId },
-            { delay: purchaseWindow + 1000 }
+            { lockId, ...lockData },
+            { delay: purchaseWindow + 1500 } // Add a 1.5s delay to ensure Redis cache has cleared the lock info
           );
         }
       } else {
@@ -265,8 +261,6 @@ export class TicketsService {
       return this.payments.initializeTransaction(user.email, amount * 100, metadata);
     } catch (error) {
       throw error;
-    } finally {
-      redis.destroy();
     }
   }
 

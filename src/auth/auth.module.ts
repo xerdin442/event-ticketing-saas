@@ -5,7 +5,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from '../common/strategy/jwt-strategy';
 import { BullModule } from '@nestjs/bull';
 import { AuthProcessor } from '../common/workers/auth.processor';
-import { Secrets } from '../common/env';
+import { Secrets } from '../common/secrets';
 import { PaymentsService } from '../payments/payments.service';
 import { MetricsService } from '../metrics/metrics.service';
 import { MailService } from '@src/common/config/mail';

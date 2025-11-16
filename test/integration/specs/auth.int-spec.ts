@@ -12,7 +12,7 @@ import {
 } from "@src/auth/dto";
 import { SessionService } from "@src/common/session";
 import { SessionData } from "@src/common/types";
-import { Secrets } from "@src/common/env";
+import { Secrets } from "@src/common/secrets";
 
 describe('Auth Service', () => {
   let prisma: DbService;

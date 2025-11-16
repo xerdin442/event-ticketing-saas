@@ -10,10 +10,9 @@ import { MailService } from "../config/mail";
 import logger from "../logger";
 import { generateTicketPDF } from "../util/document";
 import { MetricsService } from "@src/metrics/metrics.service";
-import { Secrets } from "../env";
+import { Secrets } from "../secrets";
 import { Attachment } from "resend";
 import { RedisClientType } from "redis";
-import { initializeRedis } from "../config/redis-conf";
 import { formatDate } from "../util/helper";
 import { TicketLockInfo } from "../types";
 
@@ -63,28 +62,22 @@ export class PaymentsProcessor {
         try {
           await this.prisma.$transaction(async (tx) => {
             if (trending) {
-              // Initialize Redis store to check expiration time of ticket lock
-              this.redis = await initializeRedis(
-                Secrets.REDIS_URL,
-                'Ticket Lock',
-                Secrets.TICKET_LOCK_STORE_INDEX,
-              );
-
               // Get ticket lock data
-              const rawLockData = await this.redis.get(lockId) as string;
-              const parsedLockData = JSON.parse(rawLockData) as TicketLockInfo;
+              const cacheKey = `ticket_lock:${lockId}`;
+              const cacheResult = await this.redis.get(cacheKey) as string;
 
-              // Check if purchase window has expired
-              if (Date.now() > parsedLockData.expirationTime) {
-                // Update ticket lock status
-                const updatedLockData: TicketLockInfo = {
-                  ...parsedLockData,
-                  status: 'unlocked',
-                };
-                await this.redis.set(lockId, JSON.stringify(updatedLockData));
-
+              // Reject request if payment occurs after purchase window has expired
+              if (!cacheResult) {
                 throw new Error('Your purchase window has expired. Please restart the process');
               }
+
+              // If payment occurs within the window, extend the TTL by 60 seconds so the queue job can process the ticket unlock
+              const lockData = JSON.parse(cacheResult) as TicketLockInfo;
+              await this.redis.setEx(
+                cacheKey,
+                60,
+                JSON.stringify({ ...lockData, status: "paid" })
+              );
             } else {
               // Check total number of tickets left
               if (tier.totalNumberOfTickets < quantity) {
@@ -200,13 +193,6 @@ export class PaymentsProcessor {
           const ticketPDF = await generateTicketPDF(ticket, qrcodeImage, event);
           pdfs.push(ticketPDF);
 
-          // Initialize Redis store to track trending events
-          this.redis = await initializeRedis(
-            Secrets.REDIS_URL,
-            'Trending Events',
-            Secrets.TRENDING_EVENTS_STORE_INDEX,
-          );
-
           // Record ticket sale to update event ranking in trending events
           const trendingWindow = Date.now() - (72 * 60 * 60 * 1000);
           this.redis.multi()
@@ -221,6 +207,7 @@ export class PaymentsProcessor {
           Attached to this email are your ticket(s). They'll be required for entry at the event, keep them safe!`
         await this.mailService.sendEmail(attendee, subject, content, pdfs);
 
+        // Update metrics value
         this.metrics.incrementCounter('tickets_purchased');
         this.metrics.incrementCounter('tickets_purchased_volume', [], amount);
 
@@ -237,8 +224,6 @@ export class PaymentsProcessor {
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing ticket purchase. Error: ${error.message}\n`);
       throw error;
-    } finally {
-      this.redis.destroy();
     }
   }
 
@@ -287,7 +272,7 @@ export class PaymentsProcessor {
   }
 
   @Process('refund')
-  async processRefunds(job: Job) {
+  async processRefund(job: Job) {
     const { eventType, metadata, amount, refundId } = job.data;
     const { email, eventTitle, date } = metadata;
 

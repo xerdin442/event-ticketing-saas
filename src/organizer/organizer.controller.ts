@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { OrganizerService } from './organizer.service';
 import { User, Organizer } from '@prisma/client';
 import logger from '@src/common/logger';
@@ -7,13 +7,13 @@ import { CreateOrganizerProfileDto, UpdateOrganizerProfileDto } from './dto';
 import { AuthGuard } from '@nestjs/passport';
 import { TokenBlacklistGuard } from '@src/custom/guards/token.guard';
 
-@UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
 @Controller('organizer')
 export class OrganizerController {
   private readonly context: string = OrganizerController.name;
 
   constructor(private readonly organizerService: OrganizerService) { }
 
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
   @Get('profile')
   async getProfile(@GetUser() user: User): Promise<{ organizer: Organizer }> {
     try {
@@ -27,6 +27,7 @@ export class OrganizerController {
     }
   }
 
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
   @Post('profile')
   async createProfile(
     @GetUser() user: User,
@@ -43,6 +44,7 @@ export class OrganizerController {
     }
   }
 
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
   @Patch('profile')
   async updateProfile(
     @GetUser() user: User,
@@ -59,6 +61,7 @@ export class OrganizerController {
     }
   }
 
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
   @Delete('profile')
   async deleteProfile(@GetUser() user: User): Promise<{ message: string }> {
     try {
@@ -68,6 +71,19 @@ export class OrganizerController {
       return { message: 'Organizer profile deleted successfully' };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while deleting organizer profile. Error: ${error.message}.\n`);
+      throw error;
+    }
+  }
+
+  @Get(':organizerId')
+  async getProfileById(
+    @Param('organizerId') id: number
+  ): Promise<{ organizer: Organizer }> {
+    try {
+      const organizer = await this.organizerService.getProfileById(id);
+      return { organizer };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while retrieving organizer profile by ID. Error: ${error.message}.\n`);
       throw error;
     }
   }
