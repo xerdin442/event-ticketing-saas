@@ -69,7 +69,7 @@ export class UserController {
   ): Promise<{ events: Event[] }> {
     try {
       if (!role) {
-        throw new BadRequestException('Missing required "role" parameter.')
+        throw new BadRequestException('Missing required "role" parameter')
       };
 
       const events = await this.userService.getAllEvents(role, user.email)
@@ -102,7 +102,7 @@ export class UserController {
   ): Promise<{ message: string }> {
     try {
       if (!action) {
-        throw new BadRequestException('Missing required "action" parameter.')
+        throw new BadRequestException('Missing required "action" parameter')
       };
 
       if (action === 'subscribe') {

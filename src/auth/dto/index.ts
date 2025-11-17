@@ -39,18 +39,6 @@ export class LoginDto {
   password: string;
 }
 
-export class Verify2FADto {
-  @IsString()
-  @IsNotEmpty()
-  token: string;
-}
-
-export class PasswordResetDto {
-  @IsString()
-  @IsNotEmpty()
-  email: string;
-}
-
 export class VerifyOTPDto {
   @IsString()
   @IsNotEmpty()

@@ -56,10 +56,10 @@ export class TicketsController {
   async addTicketTier(
     @Body() dto: AddTicketTierDto,
     @Param('eventId', ParseIntPipe) eventId: number
-  ): Promise<{ message: string }> {
+  ): Promise<{ tier: TicketTier }> {
     try {
-      await this.ticketsService.addTicketTier(dto, eventId);
-      return { message: 'Ticket tier added successfully' };
+      const tier = await this.ticketsService.addTicketTier(dto, eventId);
+      return { tier };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while adding ticket tier to event. Error: ${error.message}\n`);
       throw error;

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   HttpCode,
@@ -76,6 +77,8 @@ export class PaymentsController {
 
         return; // Send a 200 OK response to the Paystack server if all checks are complete
       };
+
+      throw new BadRequestException('Invalid authorization signature');
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while listening on webhook URL. Error: ${error.message}\n`);
       throw error;

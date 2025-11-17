@@ -39,7 +39,7 @@ export class TicketsService {
     }
   }
 
-  async addTicketTier(dto: AddTicketTierDto, eventId: number): Promise<void> {
+  async addTicketTier(dto: AddTicketTierDto, eventId: number): Promise<TicketTier> {
     try {
       const event = await this.prisma.event.findUnique({
         where: { id: eventId },
@@ -70,6 +70,8 @@ export class TicketsService {
           }
         );
       };
+
+      return tier;
     } catch (error) {
       throw error;
     }

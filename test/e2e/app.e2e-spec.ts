@@ -6,36 +6,28 @@ import {
   CreateUserDto,
   LoginDto,
   NewPasswordDto,
-  PasswordResetDto,
-  Verify2FADto,
   VerifyOTPDto
 } from "@src/auth/dto";
-import {
-  CreateOrganizerProfileDto,
-  UpdateOrganizerProfileDto,
-  UpdateProfileDto
-} from '@src/users/dto';
-import { SessionService } from '@src/common/session';
+import { UpdateProfileDto } from '@src/users/dto';
 import { Secrets } from '@src/common/secrets';
-import { WsAdapter } from '@nestjs/platform-ws';
 import request from 'supertest'
 import path from 'path';
-import {
-  CreateEventDto,
-  NearbyEventsDto,
-  UpdateEventDto
-} from '@src/events/dto';
-import {
-  AddTicketTierDto,
-  PurchaseTicketDto
-} from '@src/tickets/dto';
+import { CreateEventDto, UpdateEventDto } from '@src/events/dto';
+import { AddTicketTierDto, CreateDiscountDto, PurchaseTicketDto } from '@src/tickets/dto';
+import { IoAdapter } from '@nestjs/platform-socket.io';
+import { Organizer, User } from '@prisma/client';
+import { isArray } from 'class-validator';
+import { CreateOrganizerProfileDto, UpdateOrganizerProfileDto } from '@src/organizer/dto';
 
 describe('App e2e', () => {
   let app: INestApplication;
   let prisma: DbService;
-  let session: SessionService;
   let accessToken: string;
   let eventId: number;
+  let resetId: string;
+  let user: User;
+  let organizer: Organizer;
+  let tierId: number;
 
   beforeAll(async () => {
     jest.useRealTimers();
@@ -44,22 +36,21 @@ describe('App e2e', () => {
       imports: [AppModule],
     }).compile();
 
-    // Creating and initializing Nest application
     app = moduleRef.createNestApplication();
+    app.useWebSocketAdapter(new IoAdapter(app));
     app.useGlobalPipes(new ValidationPipe({
-      whitelist: true
+      whitelist: true,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
     }));
-    app.useWebSocketAdapter(new WsAdapter(app));
 
     await app.init();
 
-    // Cleaning database and session store before running tests
+    // Clear database before running tests
     prisma = app.get(DbService)
     await prisma.cleanDb();
-
-    session = app.get(SessionService)
-    await session.onModuleInit();
-    await session.clear();
   });
 
   afterAll(() => app.close());
@@ -68,13 +59,8 @@ describe('App e2e', () => {
     const signupDto: CreateUserDto = {
       email: 'jadawills3690@gmail.com',
       password: 'Xerdin442!',
-      age: '21',
-      accountName: Secrets.ACCOUNT_NAME,
-      accountNumber: Secrets.ACCOUNT_NUMBER,
-      bankName: Secrets.BANK_NAME,
-      firstName: 'Xerdin',
-      lastName: 'Ludac'
-    }
+      preferences: ['ART', 'TECH']
+    };
 
     describe('Signup', () => {
       it('should throw if email format is invalid', async () => {
@@ -116,14 +102,11 @@ describe('App e2e', () => {
         expect(response.status).toEqual(201);
         expect(response.body).toHaveProperty('user');
         expect(response.body).toHaveProperty('token');
-      }, 10000);
+      });
     });
 
     describe('Login', () => {
-      const loginDto: LoginDto = {
-        email: signupDto.email,
-        password: signupDto.password
-      };
+      const loginDto: LoginDto = { ...signupDto };
 
       it('should throw if email format is invalid', async () => {
         const response = await request(app.getHttpServer())
@@ -144,61 +127,36 @@ describe('App e2e', () => {
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('token');
-        expect(response.body).toHaveProperty('twoFactorAuth');
 
         accessToken = response.body.token;
       });
     });
 
-    describe('2FA', () => {
-      it('should enable two factor authentication', async () => {
+    describe('Password Reset', () => {
+      it('should throw if email query parameter is missing', async () => {
         const response = await request(app.getHttpServer())
-          .post('/auth/2fa/enable')
-          .set('Authorization', `Bearer ${accessToken}`)
-
-        expect(response.status).toEqual(200);
-        expect(response.body).toHaveProperty('qrcode');
-      });
-
-      it('should verify 2FA token', async () => {
-        const dto: Verify2FADto = {
-          token: '123456'
-        };
-        const response = await request(app.getHttpServer())
-          .post('/auth/2fa/verify')
-          .set('Authorization', `Bearer ${accessToken}`)
-          .send(dto)
+          .post(`/auth/password/reset`)
 
         expect(response.status).toEqual(400);
-        expect(response.body.message).toEqual('Invalid token');
+        expect(response.body.message).toEqual('Missing required "email" parameter');
       });
 
-      it('should disable two factor authentication', async () => {
-        const response = await request(app.getHttpServer())
-          .post('/auth/2fa/disable')
-          .set('Authorization', `Bearer ${accessToken}`)
-
-        expect(response.status).toEqual(200);
-        expect(response.body.message).toEqual('2FA disabled successfully');
-      });
-    });
-
-    describe('Password Reset', () => {
       it('should send password reset OTP to user email', async () => {
-        const dto: PasswordResetDto = {
-          email: signupDto.email
-        };
         const response = await request(app.getHttpServer())
           .post('/auth/password/reset')
-          .send(dto)
+          .query({ email: signupDto.email })
 
         expect(response.status).toEqual(200);
+        expect(response.body).toHaveProperty('resetId');
         expect(response.body.message).toEqual('Password reset OTP has been sent to your email');
+
+        resetId = response.body.resetId;
       });
 
-      it('should re-send password reset OTP to user email', async () => {
+      it('should resend password reset OTP to user email', async () => {
         const response = await request(app.getHttpServer())
-          .post('/auth/password/resend-otp')
+          .post('/auth/password/reset/resend')
+          .query({ email: signupDto.email })
 
         expect(response.status).toEqual(200);
         expect(response.body.message).toEqual('Another OTP has been sent to your email');
@@ -206,10 +164,11 @@ describe('App e2e', () => {
 
       it('should verify password reset OTP', async () => {
         const dto: VerifyOTPDto = {
+          resetId,
           otp: '1234'
         };
         const response = await request(app.getHttpServer())
-          .post('/auth/password/verify-otp')
+          .post('/auth/password/reset/verify')
           .send(dto)
 
         expect(response.status).toEqual(400);
@@ -218,23 +177,24 @@ describe('App e2e', () => {
 
       it('should change password and complete reset', async () => {
         const dto: NewPasswordDto = {
+          resetId,
           newPassword: 'PassWord12!'
         };
         const response = await request(app.getHttpServer())
-          .post('/auth/password/new')
+          .post('/auth/password/reset/new')
           .send(dto)
 
         expect(response.status).toEqual(200);
         expect(response.body.message).toEqual('Password reset complete!');
       });
-    })
+    });
   });
 
   describe('User', () => {
-    describe('Profile', () => {
+    describe('Get Profile', () => {
       it('should throw if access token is missing', async () => {
         const response = await request(app.getHttpServer())
-          .get('/users/profile')
+          .get('/user/profile')
 
         expect(response.status).toEqual(401);
         expect(response.body.message).toEqual('Unauthorized');
@@ -242,71 +202,111 @@ describe('App e2e', () => {
 
       it('should return user profile', async () => {
         const response = await request(app.getHttpServer())
-          .get('/users/profile')
+          .get('/user/profile')
           .set('Authorization', `Bearer ${accessToken}`)
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('user');
+
+        user = response.body.user;
       });
     });
 
     describe('Update Profile', () => {
       const dto: UpdateProfileDto = {
-        firstName: 'Nancy',
-        age: '25'
+        preferences: ['MUSIC', 'FASHION', 'NIGHTLIFE']
       };
 
       it('should update user profile', async () => {
         const response = await request(app.getHttpServer())
-          .patch('/users/profile/update')
+          .patch('/user/profile')
           .set('Authorization', `Bearer ${accessToken}`)
-          .field({ ...dto })
-          .attach('profileImage', path.resolve(__dirname, 'test-image.jpg'))
+          .send(dto)
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('user');
-      }, 10000);
+        expect(response.body.user).toEqual({
+          ...user,
+          preferences: dto.preferences,
+        });
+
+        user = response.body.user;
+      });
     });
 
     describe('Get All Events', () => {
       it('should return all user events as organizer', async () => {
         const response = await request(app.getHttpServer())
-          .get('/users/events')
+          .get('/user/events')
           .set('Authorization', `Bearer ${accessToken}`)
           .query({ role: 'organizer' })
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('events');
+        expect(isArray(response.body.events)).toBe(true);
       });
 
       it('should return all user events as attendee', async () => {
         const response = await request(app.getHttpServer())
-          .get('/users/events')
+          .get('/user/events')
           .set('Authorization', `Bearer ${accessToken}`)
           .query({ role: 'attendee' })
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('events');
+        expect(isArray(response.body.events)).toBe(true);
       });
 
-      it('should throw if query parameter is missing', async () => {
+      it('should throw if role query parameter is missing', async () => {
         const response = await request(app.getHttpServer())
-          .get('/users/events')
+          .get('/user/events')
           .set('Authorization', `Bearer ${accessToken}`)
 
         expect(response.status).toEqual(400);
-        expect(response.body.message).toEqual('Missing "role" query parameter.');
+        expect(response.body.message).toEqual('Missing required "role" parameter');
       });
     });
 
     describe('Get All Tickets', () => {
       it('should return all user tickets', async () => {
         const response = await request(app.getHttpServer())
-          .get('/users/tickets')
+          .get('/user/tickets')
           .set('Authorization', `Bearer ${accessToken}`)
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('tickets');
+        expect(isArray(response.body.tickets)).toBe(true);
+      });
+    });
+
+    describe('Alerts Subscription', () => {
+      it('should throw if action query parameter is missing', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/user/alerts')
+          .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(response.status).toEqual(400);
+        expect(response.body.message).toEqual('Missing required "action" parameter');
+      });
+
+      it('should turn on event alerts for user', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/user/alerts')
+          .set('Authorization', `Bearer ${accessToken}`)
+          .query({ action: 'subscribe' })
+
+        expect(response.status).toEqual(200);
+        expect(response.body.message).toEqual('Event alerts subscription successful');
+      });
+
+      it('should turn off event alerts for user', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/user/alerts')
+          .set('Authorization', `Bearer ${accessToken}`)
+          .query({ action: 'unsubscribe' })
+
+        expect(response.status).toEqual(200);
+        expect(response.body.message).toEqual('Event alerts turned off successfully');
       });
     });
   });
@@ -324,7 +324,7 @@ describe('App e2e', () => {
 
       it('should create organizer profile', async () => {
         const response = await request(app.getHttpServer())
-          .post('/users/organizer/create')
+          .post('/organizer/profile')
           .set('Authorization', `Bearer ${accessToken}`)
           .send(dto)
 
@@ -334,13 +334,24 @@ describe('App e2e', () => {
     });
 
     describe('Get Organizer Profile', () => {
-      it('should return organizer profile', async () => {
+      it('should return organizer profile of logged in user', async () => {
         const response = await request(app.getHttpServer())
-          .get('/users/organizer')
+          .get('/organizer/profile')
           .set('Authorization', `Bearer ${accessToken}`)
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('organizer');
+
+        organizer = response.body.organizer;
+      });
+
+      it('should return organizer profile by ID', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/organizer/${organizer.id}`)
+
+        expect(response.status).toEqual(200);
+        expect(response.body).toHaveProperty('organizer');
+        expect(response.body.organizer).toEqual(organizer);
       });
     });
 
@@ -352,12 +363,16 @@ describe('App e2e', () => {
 
       it('should update organizer profile', async () => {
         const response = await request(app.getHttpServer())
-          .patch('/users/organizer/update')
+          .patch('/organizer/profile')
           .set('Authorization', `Bearer ${accessToken}`)
           .send(dto)
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('organizer');
+        expect(response.body.organizer).toEqual({
+          ...organizer,
+          ...dto,
+        });
       });
     });
   });
@@ -367,20 +382,20 @@ describe('App e2e', () => {
       const dto: CreateEventDto = {
         title: 'Test Event',
         description: 'This is a test event',
-        category: 'ENTERTAINMENT',
-        capacity: '20000',
+        category: 'MUSIC',
+        capacity: 20000,
         address: 'Asaba',
         venue: 'Shoprite',
-        date: '2025-01-28T00:00:00Z',
-        endTime: '2025-01-28T22:00:00Z',
-        startTime: '2025-01-28T17:00:00Z'
+        date: new Date('2025-12-26T00:00:00Z'),
+        startTime: new Date('2025-12-26T17:00:00Z'),
+        endTime: new Date('2025-12-26T22:00:00Z'),
       };
 
       it('should create a new event', async () => {
         const response = await request(app.getHttpServer())
           .post('/events/create')
           .set('Authorization', `Bearer ${accessToken}`)
-          .field({ ...dto })
+          .send(dto)
           .attach('poster', path.resolve(__dirname, 'test-image.jpg'))
 
         expect(response.status).toEqual(201);
@@ -392,14 +407,13 @@ describe('App e2e', () => {
 
     describe('Update Event', () => {
       const dto: UpdateEventDto = {
-        date: '2025-01-29T00:00:00Z',
-        endTime: '2025-01-29T22:00:00Z',
-        startTime: '2025-01-29T17:00:00Z'
+        description: 'This is an updated event description',
+        ageRestriction: 18
       };
 
       it('should update event by ID', async () => {
         const response = await request(app.getHttpServer())
-          .patch(`/events/${eventId}/update`)
+          .patch(`/events/${eventId}`)
           .set('Authorization', `Bearer ${accessToken}`)
           .send(dto)
 
@@ -412,26 +426,54 @@ describe('App e2e', () => {
       it('should return details of event by ID', async () => {
         const response = await request(app.getHttpServer())
           .get(`/events/${eventId}`)
-          .set('Authorization', `Bearer ${accessToken}`)
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('event');
       });
     });
 
-    describe('Nearby Events', () => {
-      const dto: NearbyEventsDto = {
-        latitude: "6.21407043245160651",
-        longitude: "6.70151799917221069"
-      };
-
-      it('should return all nearby events', async () => {
+    describe('Explore Events', () => {
+      it('should return all events based on category filter', async () => {
         const response = await request(app.getHttpServer())
-          .post(`/events/nearby`)
-          .set('Authorization', `Bearer ${accessToken}`)
-          .send(dto)
+          .get('/events?category=ART&category=MUSIC&category=SPORTS')
 
         expect(response.status).toEqual(200);
+        expect(response.body).toHaveProperty('events');
+        expect(isArray(response.body.events)).toBe(true);
+      });
+
+      it('should throw if filter contains invalid event category', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/events?category=ART&category=INVALID&category=SPORTS')
+
+        expect(response.status).toEqual(400);
+        expect(response.body.message).toEqual('Invalid category value: INVALID');
+      });
+    });
+
+    describe('Nearby Events', () => {
+      it('should return all nearby events', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/events/nearby')
+          .query({
+            latitude: "6.21407043245160651",
+            longitude: "6.70151799917221069"
+          })
+
+        expect(response.status).toEqual(200);
+        expect(response.body).toHaveProperty('events');
+        expect(isArray(response.body.events)).toBe(true);
+      });
+    });
+
+    describe('Trending Events', () => {
+      it('should return all trending events', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/events/trending')
+
+        expect(response.status).toEqual(200);
+        expect(response.body).toHaveProperty('events');
+        expect(isArray(response.body.events)).toBe(true);
       });
     });
   });
@@ -440,9 +482,9 @@ describe('App e2e', () => {
     describe('Add Ticket Tier', () => {
       const dto: AddTicketTierDto = {
         name: 'VIP',
-        price: '200000',
+        price: 200000,
         discount: false,
-        totalNumberOfTickets: '200'
+        totalNumberOfTickets: 200
       };
 
       it('should add a ticket tier to the event', async () => {
@@ -452,12 +494,44 @@ describe('App e2e', () => {
           .send(dto)
 
         expect(response.status).toEqual(200);
-        expect(response.body.message).toEqual('Ticket tier added successfully!')
+        expect(response.body).toHaveProperty('tier');
+
+        tierId = response.body.tier.id;
+      });
+    });
+
+    describe('Ticket Tier Details', () => {
+      it('should return all ticket tiers for an event', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/events/${eventId}/tickets/tiers`)
+
+        expect(response.status).toEqual(200);
+        expect(response.body).toHaveProperty('tickets');
+        expect(isArray(response.body.tickets)).toBe(true);
+      });
+    });
+
+    describe('Create Discount Offer', () => {
+      const dto: CreateDiscountDto = {
+        discountPrice: 175000,
+        discountExpiration: new Date('2025-12-20T00:00:00Z'),
+        numberOfDiscountTickets: 20
+      };
+
+      it('should create a discount offer for ticket tier', async () => {
+        const response = await request(app.getHttpServer())
+          .post(`/events/${eventId}/tickets/${tierId}/discount/create`)
+          .set('Authorization', `Bearer ${accessToken}`)
+          .send(dto)
+
+        expect(response.status).toEqual(200);
+        expect(response.body.message).toEqual('Disocunt offer created successfully');
       });
     });
 
     describe('Purchase Ticket', () => {
       const dto: PurchaseTicketDto = {
+        email: 'xerdinludac@gmail.com',
         quantity: 2,
         tier: 'VIP'
       };
@@ -465,7 +539,6 @@ describe('App e2e', () => {
       it('should throw if idempotency key is missing', async () => {
         const response = await request(app.getHttpServer())
           .post(`/events/${eventId}/tickets/purchase`)
-          .set('Authorization', `Bearer ${accessToken}`)
           .send(dto)
 
         expect(response.status).toEqual(400);
@@ -476,23 +549,81 @@ describe('App e2e', () => {
         const response = await request(app.getHttpServer())
           .post(`/events/${eventId}/tickets/purchase`)
           .set('Authorization', `Bearer ${accessToken}`)
-          .set('Idempotency-Key', 'random-string-442')
+          .set('Idempotency-Key', 'random-unique-string')
           .send(dto)
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('checkout');
       }, 10000);
     });
+
+    describe('Remove Discount Offer', () => {
+      it('should remove discount offer from ticket tier', async () => {
+        const response = await request(app.getHttpServer())
+          .post(`/events/${eventId}/tickets/${tierId}/discount/remove`)
+          .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(response.status).toEqual(200);
+        expect(response.body.message).toEqual('Disocunt offer removed successfully');
+      });
+    });
   });
 
   describe('Payments', () => {
     describe('Webhook', () => {
-      it('should return 200 OK status', async () => {
+      it('should throw if authorization signature is invalid', async () => {
         const response = await request(app.getHttpServer())
           .post('/payments/callback')
 
-        expect(response.status).toEqual(200);
+        expect(response.status).toEqual(400);
+        expect(response.body.message).toEqual('Invalid authorization signature');
       })
     })
+  })
+
+  describe('Cleanup', () => {
+    it('should remove ticket tier', async () => {
+      const response = await request(app.getHttpServer())
+        .delete(`/events/${eventId}/tickets/${tierId}`)
+
+      expect(response.status).toEqual(200);
+      expect(response.body.message).toEqual('Ticket tier deleted successfully');
+    });
+
+    it('should cancel existing event', async () => {
+      const response = await request(app.getHttpServer())
+        .post(`/events/${eventId}/cancel`)
+        .set('Authorization', `Bearer ${accessToken}`)
+
+      expect(response.status).toEqual(200);
+      expect(response.body.message).toEqual('Event cancellation successful');
+    });
+
+    it('should delete organizer profile', async () => {
+      const response = await request(app.getHttpServer())
+        .delete('/organizer/profile')
+        .set('Authorization', `Bearer ${accessToken}`)
+
+      expect(response.status).toEqual(200);
+      expect(response.body.message).toEqual('Organizer profile deleted successfully');
+    });
+
+    it('should log out current user', async () => {
+      const response = await request(app.getHttpServer())
+        .post('/auth/logout')
+        .set('Authorization', `Bearer ${accessToken}`)
+
+      expect(response.status).toEqual(200);
+      expect(response.body.message).toEqual('Logout successful!');
+    });
+
+    it('should throw if token is blacklisted', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/user/profile')
+        .set('Authorization', `Bearer ${accessToken}`)
+
+      expect(response.status).toEqual(401);
+      expect(response.body.message).toEqual('Session expired. Please log in.');
+    });
   })
 });
