@@ -59,8 +59,9 @@ The database schema is located [here](prisma/schema.prisma). If no schema change
 ### 5. Tests
 
 - For integration tests, run: `npm run test:int`
-- For end-to-end tests, run;
+- For end-to-end tests;
   - Start the test containers: `npm run compose:test`
+  - Start the test server: `npm run start:test`
   - Run the tests: `npm run test:e2e`
 
 ### 6. Monitoring

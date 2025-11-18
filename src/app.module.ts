@@ -16,6 +16,7 @@ import { MetricsModule } from './metrics/metrics.module';
 import { AppController } from './app.controller';
 import { OrganizerModule } from './organizer/organizer.module';
 import { RedisModule } from './redis/redis.module';
+import { applyThrottlerConfig } from './common/util/helper';
 
 @Module({
   imports: [
@@ -35,19 +36,11 @@ import { RedisModule } from './redis/redis.module';
       redis: {
         host: Secrets.REDIS_HOST,
         port: Secrets.REDIS_PORT,
-        password: Secrets.REDIS_PASSWORD,
+        password: Secrets.NODE_ENV !== 'test' ? Secrets.REDIS_PASSWORD : undefined,
         family: 0
       }
     }),
-    ThrottlerModule.forRoot([{
-      name: 'Seconds',
-      ttl: 1000,
-      limit: Secrets.RATE_LIMITING_PER_SECOND
-    }, {
-      name: 'Minutes',
-      ttl: 60000,
-      limit: Secrets.RATE_LIMITING_PER_MINUTE
-    }]),
+    ThrottlerModule.forRoot(applyThrottlerConfig()),
   ],
 
   providers: [{

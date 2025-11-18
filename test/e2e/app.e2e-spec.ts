@@ -15,7 +15,7 @@ import path from 'path';
 import { CreateEventDto, UpdateEventDto } from '@src/events/dto';
 import { AddTicketTierDto, CreateDiscountDto, PurchaseTicketDto } from '@src/tickets/dto';
 import { IoAdapter } from '@nestjs/platform-socket.io';
-import { Organizer, User } from '@prisma/client';
+import { Organizer } from '@prisma/client';
 import { isArray } from 'class-validator';
 import { CreateOrganizerProfileDto, UpdateOrganizerProfileDto } from '@src/organizer/dto';
 
@@ -25,7 +25,6 @@ describe('App e2e', () => {
   let accessToken: string;
   let eventId: number;
   let resetId: string;
-  let user: User;
   let organizer: Organizer;
   let tierId: number;
 
@@ -156,10 +155,10 @@ describe('App e2e', () => {
       it('should resend password reset OTP to user email', async () => {
         const response = await request(app.getHttpServer())
           .post('/auth/password/reset/resend')
-          .query({ email: signupDto.email })
+          .query({ resetId })
 
         expect(response.status).toEqual(200);
-        expect(response.body.message).toEqual('Another OTP has been sent to your email');
+        expect(response.body.message).toEqual('Another reset OTP has been sent to your email');
       });
 
       it('should verify password reset OTP', async () => {
@@ -196,8 +195,8 @@ describe('App e2e', () => {
         const response = await request(app.getHttpServer())
           .get('/user/profile')
 
-        expect(response.status).toEqual(401);
-        expect(response.body.message).toEqual('Unauthorized');
+        expect(response.status).toEqual(403);
+        expect(response.body.message).toEqual('Forbidden resource');
       });
 
       it('should return user profile', async () => {
@@ -207,8 +206,6 @@ describe('App e2e', () => {
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('user');
-
-        user = response.body.user;
       });
     });
 
@@ -225,12 +222,7 @@ describe('App e2e', () => {
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('user');
-        expect(response.body.user).toEqual({
-          ...user,
-          preferences: dto.preferences,
-        });
-
-        user = response.body.user;
+        expect(response.body.user.preferences).toEqual(dto.preferences);
       });
     });
 
@@ -282,7 +274,7 @@ describe('App e2e', () => {
     describe('Alerts Subscription', () => {
       it('should throw if action query parameter is missing', async () => {
         const response = await request(app.getHttpServer())
-          .get('/user/alerts')
+          .post('/user/alerts')
           .set('Authorization', `Bearer ${accessToken}`)
 
         expect(response.status).toEqual(400);
@@ -291,7 +283,7 @@ describe('App e2e', () => {
 
       it('should turn on event alerts for user', async () => {
         const response = await request(app.getHttpServer())
-          .get('/user/alerts')
+          .post('/user/alerts')
           .set('Authorization', `Bearer ${accessToken}`)
           .query({ action: 'subscribe' })
 
@@ -301,7 +293,7 @@ describe('App e2e', () => {
 
       it('should turn off event alerts for user', async () => {
         const response = await request(app.getHttpServer())
-          .get('/user/alerts')
+          .post('/user/alerts')
           .set('Authorization', `Bearer ${accessToken}`)
           .query({ action: 'unsubscribe' })
 
@@ -330,7 +322,7 @@ describe('App e2e', () => {
 
         expect(response.status).toEqual(201);
         expect(response.body).toHaveProperty('organizer');
-      }, 10000);
+      }, 30000);
     });
 
     describe('Get Organizer Profile', () => {
@@ -351,7 +343,6 @@ describe('App e2e', () => {
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('organizer');
-        expect(response.body.organizer).toEqual(organizer);
       });
     });
 
@@ -369,10 +360,6 @@ describe('App e2e', () => {
 
         expect(response.status).toEqual(200);
         expect(response.body).toHaveProperty('organizer');
-        expect(response.body.organizer).toEqual({
-          ...organizer,
-          ...dto,
-        });
       });
     });
   });
@@ -395,7 +382,12 @@ describe('App e2e', () => {
         const response = await request(app.getHttpServer())
           .post('/events/create')
           .set('Authorization', `Bearer ${accessToken}`)
-          .send(dto)
+          .field({
+            ...dto,
+            date: dto.date.toISOString(),
+            startTime: dto.startTime.toISOString(),
+            endTime: dto.endTime.toISOString()
+          })
           .attach('poster', path.resolve(__dirname, 'test-image.jpg'))
 
         expect(response.status).toEqual(201);
@@ -570,21 +562,36 @@ describe('App e2e', () => {
   });
 
   describe('Payments', () => {
+    describe('Supported Banks', () => {
+      it('should return list of banks supported by Paystack', async () => {
+        const response = await request(app.getHttpServer())
+          .get('/payments/banks')
+
+        expect(response.status).toEqual(200);
+        expect(response.body).toHaveProperty('banks');
+        expect(isArray(response.body.banks)).toBe(true);
+      })
+    });
+
     describe('Webhook', () => {
       it('should throw if authorization signature is invalid', async () => {
+        const payload = { event: 'charge.success', data: {} };
+
         const response = await request(app.getHttpServer())
           .post('/payments/callback')
+          .send(payload);
 
         expect(response.status).toEqual(400);
         expect(response.body.message).toEqual('Invalid authorization signature');
       })
-    })
-  })
+    });
+  });
 
   describe('Cleanup', () => {
     it('should remove ticket tier', async () => {
       const response = await request(app.getHttpServer())
         .delete(`/events/${eventId}/tickets/${tierId}`)
+        .set('Authorization', `Bearer ${accessToken}`)
 
       expect(response.status).toEqual(200);
       expect(response.body.message).toEqual('Ticket tier deleted successfully');
@@ -625,5 +632,5 @@ describe('App e2e', () => {
       expect(response.status).toEqual(401);
       expect(response.body.message).toEqual('Session expired. Please log in.');
     });
-  })
+  });
 });

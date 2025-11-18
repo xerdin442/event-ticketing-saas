@@ -269,7 +269,9 @@ export class EventsService {
         })
       );
 
-      return nearbyEvents.filter(event => event.status !== "CANCELLED");
+      if (nearbyEvents.length === 0) return [];
+
+      return nearbyEvents.filter(event => event.status === "UPCOMING");
     } catch (error) {
       throw error;
     }

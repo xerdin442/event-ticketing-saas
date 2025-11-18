@@ -111,7 +111,7 @@ export class AuthController {
 
       return { message: 'Another reset OTP has been sent to your email' };
     } catch (error) {
-      logger.error(`[${this.context}] An error occurred while verifying password reset OTP. Error: ${error.message}\n`);
+      logger.error(`[${this.context}] An error occurred while re-sending password reset OTP. Error: ${error.message}\n`);
 
       throw error;
     }

@@ -130,7 +130,7 @@ export class TicketsController {
       if (cacheResult) {
         logger.warn(`[${this.context}] Duplicate ticket purchase attempt by ${dto.email}.\n`);
 
-        return { checkout: JSON.parse(cacheResult as string) };
+        return { checkout: cacheResult as string };
       };
 
       // Process ticket purchase and store checkout URL to prevent multiple payments

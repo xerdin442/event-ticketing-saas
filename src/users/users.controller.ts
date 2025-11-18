@@ -4,6 +4,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Patch,
   Post,
   Query,
@@ -95,6 +97,7 @@ export class UserController {
     }
   }
 
+  @HttpCode(HttpStatus.OK)
   @Post('alerts')
   async toggleAlertSubscription(
     @GetUser() user: User,

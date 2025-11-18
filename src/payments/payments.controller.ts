@@ -24,9 +24,9 @@ export class PaymentsController {
   ) { };
 
   @Get('banks')
-  async getBankNames(): Promise<string[]> {
+  async getBankNames(): Promise<{ banks: string[] }> {
     try {
-      return this.payments.getBankNames();
+      return { banks: await this.payments.getBankNames() };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while retrieving bank names. Error: ${error.message}\n`);
       throw error;
