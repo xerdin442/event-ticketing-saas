@@ -67,6 +67,7 @@
     "winston": "^3.18.3"
   },
   "devDependencies": {
+    "@golevelup/ts-jest": "^0.7.0",
     "@nestjs/cli": "^11.0.10",
     "@nestjs/schematics": "^11.0.9",
     "@nestjs/testing": "^11.1.9",

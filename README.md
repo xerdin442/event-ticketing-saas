@@ -67,7 +67,7 @@ The database schema is located [here](prisma/schema.prisma). If no schema change
 ### 6. Monitoring
 
 - To view the custom application metrics on Grafana, visit: `http://localhost:3002`.
-- If you add new metrics, update the dashboard [config file](./monitoring/grafana/dashboards/observability.json).
+- If you add new metrics, update the dashboard config file [here](./monitoring/grafana/dashboards/observability.json).
 
 <br>
 
