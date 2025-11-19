@@ -1,9 +1,11 @@
-import { BadRequestException, Controller, Get, ParseIntPipe, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, ParseIntPipe, Query, UseGuards } from '@nestjs/common';
 import { EventsService } from '@src/events/events.service';
 import { WhatsappService } from './whatsapp.service';
 import { Event } from '@prisma/client';
 import logger from '@src/common/logger';
+import { WhatsappApiKeyGuard } from '@src/custom/guards/whatsapp.guard';
 
+@UseGuards(WhatsappApiKeyGuard)
 @Controller('whatsapp')
 export class WhatsappController {
   private readonly context: string = WhatsappController.name;

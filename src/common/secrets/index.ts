@@ -21,6 +21,7 @@ export const Secrets = {
   RATE_LIMITING_PER_SECOND: config.getOrThrow<number>('RATE_LIMITING_PER_SECOND'),
   RATE_LIMITING_PER_MINUTE: config.getOrThrow<number>('RATE_LIMITING_PER_MINUTE'),
   PAYSTACK_SECRET_KEY: config.getOrThrow<string>('PAYSTACK_SECRET_KEY'),
+  WHATSAPP_BOT_API_KEY: config.getOrThrow<string>('WHATSAPP_BOT_API_KEY'),
   ACCOUNT_NUMBER: config.get('ACCOUNT_NUMBER'),
   ACCOUNT_NAME: config.get('ACCOUNT_NAME'),
   BANK_NAME: config.get('BANK_NAME'),
