@@ -17,6 +17,7 @@ import { AppController } from './app.controller';
 import { OrganizerModule } from './organizer/organizer.module';
 import { RedisModule } from './redis/redis.module';
 import { applyThrottlerConfig } from './common/util/helper';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { applyThrottlerConfig } from './common/util/helper';
       }
     }),
     ThrottlerModule.forRoot(applyThrottlerConfig()),
+    WhatsappModule,
   ],
 
   providers: [{

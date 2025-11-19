@@ -251,11 +251,11 @@ export class EventsService {
     }
   }
 
-  async findNearbyEvents(lat: string, lon: string): Promise<Event[]> {
+  async findNearbyEvents(latitude: number, longitude: number): Promise<Event[]> {
     try {
       const events = await this.redis.geoRadius(
         'nearby_events',
-        { latitude: +lat, longitude: +lon },
+        { latitude, longitude },
         5,
         'km'
       );

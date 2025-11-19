@@ -52,8 +52,8 @@ export class EventsController {
 
   @Get('nearby')
   async findNearbyEvents(
-    @Query('latitude') latitude: string,
-    @Query('longitude') longitude: string,
+    @Query('latitude', ParseIntPipe) latitude: number,
+    @Query('longitude', ParseIntPipe) longitude: number,
   ): Promise<{ events: Event[] }> {
     try {
       if (!latitude || !longitude) {
