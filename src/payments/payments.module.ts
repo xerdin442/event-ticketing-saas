@@ -6,10 +6,12 @@ import { BullModule } from '@nestjs/bull';
 import { PaymentsProcessor } from '../common/workers/payments.processor';
 import { MetricsService } from '../metrics/metrics.service';
 import { MailService } from '@src/common/config/mail';
+import { WhatsappModule } from '@src/whatsapp/whatsapp.module';
 
 @Global()
 @Module({
   imports: [
+    WhatsappModule,
     BullModule.registerQueue({
       name: 'payments-queue'
     })

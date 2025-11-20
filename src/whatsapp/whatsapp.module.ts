@@ -7,6 +7,7 @@ import { TicketsModule } from '@src/tickets/tickets.module';
 @Module({
   imports: [EventsModule, TicketsModule],
   providers: [WhatsappService],
-  controllers: [WhatsappController]
+  controllers: [WhatsappController],
+  exports: [WhatsappService],
 })
 export class WhatsappModule {}

@@ -47,6 +47,15 @@ export interface PaystackCheckoutResponse {
   reference: string;
 }
 
+export interface WhatsappWebhookNotification {
+  status: PaymentStatus;
+  email: string;
+  phoneId: string;
+  reference: string;
+  transactionRef: string;
+  reason?: string;
+}
+
 export interface CloudinaryResource {
   asset_id: string
   public_id: string

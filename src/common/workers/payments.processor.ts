@@ -1,5 +1,5 @@
 import { Process, Processor } from "@nestjs/bull";
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { Job } from "bull";
 import { PaymentsGateway } from "@src/payments/payments.gateway";
 import { DbService } from "@src/db/db.service";
@@ -14,15 +14,15 @@ import { Secrets } from "../secrets";
 import { Attachment } from "resend";
 import { RedisClientType } from "redis";
 import { formatDate } from "../util/helper";
-import { TicketLockInfo } from "../types";
+import { TicketLockInfo, WhatsappWebhookNotification } from "../types";
 import { TicketTier } from "@prisma/client";
-import { notifyWhatsappBotServer } from "@src/whatsapp/webhooks";
+import { REDIS_CLIENT } from "@src/redis/redis.module";
+import { WhatsappService } from "@src/whatsapp/whatsapp.service";
 
 @Injectable()
 @Processor('payments-queue')
 export class PaymentsProcessor {
   private readonly context: string = PaymentsProcessor.name;
-  private redis: RedisClientType;
 
   constructor(
     private readonly gateway: PaymentsGateway,
@@ -30,7 +30,9 @@ export class PaymentsProcessor {
     private readonly payments: PaymentsService,
     private readonly metrics: MetricsService,
     private readonly mailService: MailService,
-  ) { };
+    private readonly whatsappService: WhatsappService,
+    @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
+  ) {};
 
   @Process('transaction')
   async finalizeTransaction(job: Job) {
@@ -59,6 +61,14 @@ export class PaymentsProcessor {
     });
     const tier = event.ticketTiers.find(tier => tier.id === tierId);
     const price = tier.price;
+
+    const notification: WhatsappWebhookNotification = {
+      status: 'success',
+      email: attendee,
+      phoneId: whatsappPhoneId,
+      reference: randomUUID(),
+      transactionRef: transactionReference,
+    };
 
     try {
       // Idempotent processing to skip transactions that have been settled
@@ -172,6 +182,17 @@ export class PaymentsProcessor {
 
           logger.warn(`[${this.context}] Ticket purchase unsuccessful. Transaction refund to ${attendee} initiated. Error: ${error.message}\n`);
 
+          if (whatsappPhoneId) {
+            // Send webhook to whatsapp bot server to notify attendee of payment status
+            const details: WhatsappWebhookNotification = {
+              ...notification,
+              status: 'refund',
+              reason: error.message,
+            };
+
+            return this.whatsappService.sendWebhookNotification(details);
+          }
+
           // Notify the user of the payment status
           return this.gateway.sendPaymentStatus(
             attendee,
@@ -254,7 +275,7 @@ export class PaymentsProcessor {
 
         if (whatsappPhoneId) {
           // Send webhook to whatsapp bot server to notify attendee of payment status
-          return notifyWhatsappBotServer('success', attendee, whatsappPhoneId);
+          return this.whatsappService.sendWebhookNotification(notification);
         } else {
           // Notify the client of payment status
           return this.gateway.sendPaymentStatus(attendee, 'success', 'Payment successful!');
@@ -270,7 +291,12 @@ export class PaymentsProcessor {
 
         if (whatsappPhoneId) {
           // Send webhook to whatsapp bot server to notify attendee of payment status
-          return notifyWhatsappBotServer('failed', attendee, whatsappPhoneId);
+          const details: WhatsappWebhookNotification = {
+            ...notification,
+            status: 'failed',
+          };
+
+          return this.whatsappService.sendWebhookNotification(details);
         } else {
           // Notify the client of payment status
           return this.gateway.sendPaymentStatus(attendee, 'failed', 'Payment failed!');

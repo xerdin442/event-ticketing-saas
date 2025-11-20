@@ -65,6 +65,11 @@ enum LockStatus {
   PAID
 }
 
+enum WebhookStatus {
+  ACKNOWLEDGED
+  FAILED
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
@@ -181,16 +186,18 @@ model Transaction {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  reference       String            @unique
-  status          TransactionStatus
-  source          TransactionSource
-  amount          Float
-  email           String
-  lockId          String?
-  lockStatus      LockStatus?
-  refundId        String?
-  whatsapp        Boolean           @default(false)
-  whatsappPhoneId String?
+  reference        String            @unique
+  status           TransactionStatus
+  source           TransactionSource
+  amount           Float
+  email            String
+  lockId           String?
+  lockStatus       LockStatus?
+  refundId         String?
+  whatsapp         Boolean           @default(false)
+  whatsappPhoneId  String?
+  webhookReference String?
+  webhookStatus    WebhookStatus?
 
   eventId Int
   event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
