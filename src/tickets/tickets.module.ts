@@ -16,6 +16,7 @@ import { EventsModule } from '@src/events/events.module';
   providers: [
     TicketsService,
     TicketsProcessor
-  ]
+  ],
+  exports: [TicketsService],
 })
 export class TicketsModule { }

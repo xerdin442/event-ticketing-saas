@@ -48,6 +48,9 @@ export class PaymentsProcessor {
     let trending: boolean;
     metadata.trending === 'false' ? trending = false : trending = true;
 
+    let whatsapp: boolean;
+    metadata?.whatsapp === 'false' ? whatsapp = false : whatsapp = true;
+
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
       include: {
@@ -250,8 +253,12 @@ export class PaymentsProcessor {
 
         logger.info(`[${this.context}] Ticket purchase completed by ${attendee}.\n`);
 
-        // Notify the client of payment status
-        return this.gateway.sendPaymentStatus(attendee, 'success', 'Payment successful!');
+        if (whatsapp) {
+          // Send webhook to whatsapp service to notify attendee via WhatsApp
+        } else {
+          // Notify the client of payment status
+          return this.gateway.sendPaymentStatus(attendee, 'success', 'Payment successful!');
+        }
       } else if (eventType === 'charge.failed') {
         // Update transaction status
         await this.prisma.transaction.update({
@@ -261,8 +268,12 @@ export class PaymentsProcessor {
 
         logger.warn(`[${this.context}] Ticket purchase failed: Email: ${attendee}\n`);
 
-        // Notify the client of payment status
-        return this.gateway.sendPaymentStatus(attendee, 'failed', 'Payment failed!');;
+        if (whatsapp) {
+          // Send webhook to whatsapp service to notify attendee via WhatsApp
+        } else {
+          // Notify the client of payment status
+          return this.gateway.sendPaymentStatus(attendee, 'failed', 'Payment failed!');
+        }
       }
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing ticket purchase. Error: ${error.message}\n`);

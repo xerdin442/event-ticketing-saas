@@ -39,7 +39,12 @@ export class EventsService {
       }
 
       return await this.prisma.event.findMany({
-        where: { OR: categoryFilters }
+        where: {
+          AND: [
+            { status: 'UPCOMING' },
+            { OR: categoryFilters },
+          ]
+        }
       });
     } catch (error) {
       throw error;

@@ -181,14 +181,16 @@ model Transaction {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  reference  String            @unique
-  status     TransactionStatus
-  source     TransactionSource
-  amount     Float
-  email      String
-  lockId     String?
-  lockStatus LockStatus?
-  refundId   String?
+  reference       String            @unique
+  status          TransactionStatus
+  source          TransactionSource
+  amount          Float
+  email           String
+  lockId          String?
+  lockStatus      LockStatus?
+  refundId        String?
+  whatsapp        Boolean           @default(false)
+  whatsappPhoneId String?
 
   eventId Int
   event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)

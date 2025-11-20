@@ -13,6 +13,7 @@ import { TicketTier } from '@prisma/client';
 import { EventsService } from '@src/events/events.service';
 import { RedisClientType } from 'redis';
 import { randomUUID } from 'crypto';
+import * as argon from 'argon2';
 import { TicketLockInfo } from '@src/common/types';
 import { REDIS_CLIENT } from '@src/redis/redis.module';
 
@@ -175,7 +176,7 @@ export class TicketsService {
       let amount: number;
       let discount: boolean = false;
 
-      const { tier: ticketTier, quantity, email } = dto;
+      const { tier: ticketTier, quantity, email, whatsappPhoneId } = dto;
 
       const event = await this.prisma.event.findUnique({
         where: { id: eventId },
@@ -261,11 +262,15 @@ export class TicketsService {
         discount,
         quantity,
         trending,
-        lockId
+        lockId,
+        whatsapp: whatsappPhoneId ? true : false,
       };
 
       // Initialize ticket purchase
       const { authorization_url, reference } = await this.payments.initializeTransaction(email, amount, metadata);
+
+      // Hash whatsapp phone ID if available
+      const hashedPhoneId = whatsappPhoneId ? await argon.hash(whatsappPhoneId) : null;
 
       // Store transaction reference
       await this.prisma.transaction.create({
@@ -278,6 +283,8 @@ export class TicketsService {
           eventId,
           lockId,
           lockStatus: trending ? "LOCKED" : null,
+          whatsapp: whatsappPhoneId ? true : false,
+          whatsappPhoneId: hashedPhoneId,
         }
       });
 

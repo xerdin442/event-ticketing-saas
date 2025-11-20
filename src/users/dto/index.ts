@@ -5,5 +5,5 @@ export class UpdateProfileDto {
   @IsArray()
   @IsEnum(EventCategory, { each: true })
   @IsOptional()
-  preferences?: EventCategory[];  
+  preferences?: EventCategory[];
 }

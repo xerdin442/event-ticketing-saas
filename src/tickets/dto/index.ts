@@ -67,6 +67,10 @@ export class PurchaseTicketDto {
   @IsNumber()
   @IsNotEmpty()
   quantity: number;
+
+  @IsString()
+  @IsOptional()
+  whatsappPhoneId?: string;
 }
 
 export class ValidateTicketDto {

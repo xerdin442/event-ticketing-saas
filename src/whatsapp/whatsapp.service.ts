@@ -1,54 +1,47 @@
 import { Injectable } from '@nestjs/common';
-import { Event } from '@prisma/client';
+import { Event, EventCategory } from '@prisma/client';
 import { DbService } from '@src/db/db.service';
-import { EventsService } from '@src/events/events.service';
+import { EventFilterDTO } from './dto';
 
 @Injectable()
 export class WhatsappService {
-  constructor(
-    private readonly prisma: DbService,
-    private readonly eventsService: EventsService,
-  ) {}
+  constructor(private readonly prisma: DbService) { }
 
-  async findEventsByName(searchString: string, page=1, pageSize=10): Promise<Event[]> {
+  async findEventsByFilters(dto: EventFilterDTO, pageSize = 7): Promise<Event[]> {
     try {
-      const events = await this.prisma.event.findMany({
-        where: {
-          AND: [
-            {
-              title: {
-                contains: searchString,
-                mode: 'insensitive',
-              },
-            },
-            { status: "UPCOMING" }
-          ]
-        },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-        orderBy: { date: 'desc' },
-      });
+      const categoryFilters: { category: EventCategory }[] = [];
+      if (dto.categories.length > 0) {
+        for (let i = 0; i < dto.categories.length - 1; i++) {
+          categoryFilters.push({ category: dto.categories[i] });
+        }
+      };
 
-      return events;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async findEventsByDate(date: string, page=1, pageSize=10): Promise<Event[]> {
-    try {
       const events = await this.prisma.event.findMany({
         where: {
           AND: [
             { status: 'UPCOMING' },
-            { date }
+            { 
+              OR: categoryFilters,
+              title: {
+                contains: dto.title,
+              },
+              date: {
+                gte: dto.startDate,
+                lte: dto.endDate,
+              },
+              address: {
+                contains: dto.location,
+              },
+              venue: {
+                contains: dto.venue,
+              }
+            },
           ]
         },
-        skip: (page - 1) * pageSize,
+        skip: (dto.page - 1) * pageSize,
         take: pageSize,
-        orderBy: { date: 'desc' }
+        orderBy: { date: 'desc' },
       });
-
       return events;
     } catch (error) {
       throw error;
