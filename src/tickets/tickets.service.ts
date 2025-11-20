@@ -263,7 +263,7 @@ export class TicketsService {
         quantity,
         trending,
         lockId,
-        whatsapp: whatsappPhoneId ? true : false,
+        whatsappPhoneId,
       };
 
       // Initialize ticket purchase

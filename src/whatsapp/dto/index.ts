@@ -1,5 +1,5 @@
 import { EventCategory } from "@prisma/client"
-import { IsArray, IsDate, IsEnum, IsNumber, IsOptional, IsString } from "class-validator"
+import { IsArray, IsEnum, IsNumber, IsOptional, IsString } from "class-validator"
 
 export class EventFilterDTO {
   @IsString()
@@ -16,11 +16,11 @@ export class EventFilterDTO {
 
   @IsString()
   @IsOptional()
-  startDate?: Date;
+  startDate?: string;
 
-  @IsDate()
+  @IsString()
   @IsOptional()
-  endDate?: Date;
+  endDate?: string;
 
   @IsArray()
   @IsEnum(EventCategory, { each: true })

@@ -26,8 +26,8 @@ export class WhatsappService {
                 contains: dto.title,
               },
               date: {
-                gte: dto.startDate,
-                lte: dto.endDate,
+                gte: new Date(dto.startDate),
+                lte: new Date(dto.endDate),
               },
               address: {
                 contains: dto.location,

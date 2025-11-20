@@ -16,6 +16,7 @@ import { RedisClientType } from "redis";
 import { formatDate } from "../util/helper";
 import { TicketLockInfo } from "../types";
 import { TicketTier } from "@prisma/client";
+import { notifyWhatsappBotServer } from "@src/whatsapp/webhooks";
 
 @Injectable()
 @Processor('payments-queue')
@@ -36,6 +37,7 @@ export class PaymentsProcessor {
     const { eventType, metadata, transactionReference } = job.data;
     const attendee = metadata.email as string;
     const lockId = metadata.lockId as string;
+    const whatsappPhoneId = metadata?.whatsappPhoneId as string;
 
     const eventId = parseInt(metadata.eventId);
     const tierId = parseInt(metadata.tierId);
@@ -47,9 +49,6 @@ export class PaymentsProcessor {
 
     let trending: boolean;
     metadata.trending === 'false' ? trending = false : trending = true;
-
-    let whatsapp: boolean;
-    metadata?.whatsapp === 'false' ? whatsapp = false : whatsapp = true;
 
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
@@ -253,8 +252,9 @@ export class PaymentsProcessor {
 
         logger.info(`[${this.context}] Ticket purchase completed by ${attendee}.\n`);
 
-        if (whatsapp) {
-          // Send webhook to whatsapp service to notify attendee via WhatsApp
+        if (whatsappPhoneId) {
+          // Send webhook to whatsapp bot server to notify attendee of payment status
+          return notifyWhatsappBotServer('success', attendee, whatsappPhoneId);
         } else {
           // Notify the client of payment status
           return this.gateway.sendPaymentStatus(attendee, 'success', 'Payment successful!');
@@ -268,8 +268,9 @@ export class PaymentsProcessor {
 
         logger.warn(`[${this.context}] Ticket purchase failed: Email: ${attendee}\n`);
 
-        if (whatsapp) {
-          // Send webhook to whatsapp service to notify attendee via WhatsApp
+        if (whatsappPhoneId) {
+          // Send webhook to whatsapp bot server to notify attendee of payment status
+          return notifyWhatsappBotServer('failed', attendee, whatsappPhoneId);
         } else {
           // Notify the client of payment status
           return this.gateway.sendPaymentStatus(attendee, 'failed', 'Payment failed!');
