@@ -8,7 +8,7 @@ import {
   IsString
 } from "class-validator";
 
-export class CreateEventDto {
+export class CreateEventDTO {
   @IsString()
   @IsNotEmpty()
   title: string;
@@ -50,7 +50,7 @@ export class CreateEventDto {
   capacity: number;
 }
 
-export class UpdateEventDto {
+export class UpdateEventDTO {
   @IsString()
   @IsOptional()
   title?: string;
@@ -92,7 +92,7 @@ export class UpdateEventDto {
   capacity?: number;
 }
 
-export class VerifyTicketRefundDto {
+export class VerifyTicketRefundDTO {
   @IsNotEmpty()
   @IsString()
   requestId: string;
@@ -102,7 +102,7 @@ export class VerifyTicketRefundDto {
   otp: string;
 }
 
-export class ProcessTicketRefundDto {
+export class ProcessTicketRefundDTO {
   @IsNotEmpty()
   @IsString()
   requestId: string;

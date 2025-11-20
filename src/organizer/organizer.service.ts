@@ -2,7 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Organizer } from '@prisma/client';
 import { DbService } from '@src/db/db.service';
 import { PaymentsService } from '@src/payments/payments.service';
-import { CreateOrganizerProfileDto, UpdateOrganizerProfileDto } from './dto';
+import { CreateOrganizerProfileDTO, UpdateOrganizerProfileDTO } from './dto';
 import { isURL } from 'class-validator';
 
 @Injectable()
@@ -22,7 +22,7 @@ export class OrganizerService {
     }
   }
 
-  async createProfile(userId: number, dto: CreateOrganizerProfileDto): Promise<Organizer> {
+  async createProfile(userId: number, dto: CreateOrganizerProfileDTO): Promise<Organizer> {
     try {
       const organizer = await this.prisma.organizer.findUnique({
         where: { userId }
@@ -53,7 +53,7 @@ export class OrganizerService {
     }
   }
 
-  async updateProfile(userId: number, dto: UpdateOrganizerProfileDto): Promise<Organizer> {
+  async updateProfile(userId: number, dto: UpdateOrganizerProfileDTO): Promise<Organizer> {
     try {
       let recipientCode: string;
       // Verify updated account details and create a new transfer recipient for revenue splits

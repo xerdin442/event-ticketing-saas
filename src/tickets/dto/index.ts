@@ -7,7 +7,7 @@ import {
   IsDate,
 } from "class-validator";
 
-export class AddTicketTierDto {
+export class AddTicketTierDTO {
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -41,7 +41,7 @@ export class AddTicketTierDto {
   totalNumberOfTickets: number;
 }
 
-export class CreateDiscountDto {
+export class CreateDiscountDTO {
   @IsNumber()
   @IsNotEmpty()
   discountPrice: number;
@@ -55,7 +55,7 @@ export class CreateDiscountDto {
   numberOfDiscountTickets: number;
 }
 
-export class PurchaseTicketDto {
+export class PurchaseTicketDTO {
   @IsString()
   @IsNotEmpty()
   email: string;
@@ -73,7 +73,7 @@ export class PurchaseTicketDto {
   whatsappPhoneId?: string;
 }
 
-export class ValidateTicketDto {
+export class ValidateTicketDTO {
   @IsString()
   @IsNotEmpty()
   accessKey: string;

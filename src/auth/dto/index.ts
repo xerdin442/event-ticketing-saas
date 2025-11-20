@@ -8,7 +8,7 @@ import {
   IsStrongPassword
 } from "class-validator";
 
-export class CreateUserDto {
+export class CreateUserDTO {
   @IsEmail({}, { message: 'Please enter a valid email address' })
   @IsNotEmpty()
   email: string;
@@ -29,7 +29,7 @@ export class CreateUserDto {
   preferences: EventCategory[];
 }
 
-export class LoginDto {
+export class LoginDTO {
   @IsEmail({}, { message: 'Please enter a valid email address' })
   @IsNotEmpty()
   email: string;
@@ -39,7 +39,7 @@ export class LoginDto {
   password: string;
 }
 
-export class VerifyOTPDto {
+export class VerifyOTPDTO {
   @IsString()
   @IsNotEmpty()
   otp: string;
@@ -49,7 +49,7 @@ export class VerifyOTPDto {
   resetId: string;
 }
 
-export class NewPasswordDto {
+export class NewPasswordDTO {
   @IsString()
   @IsNotEmpty()
   resetId: string;

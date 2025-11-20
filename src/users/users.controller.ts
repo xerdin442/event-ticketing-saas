@@ -13,7 +13,7 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { Event, Ticket, User } from '@prisma/client';
 import { GetUser } from '../custom/decorators/user.decorator';
-import { UpdateProfileDto } from './dto';
+import { UpdateProfileDTO } from './dto';
 import { UserService } from './users.service';
 import logger from '../common/logger';
 import { MetricsService } from '@src/metrics/metrics.service';
@@ -38,7 +38,7 @@ export class UserController {
   @Patch('profile')
   async updateProfile(
     @GetUser() user: User,
-    @Body() dto: UpdateProfileDto,
+    @Body() dto: UpdateProfileDTO,
   ): Promise<{ user: User }> {
     try {
       const updatedUser = await this.userService.updateProfile(user.id, dto);

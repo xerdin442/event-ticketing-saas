@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
-import { UpdateProfileDto } from './dto';
+import { UpdateProfileDTO } from './dto';
 import {
   Event,
   Ticket,
@@ -11,7 +11,7 @@ import {
 export class UserService {
   constructor(private readonly prisma: DbService) {};
 
-  async updateProfile(userId: number, dto: UpdateProfileDto): Promise<User> {
+  async updateProfile(userId: number, dto: UpdateProfileDTO): Promise<User> {
     try {
       // Update user's details
       const user = await this.prisma.user.update({

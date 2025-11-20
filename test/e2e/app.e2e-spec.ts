@@ -3,21 +3,21 @@ import { AppModule } from '@src/app.module';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { DbService } from '@src/db/db.service';
 import {
-  CreateUserDto,
-  LoginDto,
-  NewPasswordDto,
-  VerifyOTPDto
+  CreateUserDTO,
+  LoginDTO,
+  NewPasswordDTO,
+  VerifyOTPDTO
 } from "@src/auth/dto";
-import { UpdateProfileDto } from '@src/users/dto';
+import { UpdateProfileDTO } from '@src/users/dto';
 import { Secrets } from '@src/common/secrets';
 import request from 'supertest'
 import path from 'path';
-import { CreateEventDto, UpdateEventDto } from '@src/events/dto';
-import { AddTicketTierDto, CreateDiscountDto, PurchaseTicketDto } from '@src/tickets/dto';
+import { CreateEventDTO, UpdateEventDTO } from '@src/events/dto';
+import { AddTicketTierDTO, CreateDiscountDTO, PurchaseTicketDTO } from '@src/tickets/dto';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { Organizer } from '@prisma/client';
 import { isArray } from 'class-validator';
-import { CreateOrganizerProfileDto, UpdateOrganizerProfileDto } from '@src/organizer/dto';
+import { CreateOrganizerProfileDTO, UpdateOrganizerProfileDTO } from '@src/organizer/dto';
 
 describe('App e2e', () => {
   let app: INestApplication;
@@ -55,7 +55,7 @@ describe('App e2e', () => {
   afterAll(() => app.close());
 
   describe('Auth', () => {
-    const signupDto: CreateUserDto = {
+    const signupDto: CreateUserDTO = {
       email: 'jadawills3690@gmail.com',
       password: 'Xerdin442!',
       preferences: ['ART', 'TECH']
@@ -105,7 +105,7 @@ describe('App e2e', () => {
     });
 
     describe('Login', () => {
-      const loginDto: LoginDto = { ...signupDto };
+      const loginDto: LoginDTO = { ...signupDto };
 
       it('should throw if email format is invalid', async () => {
         const response = await request(app.getHttpServer())
@@ -162,7 +162,7 @@ describe('App e2e', () => {
       });
 
       it('should verify password reset OTP', async () => {
-        const dto: VerifyOTPDto = {
+        const dto: VerifyOTPDTO = {
           resetId,
           otp: '1234'
         };
@@ -175,7 +175,7 @@ describe('App e2e', () => {
       });
 
       it('should change password and complete reset', async () => {
-        const dto: NewPasswordDto = {
+        const dto: NewPasswordDTO = {
           resetId,
           newPassword: 'PassWord12!'
         };
@@ -210,7 +210,7 @@ describe('App e2e', () => {
     });
 
     describe('Update Profile', () => {
-      const dto: UpdateProfileDto = {
+      const dto: UpdateProfileDTO = {
         preferences: ['MUSIC', 'FASHION', 'NIGHTLIFE']
       };
 
@@ -305,7 +305,7 @@ describe('App e2e', () => {
 
   describe('Organizer', () => {
     describe('Create Organizer Profile', () => {
-      const dto: CreateOrganizerProfileDto = {
+      const dto: CreateOrganizerProfileDTO = {
         accountName: Secrets.ACCOUNT_NAME,
         accountNumber: Secrets.ACCOUNT_NUMBER,
         bankName: Secrets.BANK_NAME,
@@ -347,7 +347,7 @@ describe('App e2e', () => {
     });
 
     describe('Update Organizer Profile', () => {
-      const dto: UpdateOrganizerProfileDto = {
+      const dto: UpdateOrganizerProfileDTO = {
         phone: '1234567890',
         website: 'https://www.organizer.com'
       };
@@ -366,7 +366,7 @@ describe('App e2e', () => {
 
   describe('Events', () => {
     describe('Create Event', () => {
-      const dto: CreateEventDto = {
+      const dto: CreateEventDTO = {
         title: 'Test Event',
         description: 'This is a test event',
         category: 'MUSIC',
@@ -398,7 +398,7 @@ describe('App e2e', () => {
     });
 
     describe('Update Event', () => {
-      const dto: UpdateEventDto = {
+      const dto: UpdateEventDTO = {
         description: 'This is an updated event description',
         ageRestriction: 18
       };
@@ -472,7 +472,7 @@ describe('App e2e', () => {
 
   describe('Tickets', () => {
     describe('Add Ticket Tier', () => {
-      const dto: AddTicketTierDto = {
+      const dto: AddTicketTierDTO = {
         name: 'VIP',
         price: 200000,
         discount: false,
@@ -504,7 +504,7 @@ describe('App e2e', () => {
     });
 
     describe('Create Discount Offer', () => {
-      const dto: CreateDiscountDto = {
+      const dto: CreateDiscountDTO = {
         discountPrice: 175000,
         discountExpiration: new Date('2025-12-20T00:00:00Z'),
         numberOfDiscountTickets: 20
@@ -522,7 +522,7 @@ describe('App e2e', () => {
     });
 
     describe('Purchase Ticket', () => {
-      const dto: PurchaseTicketDto = {
+      const dto: PurchaseTicketDTO = {
         email: 'xerdinludac@gmail.com',
         quantity: 2,
         tier: 'VIP'

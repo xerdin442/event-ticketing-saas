@@ -17,10 +17,10 @@ import {
 import { EventsService } from './events.service';
 import { AuthGuard } from '@nestjs/passport';
 import {
-  CreateEventDto,
-  ProcessTicketRefundDto,
-  UpdateEventDto,
-  VerifyTicketRefundDto
+  CreateEventDTO,
+  ProcessTicketRefundDTO,
+  UpdateEventDTO,
+  VerifyTicketRefundDTO
 } from './dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from '../common/config/upload';
@@ -89,7 +89,7 @@ export class EventsController {
     })
   )
   async createEvent(
-    @Body() dto: CreateEventDto,
+    @Body() dto: CreateEventDTO,
     @GetUser() user: User,
     @UploadedFile() poster: Express.Multer.File
   ): Promise<{ event: Event }> {
@@ -127,7 +127,7 @@ export class EventsController {
     })
   )
   async updateEvent(
-    @Body() dto: UpdateEventDto,
+    @Body() dto: UpdateEventDTO,
     @GetUser() user: User,
     @Param('eventId', ParseIntPipe) eventId: number,
     @UploadedFile() poster?: Express.Multer.File
@@ -186,7 +186,7 @@ export class EventsController {
   @HttpCode(HttpStatus.OK)
   @Post(':eventId/refund/verify')
   async verifyTicketRefund(
-    @Body() dto: VerifyTicketRefundDto,
+    @Body() dto: VerifyTicketRefundDTO,
   ): Promise<{ requestId: string; message: string }>  {
     try {
       const { requestId, email } = await this.eventsService.verifyTicketRefund(dto);
@@ -204,7 +204,7 @@ export class EventsController {
 
   @HttpCode(HttpStatus.OK)
   @Post(':eventId/refund/process')
-  async processTicketRefund(@Body() dto: ProcessTicketRefundDto): Promise<{ message: string }>  {
+  async processTicketRefund(@Body() dto: ProcessTicketRefundDTO): Promise<{ message: string }>  {
     try {
       const email = await this.eventsService.processTicketRefund(dto);
       logger.info(`[${this.context}] Ticket refund processed by ${email}.\n`);

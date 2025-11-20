@@ -1,10 +1,10 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import {
-  CreateEventDto,
-  VerifyTicketRefundDto,
-  UpdateEventDto,
-  ProcessTicketRefundDto,
+  CreateEventDTO,
+  VerifyTicketRefundDTO,
+  UpdateEventDTO,
+  ProcessTicketRefundDTO,
 } from './dto';
 import axios from 'axios';
 import { Event, EventCategory } from '@prisma/client';
@@ -52,7 +52,7 @@ export class EventsService {
   }
 
   async createEvent(
-    dto: CreateEventDto,
+    dto: CreateEventDTO,
     userId: number,
     poster: string
   ): Promise<Event> {
@@ -144,7 +144,7 @@ export class EventsService {
   }
 
   async updateEvent(
-    dto: UpdateEventDto,
+    dto: UpdateEventDTO,
     eventId: number,
     poster?: string
   ): Promise<Event> {
@@ -328,7 +328,7 @@ export class EventsService {
     }
   }
 
-  async verifyTicketRefund(dto: VerifyTicketRefundDto): Promise<{ requestId: string; email: string }> {
+  async verifyTicketRefund(dto: VerifyTicketRefundDTO): Promise<{ requestId: string; email: string }> {
     try {
       const cacheResult = await this.redis.get(`ticket_refund:${dto.requestId}`);
       if (!cacheResult) throw new BadRequestException('Invalid or expired request ID');
@@ -350,7 +350,7 @@ export class EventsService {
     }
   }
 
-  async processTicketRefund(dto: ProcessTicketRefundDto) {
+  async processTicketRefund(dto: ProcessTicketRefundDTO) {
     try {
       const cacheResult = await this.redis.get(`ticket_refund:${dto.requestId}`);
       if (!cacheResult) throw new BadRequestException('Invalid or expired request ID');

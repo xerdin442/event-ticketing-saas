@@ -16,7 +16,7 @@ import logger from '@src/common/logger';
 import { WhatsappApiKeyGuard } from '@src/custom/guards/whatsapp.guard';
 import { EventFilterDTO } from './dto';
 import { TicketsService } from '@src/tickets/tickets.service';
-import { PurchaseTicketDto } from '@src/tickets/dto';
+import { PurchaseTicketDTO } from '@src/tickets/dto';
 
 @UseGuards(WhatsappApiKeyGuard)
 @Controller('whatsapp/events')
@@ -88,7 +88,7 @@ export class WhatsappController {
   @Post(':eventId/tickets/purchase')
   async initiateTicketPurchase(
     @Param('eventId', ParseIntPipe) eventId: number,
-    @Body() dto: PurchaseTicketDto,
+    @Body() dto: PurchaseTicketDTO,
   ): Promise<{ checkout: string }> {
     try {
       return { checkout: await this.ticketsService.purchaseTicket(dto, eventId) };

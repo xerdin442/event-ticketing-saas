@@ -1,6 +1,6 @@
 import { IsString, IsNotEmpty, IsOptional } from "class-validator";
 
-export class CreateOrganizerProfileDto {
+export class CreateOrganizerProfileDTO {
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -42,7 +42,7 @@ export class CreateOrganizerProfileDto {
   website?: string;
 }
 
-export class UpdateOrganizerProfileDto {
+export class UpdateOrganizerProfileDTO {
   @IsString()
   @IsOptional()
   name?: string;

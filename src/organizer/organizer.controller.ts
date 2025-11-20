@@ -3,7 +3,7 @@ import { OrganizerService } from './organizer.service';
 import { User, Organizer } from '@prisma/client';
 import logger from '@src/common/logger';
 import { GetUser } from '@src/custom/decorators/user.decorator';
-import { CreateOrganizerProfileDto, UpdateOrganizerProfileDto } from './dto';
+import { CreateOrganizerProfileDTO, UpdateOrganizerProfileDTO } from './dto';
 import { AuthGuard } from '@nestjs/passport';
 import { TokenBlacklistGuard } from '@src/custom/guards/token.guard';
 
@@ -31,7 +31,7 @@ export class OrganizerController {
   @Post('profile')
   async createProfile(
     @GetUser() user: User,
-    @Body() dto: CreateOrganizerProfileDto
+    @Body() dto: CreateOrganizerProfileDTO
   ): Promise<{ organizer: Organizer }> {
     try {
       const organizer = await this.organizerService.createProfile(user.id, dto);
@@ -48,7 +48,7 @@ export class OrganizerController {
   @Patch('profile')
   async updateProfile(
     @GetUser() user: User,
-    @Body() dto: UpdateOrganizerProfileDto
+    @Body() dto: UpdateOrganizerProfileDTO
   ): Promise<{ organizer: Organizer }> {
     try {
       const organizer = await this.organizerService.updateProfile(user.id, dto);

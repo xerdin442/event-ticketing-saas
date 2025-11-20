@@ -2,10 +2,10 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import * as argon from 'argon2'
 import {
-  CreateUserDto,
-  LoginDto,
-  NewPasswordDto,
-  VerifyOTPDto
+  CreateUserDTO,
+  LoginDTO,
+  NewPasswordDTO,
+  VerifyOTPDTO
 } from './dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { JwtService } from '@nestjs/jwt';
@@ -26,7 +26,7 @@ export class AuthService {
     @InjectQueue('auth-queue') private readonly authQueue: Queue
   ) { }
 
-  async signup(dto: CreateUserDto)
+  async signup(dto: CreateUserDTO)
     : Promise<{ user: User, token: string }> {
     try {
       const { email, password } = dto;
@@ -63,7 +63,7 @@ export class AuthService {
     }
   }
 
-  async login(dto: LoginDto): Promise<string> {
+  async login(dto: LoginDTO): Promise<string> {
     try {
       const user = await this.prisma.user.findUnique({
         where: { email: dto.email }
@@ -163,7 +163,7 @@ export class AuthService {
     }
   }
 
-  async verifyOTP(dto: VerifyOTPDto): Promise<string> {
+  async verifyOTP(dto: VerifyOTPDTO): Promise<string> {
     try {
       // Verify password reset ID
       const cacheKey = `password_reset:${dto.resetId}`
@@ -187,7 +187,7 @@ export class AuthService {
     }
   }
 
-  async changePassword(dto: NewPasswordDto): Promise<string> {
+  async changePassword(dto: NewPasswordDTO): Promise<string> {
     try {
       // Verify password reset ID
       const cacheKey = `password_reset:${dto.resetId}`

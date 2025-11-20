@@ -1,10 +1,10 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import {
-  AddTicketTierDto,
-  CreateDiscountDto,
-  PurchaseTicketDto,
-  ValidateTicketDto
+  AddTicketTierDTO,
+  CreateDiscountDTO,
+  PurchaseTicketDTO,
+  ValidateTicketDTO
 } from './dto';
 import { PaymentsService } from '../payments/payments.service';
 import { InjectQueue } from '@nestjs/bull';
@@ -40,7 +40,7 @@ export class TicketsService {
     }
   }
 
-  async addTicketTier(dto: AddTicketTierDto, eventId: number): Promise<TicketTier> {
+  async addTicketTier(dto: AddTicketTierDTO, eventId: number): Promise<TicketTier> {
     try {
       const event = await this.prisma.event.findUnique({
         where: { id: eventId },
@@ -102,7 +102,7 @@ export class TicketsService {
     }
   }
 
-  async createDiscount(tierId: number, dto: CreateDiscountDto): Promise<void> {
+  async createDiscount(tierId: number, dto: CreateDiscountDTO): Promise<void> {
     try {
       const ticketTier = await this.prisma.ticketTier.findUnique({
         where: { id: tierId }
@@ -170,7 +170,7 @@ export class TicketsService {
     }
   }
 
-  async purchaseTicket(dto: PurchaseTicketDto, eventId: number): Promise<string> {
+  async purchaseTicket(dto: PurchaseTicketDTO, eventId: number): Promise<string> {
     try {
       let lockId: string = "";
       let amount: number;
@@ -294,7 +294,7 @@ export class TicketsService {
     }
   }
 
-  async validateTicket(dto: ValidateTicketDto): Promise<void> {
+  async validateTicket(dto: ValidateTicketDTO): Promise<void> {
     try {
       const ticket = await this.prisma.ticket.findUnique({
         where: { accessKey: dto.accessKey }

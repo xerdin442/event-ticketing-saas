@@ -10,10 +10,10 @@ import {
   UseGuards} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
-  CreateUserDto,
-  LoginDto,
-  NewPasswordDto,
-  VerifyOTPDto
+  CreateUserDTO,
+  LoginDTO,
+  NewPasswordDTO,
+  VerifyOTPDTO
 } from './dto';
 import { User } from '@prisma/client';
 import logger from '../common/logger';
@@ -30,7 +30,7 @@ export class AuthController {
 
   @Post('signup')
   async signup(
-    @Body() dto: CreateUserDto,
+    @Body() dto: CreateUserDTO,
   ): Promise<{ user: User, token: string }> {
     try {
       const response = await this.authService.signup(dto);
@@ -45,7 +45,7 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  async login(@Body() dto: LoginDto): Promise<{ token: string }> {
+  async login(@Body() dto: LoginDTO): Promise<{ token: string }> {
     try {
       const token = await this.authService.login(dto);
       logger.info(`[${this.context}] User login successful. Email: ${dto.email}\n`);
@@ -119,7 +119,7 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('password/reset/verify')
-  async verifyOTP(@Body() dto: VerifyOTPDto): Promise<{ message: string }> {
+  async verifyOTP(@Body() dto: VerifyOTPDTO): Promise<{ message: string }> {
     try {
       const email = await this.authService.verifyOTP(dto);
       logger.info(`[${this.context}] OTP verification successful. Email: ${email}\n`);
@@ -134,7 +134,7 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('password/reset/new')
-  async changePassword(@Body() dto: NewPasswordDto): Promise<{ message: string }> {
+  async changePassword(@Body() dto: NewPasswordDTO): Promise<{ message: string }> {
     try {
       const email = await this.authService.changePassword(dto);
       logger.info(`[${this.context}] Password reset completed by ${email}.\n`);

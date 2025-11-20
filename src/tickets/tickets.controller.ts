@@ -16,10 +16,10 @@ import {
 import { TicketsService } from './tickets.service';
 import { AuthGuard } from '@nestjs/passport';
 import {
-  AddTicketTierDto,
-  CreateDiscountDto,
-  PurchaseTicketDto,
-  ValidateTicketDto
+  AddTicketTierDTO,
+  CreateDiscountDTO,
+  PurchaseTicketDTO,
+  ValidateTicketDTO
 } from './dto';
 import { TokenBlacklistGuard } from '../custom/guards/token.guard';
 import { TicketTier } from '@prisma/client';
@@ -54,7 +54,7 @@ export class TicketsController {
   @Post('add')
   @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'), EventOrganizerGuard)
   async addTicketTier(
-    @Body() dto: AddTicketTierDto,
+    @Body() dto: AddTicketTierDTO,
     @Param('eventId', ParseIntPipe) eventId: number
   ): Promise<{ tier: TicketTier }> {
     try {
@@ -85,7 +85,7 @@ export class TicketsController {
   @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'), EventOrganizerGuard)
   async createDiscount(
     @Param('tierId', ParseIntPipe) tierId: number,
-    @Body() dto: CreateDiscountDto,
+    @Body() dto: CreateDiscountDTO,
   ): Promise<{ message: string }> {
     try {
       await this.ticketsService.createDiscount(tierId, dto);
@@ -114,7 +114,7 @@ export class TicketsController {
   @HttpCode(HttpStatus.OK)
   @Post('purchase')
   async purchaseTicket(
-    @Body() dto: PurchaseTicketDto,
+    @Body() dto: PurchaseTicketDTO,
     @Param('eventId', ParseIntPipe) eventId: number,
     @Headers('Idempotency-Key') idempotencyKey: string
   ): Promise<{ checkout: string }> {
@@ -148,7 +148,7 @@ export class TicketsController {
   @HttpCode(HttpStatus.OK)
   @Post('validate')
   @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'), EventOrganizerGuard)
-  async validateTicket(@Body() dto: ValidateTicketDto): Promise<{ message: string }> {
+  async validateTicket(@Body() dto: ValidateTicketDTO): Promise<{ message: string }> {
     try {
       await this.ticketsService.validateTicket(dto);
       return { message: 'Ticket validated successfully' };
