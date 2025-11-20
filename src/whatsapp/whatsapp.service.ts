@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { Event, EventCategory } from '@prisma/client';
 import { DbService } from '@src/db/db.service';
 import { EventFilterDTO } from './dto';
-import { PaymentStatus, WhatsappWebhookNotification } from '@src/common/types';
+import { WhatsappWebhookNotification } from '@src/common/types';
 import { createHmac } from 'crypto';
 import { Secrets } from '@src/common/secrets';
 import axios, { AxiosError } from 'axios';
@@ -60,17 +60,16 @@ export class WhatsappService {
 
   async sendWebhookNotification(details: WhatsappWebhookNotification): Promise<void> {
     const MAX_RETRIES = 3;
-    const WEBHOOK_TIMEOUT = 45000; // 45 seconds
+    const WEBHOOK_TIMEOUT = 30000; // 30 seconds
 
-    const { status, email, phoneId, reference, transactionRef } = details;
+    const { status, email, phoneId, reference, transactionRef, reason } = details;
     const retryKey = `whatsapp_webhook_retry:${reference}`;
 
     try {
-      const payload = JSON.stringify({ email, status, phoneId, reference });
+      const payload = JSON.stringify({ email, status, phoneId, reference, reason });
       const signature = createHmac('sha256', Secrets.WHATSAPP_BOT_API_KEY)
-        .update(payload)
+        .update(reference)
         .digest('hex');
-
 
       // Send webhook to WhatsApp bot server
       const response = await axios.post(Secrets.WHATSAPP_WEBHOOK_URL, payload, {
@@ -138,7 +137,7 @@ export class WhatsappService {
       let currentRetries = parseInt(cacheResult as string) || 0;
 
       if (currentRetries >= MAX_RETRIES) {
-        logger.error(
+        logger.warn(
           `Retries exhausted for WhatsApp webhook notification. Reference: ${reference}`
         );
 
@@ -166,12 +165,12 @@ export class WhatsappService {
       const backoffDelay = calculateBackoffDelay(currentRetries);
 
       logger.warn(
-        `Timeout occurred. Retrying WhatsApp webhook notification in ${backoffDelay / 60000} minutes`
+        `Timeout occurred. Retrying WhatsApp webhook notification in ${backoffDelay / 60000} minutes...`
       );
 
       await new Promise((resolve) => setTimeout(resolve, backoffDelay));
 
-      // Initiate retry request
+      // Retry webhook notification
       return this.sendWebhookNotification(details);
     }
   }
