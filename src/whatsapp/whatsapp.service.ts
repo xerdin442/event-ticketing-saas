@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Event, EventCategory } from '@prisma/client';
+import { Event } from '@prisma/client';
 import { DbService } from '@src/db/db.service';
 import { EventFilterDTO } from './dto';
 import { WhatsappWebhookNotification } from '@src/common/types';
@@ -19,39 +19,44 @@ export class WhatsappService {
 
   async findEventsByFilters(dto: EventFilterDTO, pageSize = 7): Promise<Event[]> {
     try {
-      const categoryFilters: { category: EventCategory }[] = [];
-      if (dto.categories.length > 0) {
-        for (let i = 0; i < dto.categories.length - 1; i++) {
-          categoryFilters.push({ category: dto.categories[i] });
-        }
-      };
+      const categories = dto.categories ?? [];
+      const orFilter: Record<string, any>[] = [];
+
+      if (categories.length > 0) {
+        orFilter.push(...categories.map((c) => ({ category: c })));
+      }
+
+      if (dto.title) {
+        orFilter.push({ title: { contains: dto.title, mode: 'insensitive' } });
+      }
+
+      if (dto.location) {
+        orFilter.push({ address: { contains: dto.location, mode: 'insensitive' } });
+      }
+
+      if (dto.venue) {
+        orFilter.push({ venue: { contains: dto.venue, mode: 'insensitive' } });
+      }
+
+      const dateFilter =
+        dto.startDate || dto.endDate
+          ? {
+            gte: dto.startDate ? new Date(dto.startDate) : undefined,
+            lte: dto.endDate ? new Date(dto.endDate) : undefined,
+          }
+          : undefined;
 
       const events = await this.prisma.event.findMany({
         where: {
-          AND: [
-            { status: 'UPCOMING' },
-            {
-              OR: categoryFilters,
-              title: {
-                contains: dto.title,
-              },
-              date: {
-                gte: new Date(dto.startDate),
-                lte: new Date(dto.endDate),
-              },
-              address: {
-                contains: dto.location,
-              },
-              venue: {
-                contains: dto.venue,
-              }
-            },
-          ]
+          status: 'UPCOMING',
+          ...(orFilter.length > 0 ? { OR: orFilter } : {}),
+          ...(dateFilter ? { date: dateFilter } : {}),
         },
-        skip: (dto.page - 1) * pageSize,
+        skip: ((dto.page ?? 1) - 1) * pageSize,
         take: pageSize,
         orderBy: { date: 'desc' },
       });
+
       return events;
     } catch (error) {
       throw error;
