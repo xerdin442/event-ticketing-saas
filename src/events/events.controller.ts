@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseFloatPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -52,8 +53,8 @@ export class EventsController {
 
   @Get('nearby')
   async findNearbyEvents(
-    @Query('latitude', ParseIntPipe) latitude: number,
-    @Query('longitude', ParseIntPipe) longitude: number,
+    @Query('latitude', ParseFloatPipe) latitude: number,
+    @Query('longitude', ParseFloatPipe) longitude: number,
   ): Promise<{ events: Event[] }> {
     try {
       if (!latitude || !longitude) {

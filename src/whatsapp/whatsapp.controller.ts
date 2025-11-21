@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseFloatPipe,
   ParseIntPipe,
   Post,
   Query,
@@ -53,9 +54,8 @@ export class WhatsappController {
 
   @Get('nearby')
   async findNearbyEvents(
-    @Query('latitude', ParseIntPipe) latitude: number,
-    @Query('longitude', ParseIntPipe) longitude: number,
-    @Query('page', ParseIntPipe) page: number,
+    @Query('latitude', ParseFloatPipe) latitude: number,
+    @Query('longitude', ParseFloatPipe) longitude: number,
   ): Promise<{ events: Event[] }> {
     try {
       if (!latitude || !longitude) {
@@ -63,10 +63,8 @@ export class WhatsappController {
       }
 
       const nearbyEvents = await this.eventsService.findNearbyEvents(latitude, longitude);
-      const startIndex = (page - 1) * 7;
-      const endIndex = page * 7;
 
-      return { events: nearbyEvents.slice(startIndex, endIndex) };
+      return { events: nearbyEvents.slice(0, 7) };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while fetching nearby events. Error: ${error.message}\n`);
       throw error;
