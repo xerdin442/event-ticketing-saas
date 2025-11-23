@@ -7,7 +7,6 @@ import { BullModule } from '@nestjs/bull';
 import { AuthProcessor } from '../common/workers/auth.processor';
 import { Secrets } from '../common/secrets';
 import { PaymentsService } from '../payments/payments.service';
-import { MetricsService } from '../metrics/metrics.service';
 import { MailService } from '@src/common/config/mail';
 
 @Module({
@@ -26,7 +25,6 @@ import { MailService } from '@src/common/config/mail';
     JwtStrategy,
     AuthProcessor,
     PaymentsService,
-    MetricsService,
     MailService,
   ]
 })
