@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Delete,
   Get,
@@ -11,7 +12,8 @@ import {
   Param,
   ParseIntPipe,
   Post,
-  UseGuards
+  UseGuards,
+  UseInterceptors
 } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -28,6 +30,7 @@ import { RedisClientType } from 'redis';
 import { EventOrganizerGuard } from '@src/custom/guards/organizer.guard';
 import { REDIS_CLIENT } from '@src/redis/redis.module';
 
+@UseInterceptors(ClassSerializerInterceptor)
 @Controller('events/:eventId/tickets')
 export class TicketsController {
   private readonly context: string = TicketsController.name;

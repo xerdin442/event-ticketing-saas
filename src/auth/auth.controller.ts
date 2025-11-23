@@ -1,13 +1,15 @@
 import {
   BadRequestException,
   Body,
+  ClassSerializerInterceptor,
   Controller,
   HttpCode,
   HttpStatus,
   Post,
   Query,
   Req,
-  UseGuards} from '@nestjs/common';
+  UseGuards,
+  UseInterceptors} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import {
   CreateUserDTO,
@@ -22,6 +24,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import { GetUser } from '@src/custom/decorators/user.decorator';
 
+@UseInterceptors(ClassSerializerInterceptor)
 @Controller('auth')
 export class AuthController {
   private context: string = AuthController.name;

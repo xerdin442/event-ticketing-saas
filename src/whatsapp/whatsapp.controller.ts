@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Get,
   Param,
@@ -8,7 +9,8 @@ import {
   ParseIntPipe,
   Post,
   Query,
-  UseGuards
+  UseGuards,
+  UseInterceptors
 } from '@nestjs/common';
 import { EventsService } from '@src/events/events.service';
 import { WhatsappService } from './whatsapp.service';
@@ -19,6 +21,7 @@ import { EventFilterDTO } from './dto';
 import { TicketsService } from '@src/tickets/tickets.service';
 import { PurchaseTicketDTO } from '@src/tickets/dto';
 
+@UseInterceptors(ClassSerializerInterceptor)
 @UseGuards(WhatsappApiKeyGuard)
 @Controller('whatsapp/events')
 export class WhatsappController {

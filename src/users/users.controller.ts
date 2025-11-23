@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Delete,
   Get,
@@ -9,7 +10,8 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards} from '@nestjs/common';
+  UseGuards,
+  UseInterceptors} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Event, Ticket, User } from '@prisma/client';
 import { GetUser } from '../custom/decorators/user.decorator';
@@ -19,6 +21,7 @@ import logger from '../common/logger';
 import { MetricsService } from '@src/metrics/metrics.service';
 import { TokenBlacklistGuard } from '@src/custom/guards/token.guard';
 
+@UseInterceptors(ClassSerializerInterceptor)
 @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
 @Controller('user')
 export class UserController {

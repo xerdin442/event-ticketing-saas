@@ -1,4 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  ClassSerializerInterceptor,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+  UseInterceptors
+} from '@nestjs/common';
 import { OrganizerService } from './organizer.service';
 import { User, Organizer } from '@prisma/client';
 import logger from '@src/common/logger';
@@ -7,6 +18,7 @@ import { CreateOrganizerProfileDTO, UpdateOrganizerProfileDTO } from './dto';
 import { AuthGuard } from '@nestjs/passport';
 import { TokenBlacklistGuard } from '@src/custom/guards/token.guard';
 
+@UseInterceptors(ClassSerializerInterceptor)
 @Controller('organizer')
 export class OrganizerController {
   private readonly context: string = OrganizerController.name;

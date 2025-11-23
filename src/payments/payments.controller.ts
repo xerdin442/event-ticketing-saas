@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  ClassSerializerInterceptor,
   Controller,
   Get,
   HttpCode,
   HttpStatus,
   Post,
-  Req} from '@nestjs/common';
+  Req,
+  UseInterceptors} from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import logger from '../common/logger';
 import { Request } from 'express';
@@ -14,6 +16,7 @@ import { Secrets } from '../common/secrets';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 
+@UseInterceptors(ClassSerializerInterceptor)
 @Controller('payments')
 export class PaymentsController {
   private readonly context: string = PaymentsController.name;

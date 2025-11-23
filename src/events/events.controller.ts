@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Body,
+  ClassSerializerInterceptor,
   Controller,
   Get,
   HttpCode,
@@ -32,6 +33,7 @@ import { TokenBlacklistGuard } from '../custom/guards/token.guard';
 import { EventCategoryPipe } from '@src/custom/pipes/event-category.pipe';
 import { EventOrganizerGuard } from '@src/custom/guards/organizer.guard';
 
+@UseInterceptors(ClassSerializerInterceptor)
 @Controller('events')
 export class EventsController {
   private readonly context: string = EventsController.name;
