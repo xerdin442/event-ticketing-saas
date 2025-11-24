@@ -77,7 +77,7 @@ export class WhatsappService {
         .digest('hex');
 
       // Send webhook to WhatsApp bot server
-      const response = await axios.post(Secrets.WHATSAPP_WEBHOOK_URL, payload, {
+      const response = await axios.post(Secrets.WHATSAPP_BOT_WEBHOOK_URL, payload, {
         headers: {
           'Content-Type': 'application/json',
           'x-webhook-signature': signature,
