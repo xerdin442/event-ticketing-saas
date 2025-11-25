@@ -1,5 +1,7 @@
 import { EventCategory } from "@prisma/client";
+import { Type } from "class-transformer";
 import { 
+  IsDate,
   IsEnum,
   IsNotEmpty,
   IsNumber,
@@ -20,17 +22,20 @@ export class CreateEventDTO {
   @IsNotEmpty()
   category: EventCategory;
 
-  @IsString()
+  @Type(() => Date)
+  @IsDate()
   @IsNotEmpty()
-  date: string;
+  date: Date;
 
-  @IsString()
+  @Type(() => Date)
+  @IsDate()
   @IsNotEmpty()
-  startTime: string;
+  startTime: Date;
 
-  @IsString()
+  @Type(() => Date)
+  @IsDate()
   @IsNotEmpty()
-  endTime: string;
+  endTime: Date;
 
   @IsNumber()
   @IsOptional()
@@ -62,17 +67,20 @@ export class UpdateEventDTO {
   @IsOptional()
   category?: EventCategory;
 
-  @IsString()
+  @Type(() => Date)
+  @IsDate()
   @IsOptional()
-  date?: string;
+  date?: Date;
 
-  @IsString()
+  @Type(() => Date)
+  @IsDate()
   @IsOptional()
-  startTime?: string; 
+  startTime?: Date; 
 
-  @IsString()
+  @Type(() => Date)
+  @IsDate()
   @IsOptional()
-  endTime?: string;
+  endTime?: Date;
 
   @IsNumber()
   @IsOptional()

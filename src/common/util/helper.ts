@@ -1,4 +1,4 @@
-import { ThrottlerModuleOptions } from "@nestjs/throttler";
+import { ThrottlerModuleOptions, ThrottlerOptions } from "@nestjs/throttler";
 import { Secrets } from "../secrets";
 
 export const formatDate = (date: Date, output: 'date' | 'time'): string => {
@@ -18,15 +18,17 @@ export const formatDate = (date: Date, output: 'date' | 'time'): string => {
 };
 
 export const applyThrottlerConfig = (): ThrottlerModuleOptions => {
-  const throttles = [{
-    name: 'Seconds',
-    ttl: 1000,
-    limit: Secrets.RATE_LIMITING_PER_SECOND
-  }, {
-    name: 'Minutes',
-    ttl: 60000,
-    limit: Secrets.RATE_LIMITING_PER_MINUTE
-  }];
+  const throttles: ThrottlerOptions[] = [
+    {
+      name: 'Seconds',
+      ttl: 1000,
+      limit: Secrets.RATE_LIMITING_PER_SECOND
+    }, {
+      name: 'Minutes',
+      ttl: 60000,
+      limit: Secrets.RATE_LIMITING_PER_MINUTE
+    }
+  ];
 
   return Secrets.NODE_ENV !== 'test' ? throttles : [];
 };
