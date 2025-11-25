@@ -44,7 +44,7 @@ export class AuthService {
       const payload = { sub: user.id, email };
 
       // Send an onboarding email to the new user
-      await this.authQueue.add('signup', email);
+      await this.authQueue.add('signup', { email });
 
       delete user.password; // Sanitize user details
 
