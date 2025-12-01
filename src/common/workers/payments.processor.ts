@@ -256,7 +256,7 @@ export class PaymentsProcessor {
           // Record ticket sale to update event ranking in trending events
           const trendingWindow = Date.now() - (72 * 60 * 60 * 1000);
           this.redis.multi()
-            .zAdd(`event_log:${eventId}`, [{ score: trendingWindow, value: ticket.id.toString() }]) // Add new entry
+            .zAdd(`event_log:${eventId}`, [{ score: Date.now(), value: ticket.id.toString() }]) // Add new entry
             .zRemRangeByScore(`event_log:${eventId}`, 0, trendingWindow) // Remove all entries older than 72 hours
             .exec();
         };

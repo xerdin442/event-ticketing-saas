@@ -89,6 +89,8 @@ export class TasksService {
 
       // Rank the events by ticket sales within the last 72 hours
       await this.redis.zAdd('trending_events', rankingUpdates);
+
+      logger.info(`[${this.context}] Trending event rankings updated successfully.\n`);
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while updating trending event rankings. Error: ${error.message}\n`);
       throw error;
