@@ -73,7 +73,7 @@ export class WhatsappService {
     try {
       const payload = JSON.stringify({ email, status, phoneId, reference, reason });
       const signature = createHmac('sha256', Secrets.WHATSAPP_BOT_API_KEY)
-        .update(reference)
+        .update(JSON.stringify(reference))
         .digest('hex');
 
       // Send webhook to WhatsApp bot server
