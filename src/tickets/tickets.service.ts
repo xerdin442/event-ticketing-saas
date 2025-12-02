@@ -318,4 +318,10 @@ export class TicketsService {
       throw error;
     }
   }
+
+  async populateMarketplace() {}
+
+  async createListing() {}
+
+  async deleteteListing() {}
 }
