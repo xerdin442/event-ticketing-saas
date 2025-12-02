@@ -160,4 +160,13 @@ export class TicketsController {
       throw error;
     }
   }
+
+  @Get('marketplace')
+  async populateMarketplace() {}
+
+  @Post('listing')
+  async createListing() {}
+
+  @Delete('listing')
+  async deleteteListing() {}
 }
