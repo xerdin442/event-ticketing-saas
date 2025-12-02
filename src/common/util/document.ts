@@ -36,13 +36,13 @@ export const generateTicketPDF = (
       doc.moveDown();
 
       // Details
-      doc.text(`Event: ${event.title}`);
+      doc.text(`Event: ${event.title.toUpperCase()}`);
       doc.text(`Time: ${formatDate(event.startTime, 'time')} - ${formatDate(event.endTime, 'time')}`);
       doc.text(`Date: ${formatDate(event.date, 'date')}`);
       doc.moveDown();
 
       doc.fontSize(16).fillColor('black').text(`Ticket: ${ticket.tier}`);
-      doc.text(`Price: $${ticket.price}`);
+      doc.text(`Price: ${ticket.price}`);
       doc.text(`Access Key: ${ticket.accessKey}`);
       doc.moveDown();
 
