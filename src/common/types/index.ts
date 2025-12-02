@@ -41,6 +41,14 @@ export interface TicketLockInfo {
   numberOfTickets: number;
 }
 
+export interface TicketDetails {
+  price: number;
+  tier: string;
+  eventId: number;
+  attendee: string;
+  discountPrice?: number
+}
+
 export interface PaystackCheckoutResponse {
   authorization_url: string;
   access_code: string;

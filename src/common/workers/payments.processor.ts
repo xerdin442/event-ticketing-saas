@@ -5,19 +5,18 @@ import { PaymentsGateway } from "@src/payments/payments.gateway";
 import { DbService } from "@src/db/db.service";
 import { PaymentsService } from "@src/payments/payments.service";
 import { randomUUID } from "crypto";
-import * as qrcode from "qrcode";
 import { MailService } from "../config/mail";
 import logger from "../logger";
-import { generateTicketPDF } from "../util/document";
 import { MetricsService } from "@src/metrics/metrics.service";
 import { Secrets } from "../secrets";
 import { Attachment } from "resend";
 import { RedisClientType } from "redis";
 import { formatDate } from "../util/helper";
-import { TicketLockInfo, WhatsappWebhookNotification } from "../types";
+import { TicketDetails, TicketLockInfo, WhatsappWebhookNotification } from "../types";
 import { TicketTier } from "@prisma/client";
 import { REDIS_CLIENT } from "@src/redis/redis.module";
 import { WhatsappService } from "@src/whatsapp/whatsapp.service";
+import { TicketsService } from "@src/tickets/tickets.service";
 
 @Injectable()
 @Processor('payments-queue')
@@ -30,6 +29,7 @@ export class PaymentsProcessor {
     private readonly payments: PaymentsService,
     private readonly metrics: MetricsService,
     private readonly mailService: MailService,
+    private readonly ticketsService: TicketsService,
     private readonly whatsappService: WhatsappService,
     @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
   ) {};
@@ -235,31 +235,16 @@ export class PaymentsProcessor {
         // Create the required number of tickets
         let pdfs: Attachment[] = [];
         for (let i = 1; i <= quantity; i++) {
-          const accessKey = randomUUID().split('-')[4]
-          const qrcodeImage = await qrcode.toDataURL(accessKey, { errorCorrectionLevel: 'H' })
+          const details: TicketDetails = {
+            attendee,
+            eventId,
+            price,
+            tier: tier.name,
+            discountPrice: discount && (amount / quantity),
+          }
 
-          const ticket = await this.prisma.ticket.create({
-            data: {
-              accessKey,
-              price,
-              tier: tier.name,
-              discountPrice: discount && (amount / quantity),
-              attendee,
-              eventId
-            }
-          });
-
-          // Generate ticket PDF and configure email attachment
-          const ticketPDF = await generateTicketPDF(ticket, qrcodeImage, event);
+          const ticketPDF = await this.ticketsService.createTicket(details);
           pdfs.push(ticketPDF);
-
-          // Record ticket sale to update event ranking in trending events
-          const currentTime = Date.now()
-          const trendingWindow = currentTime - (72 * 60 * 60 * 1000);
-          this.redis.multi()
-            .zAdd(`event_log:${eventId}`, [{ score: currentTime, value: ticket.id.toString() }]) // Add new entry
-            .zRemRangeByScore(`event_log:${eventId}`, 0, trendingWindow) // Remove all entries older than 72 hours
-            .exec();
         };
 
         // Send an email with the ticket PDFs to the attendee

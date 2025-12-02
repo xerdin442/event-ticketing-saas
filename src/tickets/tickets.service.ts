@@ -15,8 +15,11 @@ import { EventsService } from '@src/events/events.service';
 import { RedisClientType } from 'redis';
 import { randomUUID } from 'crypto';
 import * as argon from 'argon2';
-import { TicketLockInfo } from '@src/common/types';
+import * as qrcode from "qrcode";
+import { TicketDetails, TicketLockInfo } from '@src/common/types';
 import { REDIS_CLIENT } from '@src/redis/redis.module';
+import { Attachment } from 'resend';
+import { generateTicketPDF } from '@src/common/util/document';
 
 @Injectable()
 export class TicketsService {
@@ -290,6 +293,50 @@ export class TicketsService {
       });
 
       return authorization_url;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async createTicket(details: TicketDetails): Promise<Attachment> {
+    try {
+      const { eventId } = details;
+
+      // Generate and encode unique access key in QRcode image
+      const accessKey = randomUUID().split('-')[4]
+      const qrcodeImage = await qrcode.toDataURL(accessKey, { errorCorrectionLevel: 'H' })
+
+      // Create new ticket
+      const ticket = await this.prisma.ticket.create({
+        data: {
+          accessKey,
+          ...details,
+        }
+      });
+
+      // Generate ticket PDF and configure email attachment
+      const event = await this.prisma.event.findUniqueOrThrow({
+        where: { id: eventId }
+      });
+      const ticketPDF = await generateTicketPDF(ticket, qrcodeImage, event);
+
+      // Ensure auto-update of status when ticket expires
+      const updateDelay = (new Date(event.endTime).getTime() + 1500) - new Date().getTime();
+      await this.ticketsQueue.add(
+        'ticket-status-update',
+        { ticketId: ticket.id },
+        { delay: Math.max(0, updateDelay) }
+      );
+
+      // Record ticket sale to update event ranking in trending events
+      const currentTime = Date.now()
+      const trendingWindow = currentTime - (72 * 60 * 60 * 1000);
+      this.redis.multi()
+        .zAdd(`event_log:${eventId}`, [{ score: currentTime, value: ticket.id.toString() }]) // Add new entry
+        .zRemRangeByScore(`event_log:${eventId}`, 0, trendingWindow) // Remove all entries older than 72 hours
+        .exec();
+
+      return ticketPDF;
     } catch (error) {
       throw error;
     }
