@@ -455,12 +455,48 @@ export class TicketsService {
     }
   }
 
-  async buyListing() { }
+  async buyListing(ticketId: number, email: string): Promise<string> {
+    try {
+      const listing = await this.prisma.listing.findUniqueOrThrow({
+        where: {
+          ticketId,
+          ticket: { status: 'LOCKED' },
+        },
+        include: {
+          ticket: {
+            select: { eventId: true }
+          }
+        }
+      });
+
+      // Initialize ticket resale
+      const { authorization_url, reference } = await this.payments.initializeTransaction(email, listing.price, { ticketId });
+
+      // Store transaction reference
+      await this.prisma.transaction.create({
+        data: {
+          amount: listing.price,
+          reference,
+          email,
+          source: "RESALE",
+          status: "TX_PENDING",
+          eventId: listing.ticket.eventId,
+        }
+      });
+
+      return authorization_url;
+    } catch (error) {
+      throw error;
+    }
+  }
 
   async deleteListing(ticketId: number): Promise<void> {
     try {
       const listing = await this.prisma.listing.findUnique({
-        where: { ticketId }
+        where: {
+          ticketId,
+          ticket: { status: 'LOCKED' },
+        }
       });
       if (!listing) {
         throw new BadRequestException('No listing found for this ticket');

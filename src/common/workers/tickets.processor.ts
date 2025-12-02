@@ -57,7 +57,7 @@ export class TicketsProcessor {
         });
 
         // Inform user of ticket expiration and removal of resale listing
-        const content = `Your ticket for ${ticket.event.title} has expired and the resale listing has been removed from the marketplace.`;
+        const content = `Your ticket for ${ticket.event.title.toUpperCase()} has expired and the resale listing has been removed from the marketplace.`;
         await this.mailService.sendEmail(ticket.attendee, 'Ticket Expiration', content);
       }
 

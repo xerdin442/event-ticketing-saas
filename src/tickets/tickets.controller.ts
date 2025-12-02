@@ -12,6 +12,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   UseGuards,
   UseInterceptors
 } from '@nestjs/common';
@@ -194,7 +195,19 @@ export class TicketsController {
   @Post(':ticketId/listing/buy')
   async buyListing(
     @Param('ticketId', ParseIntPipe) ticketId: number,
-  ) { }
+    @Query('email') email: string
+  ): Promise<{ checkout: string }> {
+    try {
+      if (!email) {
+        throw new BadRequestException('Missing required "email" parameter');
+      }
+
+      return { checkout: await this.ticketsService.buyListing(ticketId, email) };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while buying ticket from resale marketplace. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
 
   @Delete(':ticketId/listing')
   @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
