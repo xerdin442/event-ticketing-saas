@@ -34,7 +34,7 @@ export class PaymentsProcessor {
     @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
   ) {};
 
-  @Process('transaction')
+  @Process('purchase')
   async finalizeTransaction(job: Job) {
     const { eventType, metadata, transactionReference } = job.data;
     const attendee = metadata.email as string;

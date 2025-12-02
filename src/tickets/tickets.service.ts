@@ -259,6 +259,7 @@ export class TicketsService {
 
       // Configure metadata for purchase transaction
       const metadata = {
+        source: 'purchase',
         email,
         eventId,
         tierId: tier.id,
@@ -470,7 +471,11 @@ export class TicketsService {
       });
 
       // Initialize ticket resale
-      const { authorization_url, reference } = await this.payments.initializeTransaction(email, listing.price, { ticketId });
+      const metadata = {
+        source: 'resale',
+        ticketId,
+      }
+      const { authorization_url, reference } = await this.payments.initializeTransaction(email, listing.price, metadata);
 
       // Store transaction reference
       await this.prisma.transaction.create({
