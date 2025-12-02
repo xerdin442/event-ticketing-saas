@@ -11,6 +11,7 @@ datasource db {
 enum TicketStatus {
   ACTIVE
   USED
+  EXPIRED
   CANCELLED
   LOCKED
   RESOLD
@@ -215,7 +216,8 @@ model Listing {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  price Float
+  price         Float
+  recipientCode String
 
   userId Int
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)

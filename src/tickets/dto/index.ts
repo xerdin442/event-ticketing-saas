@@ -49,7 +49,7 @@ export class CreateDiscountDTO {
   @IsDate()
   @IsNotEmpty()
   discountExpiration: Date;
-  
+
   @IsNumber()
   @IsNotEmpty()
   numberOfDiscountTickets: number;
@@ -63,7 +63,7 @@ export class PurchaseTicketDTO {
   @IsString()
   @IsNotEmpty()
   tier: string;
-  
+
   @IsNumber()
   @IsNotEmpty()
   quantity: number;
@@ -77,4 +77,18 @@ export class ValidateTicketDTO {
   @IsString()
   @IsNotEmpty()
   accessKey: string;
+}
+
+export class CreateListingDTO extends ValidateTicketDTO {
+  @IsNotEmpty()
+  @IsString()
+  accountNumber: string;
+
+  @IsNotEmpty()
+  @IsString()
+  accountName: string;
+
+  @IsNotEmpty()
+  @IsString()
+  bankName: string;
 }
