@@ -10,7 +10,6 @@ import {
 import { PaymentsService } from '../payments/payments.service';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { Listing, TicketTier } from '@prisma/client';
 import { EventsService } from '@src/events/events.service';
 import { RedisClientType } from 'redis';
 import { randomUUID } from 'crypto';
@@ -20,6 +19,7 @@ import { TicketDetails, TicketLockInfo } from '@src/common/types';
 import { REDIS_CLIENT } from '@src/redis/redis.module';
 import { Attachment } from 'resend';
 import { generateTicketPDF } from '@src/common/util/document';
+import { Listing, TicketTier } from 'prisma/generated/client';
 
 @Injectable()
 export class TicketsService {

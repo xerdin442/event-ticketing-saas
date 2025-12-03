@@ -14,7 +14,7 @@ import { RedisClientType } from "redis";
 import { formatDate } from "../util/helper";
 import * as qrcode from "qrcode";
 import { TicketDetails, TicketLockInfo, WhatsappWebhookNotification } from "../types";
-import { Ticket, TicketTier } from "@prisma/client";
+import { Ticket, TicketTier } from "prisma/generated/client";
 import { REDIS_CLIENT } from "@src/redis/redis.module";
 import { WhatsappService } from "@src/whatsapp/whatsapp.service";
 import { TicketsService } from "@src/tickets/tickets.service";

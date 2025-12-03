@@ -1,4 +1,4 @@
-import { EventCategory } from "@prisma/client";
+import { EventCategory } from "prisma/generated/enums";
 import { IsArray, IsEnum, IsOptional } from "class-validator";
 
 export class UpdateProfileDTO {

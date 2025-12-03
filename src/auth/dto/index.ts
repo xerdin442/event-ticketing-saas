@@ -1,4 +1,3 @@
-import { EventCategory } from "@prisma/client";
 import { 
   IsArray,
   IsEmail,
@@ -7,6 +6,7 @@ import {
   IsString,
   IsStrongPassword
 } from "class-validator";
+import { EventCategory } from "prisma/generated/enums";
 
 export class CreateUserDTO {
   @IsEmail({}, { message: 'Please enter a valid email address' })

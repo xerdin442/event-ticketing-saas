@@ -1,4 +1,4 @@
-import { EventCategory } from "@prisma/client";
+import { EventCategory } from "prisma/generated/enums";
 import { Type } from "class-transformer";
 import { 
   IsDate,

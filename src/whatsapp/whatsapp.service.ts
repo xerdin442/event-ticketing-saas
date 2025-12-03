@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Event } from '@prisma/client';
+import { Event } from 'prisma/generated/client';
 import { DbService } from '@src/db/db.service';
 import { EventFilterDTO } from './dto';
 import { WhatsappWebhookNotification } from '@src/common/types';

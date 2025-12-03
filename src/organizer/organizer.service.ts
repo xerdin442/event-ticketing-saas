@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { Organizer } from '@prisma/client';
+import { Organizer } from 'prisma/generated/client';
 import { DbService } from '@src/db/db.service';
 import { PaymentsService } from '@src/payments/payments.service';
 import { CreateOrganizerProfileDTO, UpdateOrganizerProfileDTO } from './dto';
