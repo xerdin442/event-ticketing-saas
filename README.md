@@ -11,6 +11,7 @@ This API is a robust backend service designed to facilitate the creation and man
 - **Ticketing System**: Support for multiple ticket types with customizable pricing, discounts and validation at event venues.
 - **Payments**: Secure and idempotent payment processing for ticket purchases using Paystack.
 - **Refunds**: Secure refund process for attendees after event cancellation or unsuccessful ticket purchases.
+- **Resale**: Option to sell tickets if the attendee is unavailable for an event.
 - **Payouts**: Efficient revenue payout to organizers upon event completion.
 - **Metrics and Analytics**: Tracks important metrics like ticket sales, refunds, and unsuccessful transactions.
 
@@ -126,15 +127,19 @@ The database schema is located [here](prisma/schema.prisma). If no schema change
 
 ## Tickets API
 
-| Method | Path                                             | Description                       |
-| ------ | ------------------------------------------------ | --------------------------------- |
-| GET    | /events/:eventId/tickets/tiers                   | Get all ticket tiers for an event |
-| POST   | /events/:eventId/tickets/add                     | Add a ticket tier                 |
-| DELETE | /events/:eventId/tickets/:tierId                 | Delete a ticket tier              |
-| POST   | /events/:eventId/tickets/:tierId/discount/create | Create discount offer             |
-| POST   | /events/:eventId/tickets/:tierId/discount/remove | Remove discount offer             |
-| POST   | /events/:eventId/tickets/purchase                | Initiate ticket purchase          |
-| POST   | /events/:eventId/tickets/validate                | Validate ticket                   |
+| Method | Path                                             | Description                           |
+| ------ | ------------------------------------------------ | ------------------------------------- |
+| GET    | /events/:eventId/tickets/tiers                   | Get all ticket tiers for an event     |
+| POST   | /events/:eventId/tickets/add                     | Add a ticket tier                     |
+| DELETE | /events/:eventId/tickets/:tierId                 | Delete a ticket tier                  |
+| POST   | /events/:eventId/tickets/:tierId/discount/create | Create discount offer                 |
+| POST   | /events/:eventId/tickets/:tierId/discount/remove | Remove discount offer                 |
+| POST   | /events/:eventId/tickets/purchase                | Initiate ticket purchase              |
+| POST   | /events/:eventId/tickets/validate                | Validate ticket                       |
+| GET    | /events/:eventId/tickets/marketplace             | Get all tickets listed for resale     |
+| POST   | /events/:eventId/tickets/:ticketId/listing       | List ticket for resale                |
+| POST   | /events/:eventId/tickets/:ticketId/listing/buy   | Initiate purchase of listed ticket    |
+| DELETE | /events/:eventId/tickets/:ticketId/listing       | Remove listed ticket from marketplace |
 
 ## Payments API
 
