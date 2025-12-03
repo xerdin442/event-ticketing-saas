@@ -10,10 +10,6 @@ RUN if [ "$NODE_ENV" = "development" ] || [ "$NODE_ENV" = "test" ]; \
       else npm install --only=production; \
       fi
 
-COPY prisma ./prisma/
-
-RUN npx prisma generate
-
 COPY . .
 
 RUN npm run build
