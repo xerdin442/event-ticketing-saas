@@ -13,8 +13,7 @@ enum TicketStatus {
   USED
   EXPIRED
   CANCELLED
-  LOCKED
-  RESOLD
+  PENDING_RESALE
 }
 
 enum EventStatus {
@@ -60,7 +59,8 @@ enum TransactionSource {
   PURCHASE
   REFUND
   PAYOUT
-  RESALE
+  RESALE_TX
+  RESALE_TF
 }
 
 enum LockStatus {

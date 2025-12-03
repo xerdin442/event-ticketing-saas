@@ -322,7 +322,7 @@ export class TicketsService {
       const ticketPDF = await generateTicketPDF(ticket, qrcodeImage, event);
 
       // Ensure auto-update of status when ticket expires
-      const updateDelay = (new Date(event.endTime).getTime() + 1500) - new Date().getTime();
+      const updateDelay = (new Date(event.endTime).getTime() + 1000) - new Date().getTime();
       await this.ticketsQueue.add(
         'ticket-status-update',
         { ticketId: ticket.id },
@@ -362,7 +362,7 @@ export class TicketsService {
           return;
         } else if (ticket.status === 'USED') {
           throw new BadRequestException('This ticket has already been used');
-        } else if (ticket.status === 'LOCKED') {
+        } else if (ticket.status === 'PENDING_RESALE') {
           throw new BadRequestException('This ticket has been listed for resale');
         } else {
           throw new BadRequestException('Invalid ticket. Please try again')
@@ -444,7 +444,7 @@ export class TicketsService {
         // Update status of ticket
         await this.prisma.ticket.update({
           where: { id: ticket.id },
-          data: { status: 'LOCKED' }
+          data: { status: 'PENDING_RESALE' }
         })
 
         return;
@@ -461,7 +461,7 @@ export class TicketsService {
       const listing = await this.prisma.listing.findUniqueOrThrow({
         where: {
           ticketId,
-          ticket: { status: 'LOCKED' },
+          ticket: { status: 'PENDING_RESALE' },
         },
         include: {
           ticket: {
@@ -470,11 +470,14 @@ export class TicketsService {
         }
       });
 
-      // Initialize ticket resale
+      // Configure metadata for resale transaction
       const metadata = {
         source: 'resale',
         ticketId,
+        buyer: email
       }
+
+      // Initialize ticket resale
       const { authorization_url, reference } = await this.payments.initializeTransaction(email, listing.price, metadata);
 
       // Store transaction reference
@@ -483,7 +486,7 @@ export class TicketsService {
           amount: listing.price,
           reference,
           email,
-          source: "RESALE",
+          source: "RESALE_TX",
           status: "TX_PENDING",
           eventId: listing.ticket.eventId,
         }
@@ -500,7 +503,7 @@ export class TicketsService {
       const listing = await this.prisma.listing.findUnique({
         where: {
           ticketId,
-          ticket: { status: 'LOCKED' },
+          ticket: { status: 'PENDING_RESALE' },
         }
       });
       if (!listing) {

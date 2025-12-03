@@ -40,9 +40,9 @@ export class TicketsProcessor {
         include: { event: true }
       });
 
-      // Mark ticket as expired if event has ended and status is still active or locked
+      // Mark ticket as expired if event has ended and status is still active or pending resale
       const dateExpirationCheck: boolean = new Date(ticket.event.endTime).getTime() < new Date().getTime();
-      const expiryCondition: boolean = (ticket.status === 'ACTIVE' || ticket.status === 'LOCKED') && dateExpirationCheck;
+      const expiryCondition: boolean = (ticket.status === 'ACTIVE' || ticket.status === 'PENDING_RESALE') && dateExpirationCheck;
       if (expiryCondition) {
         await this.prisma.ticket.update({
           where: { id: ticket.id },
@@ -50,7 +50,7 @@ export class TicketsProcessor {
         });
       }
 
-      if (ticket.status === 'LOCKED') {
+      if (ticket.status === 'PENDING_RESALE') {
         // Remove ticket listing from resale marketplace
         await this.prisma.listing.delete({
           where: { ticketId: ticket.id }
