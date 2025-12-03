@@ -195,6 +195,42 @@
         "x": 0,
         "y": 24
       }
+    },
+    {
+      "type": "graph",
+      "title": "Ticket Resale",
+      "description": "The current cumulative number of resold tickets across all time",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(ticket_resale_total)",
+          "legendFormat": "Cumulative Count"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 24
+      }
+    },
+    {
+      "type": "graph",
+      "title": "Ticket Resale Volume",
+      "description": "The cumulative volume of resold tickets across all time.",
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(ticket_resale_volume_total)",
+          "legendFormat": "Cumulative Volume"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 24
+      }
     }
   ]
 }
