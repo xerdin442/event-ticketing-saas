@@ -48,11 +48,17 @@ export class PaymentsController {
       if (hash === req.headers['x-paystack-signature']) {
         // Listen for status of transactions for ticket purchases
         if (event.includes('charge')) {
-          await this.paymentsQueue.add('transaction', {
+          const jobData = {
             eventType: event,
             metadata: data.metadata,
             transactionReference: data.reference,
-          });
+          }
+
+          if (data.metadata.source === 'purchase') {
+            await this.paymentsQueue.add('purchase', jobData);
+          } else {
+            await this.paymentsQueue.add('resale', jobData);
+          }
         };
 
         // Listen for status of transfers for ticket refunds and revenue splits

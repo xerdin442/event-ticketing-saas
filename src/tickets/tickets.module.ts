@@ -4,6 +4,7 @@ import { TicketsService } from './tickets.service';
 import { BullModule } from '@nestjs/bull';
 import { TicketsProcessor } from '../common/workers/tickets.processor';
 import { EventsModule } from '@src/events/events.module';
+import { MailService } from '@src/common/config/mail';
 
 @Module({
   imports: [
@@ -15,7 +16,8 @@ import { EventsModule } from '@src/events/events.module';
   controllers: [TicketsController],
   providers: [
     TicketsService,
-    TicketsProcessor
+    TicketsProcessor,
+    MailService,
   ],
   exports: [TicketsService],
 })

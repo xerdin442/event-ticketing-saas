@@ -3,19 +3,23 @@ import { DbService } from '../db/db.service';
 import {
   AddTicketTierDTO,
   CreateDiscountDTO,
+  CreateListingDTO,
   PurchaseTicketDTO,
   ValidateTicketDTO
 } from './dto';
 import { PaymentsService } from '../payments/payments.service';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
-import { TicketTier } from '@prisma/client';
+import { Listing, TicketTier } from '@prisma/client';
 import { EventsService } from '@src/events/events.service';
 import { RedisClientType } from 'redis';
 import { randomUUID } from 'crypto';
 import * as argon from 'argon2';
-import { TicketLockInfo } from '@src/common/types';
+import * as qrcode from "qrcode";
+import { TicketDetails, TicketLockInfo } from '@src/common/types';
 import { REDIS_CLIENT } from '@src/redis/redis.module';
+import { Attachment } from 'resend';
+import { generateTicketPDF } from '@src/common/util/document';
 
 @Injectable()
 export class TicketsService {
@@ -172,7 +176,7 @@ export class TicketsService {
 
   async purchaseTicket(dto: PurchaseTicketDTO, eventId: number): Promise<string> {
     try {
-      let lockId: string = "";
+      let lockId: string;
       let amount: number;
       let discount: boolean = false;
 
@@ -255,6 +259,7 @@ export class TicketsService {
 
       // Configure metadata for purchase transaction
       const metadata = {
+        source: 'purchase',
         email,
         eventId,
         tierId: tier.id,
@@ -294,26 +299,229 @@ export class TicketsService {
     }
   }
 
-  async validateTicket(dto: ValidateTicketDTO): Promise<void> {
+  async createTicket(details: TicketDetails): Promise<Attachment> {
+    try {
+      const { eventId } = details;
+
+      // Generate and encode unique access key in QRcode image
+      const accessKey = randomUUID().split('-')[4]
+      const qrcodeImage = await qrcode.toDataURL(accessKey, { errorCorrectionLevel: 'H' })
+
+      // Create new ticket
+      const ticket = await this.prisma.ticket.create({
+        data: {
+          accessKey,
+          ...details,
+        }
+      });
+
+      // Generate ticket PDF and configure email attachment
+      const event = await this.prisma.event.findUniqueOrThrow({
+        where: { id: eventId }
+      });
+      const ticketPDF = await generateTicketPDF(ticket, qrcodeImage, event);
+
+      // Ensure auto-update of status when ticket expires
+      const updateDelay = (new Date(event.endTime).getTime() + 1000) - new Date().getTime();
+      await this.ticketsQueue.add(
+        'ticket-status-update',
+        { ticketId: ticket.id },
+        { delay: Math.max(0, updateDelay) }
+      );
+
+      // Record ticket sale to update event ranking in trending events
+      const currentTime = Date.now()
+      const trendingWindow = currentTime - (72 * 60 * 60 * 1000);
+      this.redis.multi()
+        .zAdd(`event_log:${eventId}`, [{ score: currentTime, value: ticket.id.toString() }]) // Add new entry
+        .zRemRangeByScore(`event_log:${eventId}`, 0, trendingWindow) // Remove all entries older than 72 hours
+        .exec();
+
+      return ticketPDF;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async validateTicket(eventId: number, dto: ValidateTicketDTO): Promise<void> {
     try {
       const ticket = await this.prisma.ticket.findUnique({
-        where: { accessKey: dto.accessKey }
+        where: {
+          eventId,
+          accessKey: dto.accessKey
+        }
       });
 
       if (ticket) {
-        if (ticket.status === 'USED') {
-          throw new BadRequestException('This ticket has already been used');
-        };
+        if (ticket.status === 'ACTIVE') {
+          await this.prisma.ticket.update({
+            where: { id: ticket.id },
+            data: { status: 'USED' }
+          });
 
+          return;
+        } else if (ticket.status === 'USED') {
+          throw new BadRequestException('This ticket has already been used');
+        } else if (ticket.status === 'PENDING_RESALE') {
+          throw new BadRequestException('This ticket has been listed for resale');
+        } else {
+          throw new BadRequestException('Invalid ticket. Please try again')
+        };
+      } else {
+        throw new BadRequestException('Invalid QRcode or access key. Please confirm that the ticket is for this event');
+      }
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async populateMarketplace(): Promise<Listing[]> {
+    try {
+      const listings = await this.prisma.listing.findMany({
+        include: {
+          ticket: {
+            select: {
+              tier: true,
+              event: {
+                select: {
+                  title: true,
+                  date: true,
+                }
+              }
+            }
+          }
+        }
+      })
+
+      return listings.map(listing => {
+        return {
+          ...listing,
+          recipientCode: "", // Hide payment info before populating listings
+        }
+      })
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async createListing(userId: number, dto: CreateListingDTO): Promise<void> {
+    try {
+      const user = await this.prisma.user.findUniqueOrThrow({
+        where: { id: userId }
+      })
+
+      const ticket = await this.prisma.ticket.findUnique({
+        where: { accessKey: dto.accessKey }
+      })
+
+      // Check that the access key is valid
+      if (!ticket) {
+        throw new BadRequestException('Invalid access key')
+      }
+
+      // Verify ticket ownership
+      if (ticket.attendee !== user.email) {
+        throw new BadRequestException('A ticket can only be listed for resale by its owner')
+      }
+
+      // Verify attendee's account details
+      await this.payments.verifyAccountDetails({ ...dto });
+
+      // Create recipient code to process transfer of sales amount
+      const recipientCode = await this.payments.createTransferRecipient({ ...dto })
+
+      if (ticket.status === 'ACTIVE') {
+        // Create new listing
+        await this.prisma.listing.create({
+          data: {
+            userId,
+            ticketId: ticket.id,
+            price: ticket.discountPrice ? ticket.discountPrice : ticket.price,
+            recipientCode
+          }
+        })
+
+        // Update status of ticket
         await this.prisma.ticket.update({
           where: { id: ticket.id },
-          data: { status: 'USED' }
-        });
+          data: { status: 'PENDING_RESALE' }
+        })
 
         return;
       } else {
-        throw new BadRequestException('Invalid QRcode or access key');
+        throw new BadRequestException('Only active tickets can be listed for resale')
       }
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async buyListing(ticketId: number, email: string): Promise<string> {
+    try {
+      const listing = await this.prisma.listing.findUniqueOrThrow({
+        where: {
+          ticketId,
+          ticket: { status: 'PENDING_RESALE' },
+        },
+        include: {
+          ticket: {
+            select: { eventId: true }
+          }
+        }
+      });
+
+      // Configure metadata for resale transaction
+      const metadata = {
+        source: 'resale',
+        ticketId,
+        buyer: email
+      }
+
+      // Initialize ticket resale
+      const { authorization_url, reference } = await this.payments.initializeTransaction(email, listing.price, metadata);
+
+      // Store transaction reference
+      await this.prisma.transaction.create({
+        data: {
+          amount: listing.price,
+          reference,
+          email,
+          source: "RESALE_TX",
+          status: "TX_PENDING",
+          eventId: listing.ticket.eventId,
+        }
+      });
+
+      return authorization_url;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteListing(ticketId: number): Promise<void> {
+    try {
+      const listing = await this.prisma.listing.findUnique({
+        where: {
+          ticketId,
+          ticket: { status: 'PENDING_RESALE' },
+        }
+      });
+      if (!listing) {
+        throw new BadRequestException('No listing found for this ticket');
+      }
+
+      await this.prisma.$transaction(async (tx) => {
+        // Remove listing from marketplace
+        await tx.listing.delete({
+          where: { ticketId }
+        });
+
+        // Update ticket status
+        await tx.ticket.update({
+          where: { id: ticketId },
+          data: { status: 'ACTIVE' }
+        });
+      })
     } catch (error) {
       throw error;
     }

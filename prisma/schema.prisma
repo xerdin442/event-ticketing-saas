@@ -11,7 +11,9 @@ datasource db {
 enum TicketStatus {
   ACTIVE
   USED
+  EXPIRED
   CANCELLED
+  PENDING_RESALE
 }
 
 enum EventStatus {
@@ -57,6 +59,8 @@ enum TransactionSource {
   PURCHASE
   REFUND
   PAYOUT
+  RESALE_TX
+  RESALE_TF
 }
 
 enum LockStatus {
@@ -81,6 +85,7 @@ model User {
   alertsSubscription Boolean         @default(false)
 
   organizer Organizer?
+  listings  Listing[]
 
   @@index([email])
   @@map("users")
@@ -92,14 +97,15 @@ model Ticket {
   updatedAt DateTime @updatedAt
 
   tier          String
-  price         Int
+  price         Float
   accessKey     String       @unique
   status        TicketStatus @default(ACTIVE)
   attendee      String
-  discountPrice Int?
+  discountPrice Float?
 
   eventId Int
-  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  listing Listing?
 
   @@index([eventId])
   @@map("tickets")
@@ -203,4 +209,21 @@ model Transaction {
   event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   @@map("transactions")
+}
+
+model Listing {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  price         Float
+  recipientCode String
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  ticketId Int    @unique
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("listings")
 }

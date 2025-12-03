@@ -6,6 +6,7 @@ import { DbService } from "@src/db/db.service";
 import { TicketLockInfo } from "../types";
 import { REDIS_CLIENT } from "@src/redis/redis.module";
 import { RedisClientType } from "redis";
+import { MailService } from "../config/mail";
 
 @Injectable()
 @Processor('tickets-queue')
@@ -14,6 +15,7 @@ export class TicketsProcessor {
 
   constructor(
     private readonly prisma: DbService,
+    private readonly mailService: MailService,
     @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
   ) { }
 
@@ -26,6 +28,42 @@ export class TicketsProcessor {
       });
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing discount status update. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @Process('ticket-status-update')
+  async updateTicketStatus(job: Job): Promise<void> {
+    try {
+      const ticket = await this.prisma.ticket.findUniqueOrThrow({
+        where: { id: job.data.ticketId },
+        include: { event: true }
+      });
+
+      // Mark ticket as expired if event has ended and status is still active or pending resale
+      const dateExpirationCheck: boolean = new Date(ticket.event.endTime).getTime() < new Date().getTime();
+      const expiryCondition: boolean = (ticket.status === 'ACTIVE' || ticket.status === 'PENDING_RESALE') && dateExpirationCheck;
+      if (expiryCondition) {
+        await this.prisma.ticket.update({
+          where: { id: ticket.id },
+          data: { status: "EXPIRED" }
+        });
+      }
+
+      if (ticket.status === 'PENDING_RESALE') {
+        // Remove ticket listing from resale marketplace
+        await this.prisma.listing.delete({
+          where: { ticketId: ticket.id }
+        });
+
+        // Inform user of ticket expiration and removal of resale listing
+        const content = `Your ticket for ${ticket.event.title.toUpperCase()} has expired and the resale listing has been removed from the marketplace.`;
+        await this.mailService.sendEmail(ticket.attendee, 'Ticket Expiration', content);
+      }
+
+      return;
+    } catch (error) {
+      logger.error(`[${this.context}] An error occured while processing ticket status update. Error: ${error.message}\n`);
       throw error;
     }
   }

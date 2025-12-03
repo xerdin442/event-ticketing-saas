@@ -44,7 +44,7 @@
     "@nestjs/schedule": "^6.0.1",
     "@nestjs/throttler": "^6.4.0",
     "@nestjs/websockets": "^11.1.9",
-    "@prisma/client": "^6.19.0",
+    "@prisma/client": "^7.0.1",
     "argon2": "^0.44.0",
     "axios": "^1.13.2",
     "bull": "^4.16.5",
@@ -115,8 +115,5 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
-  },
-  "prisma": {
-    "disableWatchers": true
   }
 }

@@ -12,6 +12,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   UseGuards,
   UseInterceptors
 } from '@nestjs/common';
@@ -20,15 +21,17 @@ import { AuthGuard } from '@nestjs/passport';
 import {
   AddTicketTierDTO,
   CreateDiscountDTO,
+  CreateListingDTO,
   PurchaseTicketDTO,
   ValidateTicketDTO
 } from './dto';
 import { TokenBlacklistGuard } from '../custom/guards/token.guard';
-import { TicketTier } from '@prisma/client';
+import { Listing, TicketTier, User } from '@prisma/client';
 import logger from '../common/logger';
 import { RedisClientType } from 'redis';
 import { EventOrganizerGuard } from '@src/custom/guards/organizer.guard';
 import { REDIS_CLIENT } from '@src/redis/redis.module';
+import { GetUser } from '@src/custom/decorators/user.decorator';
 
 @UseInterceptors(ClassSerializerInterceptor)
 @Controller('events/:eventId/tickets')
@@ -151,12 +154,71 @@ export class TicketsController {
   @HttpCode(HttpStatus.OK)
   @Post('validate')
   @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'), EventOrganizerGuard)
-  async validateTicket(@Body() dto: ValidateTicketDTO): Promise<{ message: string }> {
+  async validateTicket(
+    @Param('eventId', ParseIntPipe) eventId: number,
+    @Body() dto: ValidateTicketDTO
+  ): Promise<{ message: string }> {
     try {
-      await this.ticketsService.validateTicket(dto);
+      await this.ticketsService.validateTicket(eventId, dto);
       return { message: 'Ticket validated successfully' };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while validating event ticket. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @Get('marketplace')
+  async populateMarketplace(): Promise<{ listings: Listing[] }> {
+    try {
+      return { listings: await this.ticketsService.populateMarketplace() };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while populating ticket marketplace. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @Post(':ticketId/listing')
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
+  async createListing(
+    @GetUser() user: User,
+    @Body() dto: CreateListingDTO
+  ): Promise<{ message: string }> {
+    try {
+      await this.ticketsService.createListing(user.id, dto);
+      return { message: 'Your ticket has been listed for resale' };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while listing ticket for resale. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @Post(':ticketId/listing/buy')
+  async buyListing(
+    @Param('ticketId', ParseIntPipe) ticketId: number,
+    @Query('email') email: string
+  ): Promise<{ checkout: string }> {
+    try {
+      if (!email) {
+        throw new BadRequestException('Missing required "email" parameter');
+      }
+
+      return { checkout: await this.ticketsService.buyListing(ticketId, email) };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while buying ticket from resale marketplace. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @Delete(':ticketId/listing')
+  @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
+  async deleteListing(
+    @Param('ticketId', ParseIntPipe) ticketId: number,
+  ): Promise<{ message: string }> { 
+    try {
+      await this.ticketsService.deleteListing(ticketId);
+      return { message: 'Your ticket has been removed from resale marketplace' };
+    } catch (error) {
+      logger.error(`[${this.context}] An error occurred while removing ticket from resale marketplace. Error: ${error.message}\n`);
       throw error;
     }
   }

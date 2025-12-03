@@ -5,19 +5,20 @@ import { PaymentsGateway } from "@src/payments/payments.gateway";
 import { DbService } from "@src/db/db.service";
 import { PaymentsService } from "@src/payments/payments.service";
 import { randomUUID } from "crypto";
-import * as qrcode from "qrcode";
 import { MailService } from "../config/mail";
 import logger from "../logger";
-import { generateTicketPDF } from "../util/document";
 import { MetricsService } from "@src/metrics/metrics.service";
 import { Secrets } from "../secrets";
 import { Attachment } from "resend";
 import { RedisClientType } from "redis";
 import { formatDate } from "../util/helper";
-import { TicketLockInfo, WhatsappWebhookNotification } from "../types";
-import { TicketTier } from "@prisma/client";
+import * as qrcode from "qrcode";
+import { TicketDetails, TicketLockInfo, WhatsappWebhookNotification } from "../types";
+import { Ticket, TicketTier } from "@prisma/client";
 import { REDIS_CLIENT } from "@src/redis/redis.module";
 import { WhatsappService } from "@src/whatsapp/whatsapp.service";
+import { TicketsService } from "@src/tickets/tickets.service";
+import { generateTicketPDF } from "../util/document";
 
 @Injectable()
 @Processor('payments-queue')
@@ -30,12 +31,13 @@ export class PaymentsProcessor {
     private readonly payments: PaymentsService,
     private readonly metrics: MetricsService,
     private readonly mailService: MailService,
+    private readonly ticketsService: TicketsService,
     private readonly whatsappService: WhatsappService,
     @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
-  ) {};
+  ) { };
 
-  @Process('transaction')
-  async finalizeTransaction(job: Job) {
+  @Process('purchase')
+  async finalizeTicketPurchase(job: Job) {
     const { eventType, metadata, transactionReference } = job.data;
     const attendee = metadata.email as string;
     const lockId = metadata.lockId as string;
@@ -235,31 +237,16 @@ export class PaymentsProcessor {
         // Create the required number of tickets
         let pdfs: Attachment[] = [];
         for (let i = 1; i <= quantity; i++) {
-          const accessKey = randomUUID().split('-')[4]
-          const qrcodeImage = await qrcode.toDataURL(accessKey, { errorCorrectionLevel: 'H' })
+          const details: TicketDetails = {
+            attendee,
+            eventId,
+            price,
+            tier: tier.name,
+            discountPrice: discount && (amount / quantity),
+          }
 
-          const ticket = await this.prisma.ticket.create({
-            data: {
-              accessKey,
-              price,
-              tier: tier.name,
-              discountPrice: discount && (amount / quantity),
-              attendee,
-              eventId
-            }
-          });
-
-          // Generate ticket PDF and configure email attachment
-          const ticketPDF = await generateTicketPDF(ticket, qrcodeImage, event);
+          const ticketPDF = await this.ticketsService.createTicket(details);
           pdfs.push(ticketPDF);
-
-          // Record ticket sale to update event ranking in trending events
-          const currentTime = Date.now()
-          const trendingWindow = currentTime - (72 * 60 * 60 * 1000);
-          this.redis.multi()
-            .zAdd(`event_log:${eventId}`, [{ score: currentTime, value: ticket.id.toString() }]) // Add new entry
-            .zRemRangeByScore(`event_log:${eventId}`, 0, trendingWindow) // Remove all entries older than 72 hours
-            .exec();
         };
 
         // Send an email with the ticket PDFs to the attendee
@@ -288,7 +275,7 @@ export class PaymentsProcessor {
           data: { status: "TX_FAILED" }
         });
 
-        logger.warn(`[${this.context}] Ticket purchase failed: Email: ${attendee}\n`);
+        logger.warn(`[${this.context}] Ticket purchase failed. Email: ${attendee}\n`);
 
         if (whatsappPhoneId) {
           // Send webhook to whatsapp bot server to notify attendee of payment status
@@ -305,6 +292,106 @@ export class PaymentsProcessor {
       }
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing ticket purchase. Error: ${error.message}\n`);
+      throw error;
+    }
+  }
+
+  @Process('resale')
+  async finalizeTicketResale(job: Job) {
+    const { eventType, metadata, transactionReference } = job.data;
+    const buyer = metadata.buyer as string
+
+    const ticketId = parseInt(metadata.ticketId);
+    const ticket = await this.prisma.ticket.findUniqueOrThrow({
+      where: { id: ticketId },
+      include: {
+        listing: true,
+        event: true,
+      }
+    });
+    const ticketOwner = ticket.attendee;
+
+    try {
+      // Idempotent processing to skip transactions that have been settled
+      const transaction = await this.prisma.transaction.findUnique({
+        where: { reference: transactionReference }
+      });
+      if (transaction && transaction.status !== "TX_PENDING") return;
+
+      if (eventType === 'charge.success') {
+        // Generate new access key and encode in QRcode image
+        const newAccessKey = randomUUID().split('-')[4];
+        const qrcodeImage = await qrcode.toDataURL(newAccessKey, { errorCorrectionLevel: 'H' })
+        let updatedTicket: Ticket;
+
+        await this.prisma.$transaction(async (tx) => {
+          // Update ticket details          
+          updatedTicket = await tx.ticket.update({
+            where: { id: ticket.id },
+            data: {
+              accessKey: newAccessKey,
+              attendee: buyer,
+            }
+          });
+
+          // Remove ticket listing from resale marketplace
+          await tx.listing.delete({
+            where: { ticketId: ticket.id }
+          });
+
+          // Update transaction status
+          await tx.transaction.update({
+            where: { reference: transactionReference },
+            data: { status: "TX_SUCCESS" }
+          });
+        });
+
+        // Initiate transfer of resale amount to ticket owner
+        const transferReference = await this.payments.initiateTransfer(
+          ticket.listing.recipientCode,
+          ticket.listing.price,
+          'Ticket Resale',
+          {
+            email: ticketOwner,
+            eventId: ticket.eventId,
+          }
+        );
+
+        // Record transfer details
+        await this.prisma.transaction.create({
+          data: {
+            email: ticketOwner,
+            amount: ticket.listing.price,
+            reference: transferReference,
+            source: "RESALE_TF",
+            status: "TRANSFER_PENDING",
+            eventId: ticket.eventId,
+          }
+        });
+
+        // Generate and send ticket document to new owner
+        const ticketPDF = await generateTicketPDF(updatedTicket, qrcodeImage, ticket.event);
+        const content = `You have purchased tickets for the event: ${ticket.event.title}.
+          Attached to this email are your ticket(s). They'll be required for entry at the event, keep them safe!`
+        await this.mailService.sendEmail(buyer, 'Ticket Resale', content, [ticketPDF]);
+
+        logger.info(`[${this.context}] Ticket resale completed by ${ticketOwner}. Buyer: ${buyer}\n`);
+
+        // Notify the client of payment status
+        return this.gateway.sendPaymentStatus(buyer, 'success', 'Payment successful!');
+      } else if (eventType === 'charge.failed') {
+        // Update transaction status
+        await this.prisma.transaction.update({
+          where: { reference: transactionReference },
+          data: { status: "TX_FAILED" }
+        });
+
+        logger.warn(`[${this.context}] Ticket resale failed. Buyer: ${buyer}\n`);
+
+        // Notify the client of payment status
+        return this.gateway.sendPaymentStatus(buyer, 'failed', 'Payment failed!');
+      }
+    } catch (error) {
       throw error;
     }
   }
@@ -326,10 +413,11 @@ export class PaymentsProcessor {
       if (transaction && transaction.status !== "TRANSFER_PENDING") return;
 
       if (eventType === 'transfer.success') {
+        let emailContent: string = "";
+
         if (reason === 'Ticket Refund') {
           // Notify the attendee of the ticket refund
-          const content = `Ticket refund has been completed for the cancelled event: ${event.title}. Thanks for your patience.`;
-          await this.mailService.sendEmail(email, reason, content);
+          emailContent = `Ticket refund has been completed for the cancelled event: ${event.title}. Thanks for your patience.`;
 
           // Remove attendee as a transfer recipient after ticket refund
           await this.payments.deleteTransferRecipient(recipientCode);
@@ -339,13 +427,26 @@ export class PaymentsProcessor {
           this.metrics.incrementCounter('ticket_refund_volume', [], amount);
         } else if (reason === 'Revenue Split') {
           // Notify the organizer of revenue payout
-          const content = `Congratulations on the success of your event: ${event.title}. Payout of your event revenue has been initiated.
+          emailContent = `Congratulations on the success of your event: ${event.title}. Payout of your event revenue has been processed.
             Thank you for choosing our platform!`;
-          await this.mailService.sendEmail(email, reason, content);
 
           // Update metrics value
           this.metrics.incrementCounter('payout_volume', [], amount);
+        } else if (reason === 'Ticket Resale') {
+          // Notify ticket owner of successful sale
+          emailContent = `Your ticket for the event: ${event.title} has been sold! Payout of the resale amount has been processed.
+            Thank you for choosing our platform!`
+
+          // Remove ticket owner as a transfer recipient after resale
+          await this.payments.deleteTransferRecipient(recipientCode);
+
+          // Update metrics value
+          this.metrics.incrementCounter('ticket_resale');
+          this.metrics.incrementCounter('ticket_resale_volume', [], amount);
         }
+
+        // Send email to transfer recipient
+        await this.mailService.sendEmail(email, reason, emailContent);
 
         // Update transfer status
         await this.prisma.transaction.update({
