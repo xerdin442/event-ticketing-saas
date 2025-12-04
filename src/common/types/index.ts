@@ -1,4 +1,3 @@
-import * as runtime from "@prisma/client/runtime/library"
 import { PrismaClient } from "prisma/generated/client"
 
 export interface BankData {
@@ -86,4 +85,5 @@ export interface CloudinaryResource {
   next_cursor?: string
 }
 
-export type CustomPrismaTxClient = Omit<PrismaClient, runtime.ITXClientDenyList>
+type ExcludedMethods = '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+export type CustomPrismaTxClient = Omit<PrismaClient, ExcludedMethods>
