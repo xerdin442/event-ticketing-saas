@@ -10,6 +10,7 @@
     "deploy": "prisma migrate deploy",
     "deploy:test": "dotenv -e .env.test -- npm run deploy",
     "build": "nest build",
+    "postinstall": "npx prisma generate",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
