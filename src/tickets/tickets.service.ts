@@ -19,7 +19,7 @@ import { CustomPrismaTxClient, TicketDetails, TicketLockInfo } from '@src/common
 import { REDIS_CLIENT } from '@src/redis/redis.module';
 import { Attachment } from 'resend';
 import { generateTicketPDF } from '@src/common/util/document';
-import { Listing, TicketTier } from 'prisma/generated/client';
+import { Listing, TicketTier } from '@prisma/client';
 
 @Injectable()
 export class TicketsService {

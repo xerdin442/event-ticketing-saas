@@ -7,7 +7,7 @@ import {
   ProcessTicketRefundDTO,
 } from './dto';
 import axios from 'axios';
-import { Event, EventCategory } from 'prisma/generated/client';
+import { Event, EventCategory } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { RedisClientType } from 'redis';

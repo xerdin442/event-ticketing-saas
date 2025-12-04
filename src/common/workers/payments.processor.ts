@@ -19,7 +19,7 @@ import {
   TicketLockInfo,
   WhatsappWebhookNotification
 } from "../types";
-import { TicketTier } from "prisma/generated/client";
+import { TicketTier } from "@prisma/client";
 import { REDIS_CLIENT } from "@src/redis/redis.module";
 import { WhatsappService } from "@src/whatsapp/whatsapp.service";
 import { TicketsService } from "@src/tickets/tickets.service";

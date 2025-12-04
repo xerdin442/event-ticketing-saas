@@ -1,4 +1,4 @@
-import { EventCategory } from "prisma/generated/enums"
+import { EventCategory } from "@prisma/client"
 import { Transform } from "class-transformer"
 import { IsArray, IsEnum, IsNumber, IsOptional, IsString } from "class-validator"
 

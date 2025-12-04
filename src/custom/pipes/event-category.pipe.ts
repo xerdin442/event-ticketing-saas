@@ -4,7 +4,7 @@ import {
   Injectable,
   PipeTransform,
 } from "@nestjs/common";
-import { EventCategory } from "prisma/generated/enums";
+import { EventCategory } from "@prisma/client";
 
 @Injectable()
 export class EventCategoryPipe implements PipeTransform {

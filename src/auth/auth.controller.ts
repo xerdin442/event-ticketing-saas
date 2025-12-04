@@ -17,7 +17,7 @@ import {
   NewPasswordDTO,
   VerifyOTPDTO
 } from './dto';
-import { User } from 'prisma/generated/client';
+import { User } from '@prisma/client';
 import logger from '../common/logger';
 import { TokenBlacklistGuard } from '@src/custom/guards/token.guard';
 import { AuthGuard } from '@nestjs/passport';

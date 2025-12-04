@@ -9,7 +9,7 @@ import {
 } from './dto';
 import { PrismaClientKnownRequestError } from 'prisma/generated/internal/prismaNamespace';
 import { JwtService } from '@nestjs/jwt';
-import { User } from 'prisma/generated/client';
+import { User } from '@prisma/client';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
 import { PasswordResetInfo } from '../common/types';

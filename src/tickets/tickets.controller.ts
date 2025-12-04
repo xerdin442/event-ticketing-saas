@@ -26,7 +26,7 @@ import {
   ValidateTicketDTO
 } from './dto';
 import { TokenBlacklistGuard } from '../custom/guards/token.guard';
-import { Listing, TicketTier, User } from 'prisma/generated/client';
+import { Listing, TicketTier, User } from '@prisma/client';
 import logger from '../common/logger';
 import { RedisClientType } from 'redis';
 import { EventOrganizerGuard } from '@src/custom/guards/organizer.guard';

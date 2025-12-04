@@ -13,7 +13,7 @@ import {
   UseGuards,
   UseInterceptors} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { Event, Ticket, User } from 'prisma/generated/client';
+import { Event, Ticket, User } from '@prisma/client';
 import { GetUser } from '../custom/decorators/user.decorator';
 import { UpdateProfileDTO } from './dto';
 import { UserService } from './users.service';

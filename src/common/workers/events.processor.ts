@@ -8,7 +8,7 @@ import { MailService } from "../config/mail";
 import { DbService } from "@src/db/db.service";
 import { PaymentsService } from "@src/payments/payments.service";
 import { MetricsService } from "@src/metrics/metrics.service";
-import { Ticket } from "prisma/generated/client";
+import { Ticket } from "@prisma/client";
 import { TicketRefundInfo } from "../types";
 import { formatDate } from "../util/helper";
 import { REDIS_CLIENT } from "@src/redis/redis.module";

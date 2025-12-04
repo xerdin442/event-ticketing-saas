@@ -5,7 +5,7 @@ import {
   Event,
   Ticket,
   User
-} from 'prisma/generated/client';
+} from '@prisma/client';
 
 @Injectable()
 export class UserService {

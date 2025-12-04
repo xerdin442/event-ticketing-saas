@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import logger from '../common/logger';
 import { Secrets } from '../common/secrets';
-import { PrismaClient } from 'prisma/generated/client';
+import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class DbService extends PrismaClient {
