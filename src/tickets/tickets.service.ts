@@ -15,7 +15,7 @@ import { RedisClientType } from 'redis';
 import { randomUUID } from 'crypto';
 import * as argon from 'argon2';
 import * as qrcode from "qrcode";
-import { TicketDetails, TicketLockInfo } from '@src/common/types';
+import { CustomPrismaTxClient, TicketDetails, TicketLockInfo } from '@src/common/types';
 import { REDIS_CLIENT } from '@src/redis/redis.module';
 import { Attachment } from 'resend';
 import { generateTicketPDF } from '@src/common/util/document';
@@ -219,7 +219,7 @@ export class TicketsService {
 
           try {
             // Update number of tickets
-            await this.prisma.$transaction(async (tx) => {
+            await this.prisma.$transaction(async (tx: CustomPrismaTxClient) => {
               await tx.ticketTier.update({
                 where: { id: tier.id },
                 data: {
@@ -510,18 +510,17 @@ export class TicketsService {
         throw new BadRequestException('No listing found for this ticket');
       }
 
-      await this.prisma.$transaction(async (tx) => {
+      await this.prisma.$transaction([
         // Remove listing from marketplace
-        await tx.listing.delete({
+        this.prisma.listing.delete({
           where: { ticketId }
-        });
-
+        }),
         // Update ticket status
-        await tx.ticket.update({
+        this.prisma.ticket.update({
           where: { id: ticketId },
           data: { status: 'ACTIVE' }
-        });
-      })
+        }),
+      ])
     } catch (error) {
       throw error;
     }

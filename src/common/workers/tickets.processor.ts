@@ -85,7 +85,7 @@ export class TicketsProcessor {
         });
       }
 
-      // Purchase window has expired before payment
+      // Purchase window expired before payment
       if (!cacheResult) {
         await unlockTickets();
         return;

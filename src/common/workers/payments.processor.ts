@@ -13,8 +13,13 @@ import { Attachment } from "resend";
 import { RedisClientType } from "redis";
 import { formatDate } from "../util/helper";
 import * as qrcode from "qrcode";
-import { CustomPrismaTxClient, TicketDetails, TicketLockInfo, WhatsappWebhookNotification } from "../types";
-import { Ticket, TicketTier } from "prisma/generated/client";
+import {
+  CustomPrismaTxClient,
+  TicketDetails,
+  TicketLockInfo,
+  WhatsappWebhookNotification
+} from "../types";
+import { TicketTier } from "prisma/generated/client";
 import { REDIS_CLIENT } from "@src/redis/redis.module";
 import { WhatsappService } from "@src/whatsapp/whatsapp.service";
 import { TicketsService } from "@src/tickets/tickets.service";
