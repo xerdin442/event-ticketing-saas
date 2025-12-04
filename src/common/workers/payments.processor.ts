@@ -19,6 +19,7 @@ import { REDIS_CLIENT } from "@src/redis/redis.module";
 import { WhatsappService } from "@src/whatsapp/whatsapp.service";
 import { TicketsService } from "@src/tickets/tickets.service";
 import { generateTicketPDF } from "../util/document";
+import { TransactionClient } from "prisma/generated/internal/prismaNamespace";
 
 @Injectable()
 @Processor('payments-queue')
@@ -113,7 +114,7 @@ export class PaymentsProcessor {
               data: { lockStatus: "PAID" }
             });
           } else {
-            await this.prisma.$transaction(async (tx) => {
+            await this.prisma.$transaction(async (tx: TransactionClient) => {
               const selectedTier = await this.prisma.ticketTier.findUnique({
                 where: { id: tier.id },
               });
@@ -322,29 +323,26 @@ export class PaymentsProcessor {
         // Generate new access key and encode in QRcode image
         const newAccessKey = randomUUID().split('-')[4];
         const qrcodeImage = await qrcode.toDataURL(newAccessKey, { errorCorrectionLevel: 'H' })
-        let updatedTicket: Ticket;
 
-        await this.prisma.$transaction(async (tx) => {
+        const [updatedTicket] = await this.prisma.$transaction([
           // Update ticket details          
-          updatedTicket = await tx.ticket.update({
+          this.prisma.ticket.update({
             where: { id: ticket.id },
             data: {
               accessKey: newAccessKey,
               attendee: buyer,
             }
-          });
-
+          }),
           // Remove ticket listing from resale marketplace
-          await tx.listing.delete({
+          this.prisma.listing.delete({
             where: { ticketId: ticket.id }
-          });
-
+          }),
           // Update transaction status
-          await tx.transaction.update({
+          this.prisma.transaction.update({
             where: { reference: transactionReference },
             data: { status: "TX_SUCCESS" }
-          });
-        });
+          })
+        ]);
 
         // Initiate transfer of resale amount to ticket owner
         const transferReference = await this.payments.initiateTransfer(
