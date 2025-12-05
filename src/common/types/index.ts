@@ -35,7 +35,6 @@ export interface TicketRefundInfo extends PasswordResetInfo {
 }
 
 export interface TicketLockInfo {
-  status: "locked" | "paid";
   tierId: number;
   discount: boolean;
   numberOfTickets: number;

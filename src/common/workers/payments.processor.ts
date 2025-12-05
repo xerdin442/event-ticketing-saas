@@ -13,11 +13,7 @@ import { Attachment } from "resend";
 import { RedisClientType } from "redis";
 import { formatDate } from "../util/helper";
 import * as qrcode from "qrcode";
-import {
-  TicketDetails,
-  TicketLockInfo,
-  WhatsappWebhookNotification
-} from "../types";
+import { TicketDetails, WhatsappWebhookNotification } from "../types";
 import { TicketTier } from "@generated/client";
 import { REDIS_CLIENT } from "@src/redis/redis.module";
 import { WhatsappService } from "@src/whatsapp/whatsapp.service";
@@ -38,7 +34,7 @@ export class PaymentsProcessor {
     private readonly ticketsService: TicketsService,
     private readonly whatsappService: WhatsappService,
     @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
-  ) { };
+  ) {};
 
   @Process('purchase')
   async finalizeTicketPurchase(job: Job) {
@@ -103,13 +99,8 @@ export class PaymentsProcessor {
               throw new Error('Your purchase window has expired. Please restart the process');
             }
 
-            // If payment occurs within the window, extend the TTL by 60 seconds so the queue job can process the ticket unlock
-            const lockData = JSON.parse(cacheResult) as TicketLockInfo;
-            await this.redis.setEx(
-              cacheKey,
-              60,
-              JSON.stringify({ ...lockData, status: "paid" })
-            );
+            // If payment occurs within the window, delete ticket unlock job from queue
+            await this.ticketsService.deleteTicketUnlockJob(`ticket-unlock-${lockId}`)
 
             // Update status of ticket lock
             await this.prisma.transaction.update({
@@ -268,10 +259,10 @@ export class PaymentsProcessor {
         if (whatsappPhoneId) {
           // Send webhook to whatsapp bot server to notify attendee of payment status
           return this.whatsappService.sendWebhookNotification(notification);
-        } else {
-          // Notify the client of payment status
-          return this.gateway.sendPaymentStatus(attendee, 'success', 'Payment successful!');
         }
+
+        // Notify the client of payment status
+        return this.gateway.sendPaymentStatus(attendee, 'success', 'Payment successful!');
       } else if (eventType === 'charge.failed') {
         // Update transaction status
         await this.prisma.transaction.update({
@@ -289,10 +280,10 @@ export class PaymentsProcessor {
           };
 
           return this.whatsappService.sendWebhookNotification(details);
-        } else {
-          // Notify the client of payment status
-          return this.gateway.sendPaymentStatus(attendee, 'failed', 'Payment failed!');
         }
+
+        // Notify the client of payment status
+        return this.gateway.sendPaymentStatus(attendee, 'failed', 'Payment failed!');
       }
     } catch (error) {
       logger.error(`[${this.context}] An error occured while processing ticket purchase. Error: ${error.message}\n`);
@@ -334,12 +325,15 @@ export class PaymentsProcessor {
             data: {
               accessKey: newAccessKey,
               attendee: buyer,
+              status: 'ACTIVE',
             }
           }),
+
           // Remove ticket listing from resale marketplace
           this.prisma.listing.delete({
             where: { ticketId: ticket.id }
           }),
+
           // Update transaction status
           this.prisma.transaction.update({
             where: { reference: transactionReference },

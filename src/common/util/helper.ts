@@ -2,7 +2,7 @@ import { ThrottlerModuleOptions, ThrottlerOptions } from "@nestjs/throttler";
 import { Secrets } from "../secrets";
 import axios, { AxiosResponse } from "axios";
 
-export const formatDate = (date: Date, output: 'date' | 'time'): string => {
+export const formatDate = (date: string | Date, output: 'date' | 'time'): string => {
   const options: Intl.DateTimeFormatOptions = {
     hour: 'numeric',
     minute: 'numeric',
@@ -15,7 +15,7 @@ export const formatDate = (date: Date, output: 'date' | 'time'): string => {
     options.day = 'numeric';
   }
 
-  return new Intl.DateTimeFormat('en-US', options).format(date);
+  return new Intl.DateTimeFormat('en-US', options).format(new Date(date));
 };
 
 export const applyThrottlerConfig = (): ThrottlerModuleOptions => {

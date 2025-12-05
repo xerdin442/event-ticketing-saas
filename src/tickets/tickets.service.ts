@@ -233,7 +233,6 @@ export class TicketsService {
           }
 
           const lockData: TicketLockInfo = {
-            status: "locked",
             tierId: tier.id,
             discount,
             numberOfTickets: quantity,
@@ -243,18 +242,21 @@ export class TicketsService {
           await this.redis.setEx(
             `ticket_lock:${lockId}`,
             purchaseWindow / 1000,
-            JSON.stringify(lockData)
+            JSON.stringify({ lockId })
           );
 
           // Unlock tickets once the purchase window expires
           await this.ticketsQueue.add(
-            'ticket-lock',
-            { lockId, ...lockData },
-            { delay: purchaseWindow + 3000 } // Add a 3s delay to ensure Redis cache has cleared the lock info
+            'ticket-unlock',
+            lockData,
+            {
+              jobId: `ticket-unlock-${lockId}`,
+              delay: purchaseWindow + 3000  // Add a 3s delay to ensure Redis cache has cleared the lock info
+            }
           );
         }
       } else {
-        throw new BadRequestException(`Insufficient ${tier.name} tickets. Check out other ticket tiers`);
+        throw new BadRequestException(`Insufficient ${tier.name} tickets. Check other ticket tiers`);
       }
 
       // Configure metadata for purchase transaction
@@ -294,6 +296,14 @@ export class TicketsService {
       });
 
       return authorization_url;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteTicketUnlockJob(jobId: string): Promise<void> {
+    try {
+      await this.ticketsQueue.removeJobs(jobId);
     } catch (error) {
       throw error;
     }

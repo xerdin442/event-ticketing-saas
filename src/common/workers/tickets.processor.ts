@@ -1,11 +1,9 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { Process, Processor } from "@nestjs/bull";
 import { Job } from "bull";
 import logger from "../logger";
 import { DbService } from "@src/db/db.service";
 import { TicketLockInfo } from "../types";
-import { REDIS_CLIENT } from "@src/redis/redis.module";
-import { RedisClientType } from "redis";
 import { MailService } from "../config/mail";
 
 @Injectable()
@@ -16,7 +14,6 @@ export class TicketsProcessor {
   constructor(
     private readonly prisma: DbService,
     private readonly mailService: MailService,
-    @Inject(REDIS_CLIENT) private readonly redis: RedisClientType,
   ) { }
 
   @Process('discount-status-update')
@@ -68,40 +65,19 @@ export class TicketsProcessor {
     }
   }
 
-  @Process('ticket-lock')
-  async processTicketUnlock(job: Job): Promise<void> {
+  @Process('ticket-unlock')
+  async processTicketUnlock(job: Job<TicketLockInfo>): Promise<void> {
     try {
-      const { lockId, discount, numberOfTickets, tierId } = job.data;
-      const cacheKey = `ticket_lock:${lockId}`;
-      const cacheResult = await this.redis.get(cacheKey) as string;
+      const { discount, numberOfTickets, tierId } = job.data;
 
-      const unlockTickets = async () => {
-        await this.prisma.ticketTier.update({
-          where: { id: tierId },
-          data: {
-            numberOfDiscountTickets: (discount && { increment: numberOfTickets }),
-            totalNumberOfTickets: { increment: numberOfTickets }
-          }
-        });
-      }
-
-      // Purchase window expired before payment
-      if (!cacheResult) {
-        await unlockTickets();
-        return;
-      }
-
-      const lockData = JSON.parse(cacheResult) as TicketLockInfo;
-      const { status } = lockData;
-
-      if (status === "paid") {
-        // Clear cache if payment was completed within purchase window
-        await this.redis.del(cacheKey);
-      } else {
-        // Purchase window has expired but queue job is fired before cache cleanup
-        await unlockTickets();
-        await this.redis.del(cacheKey);
-      }
+      // Update number of available tickets
+      await this.prisma.ticketTier.update({
+        where: { id: tierId },
+        data: {
+          numberOfDiscountTickets: (discount && { increment: numberOfTickets }),
+          totalNumberOfTickets: { increment: numberOfTickets }
+        }
+      });
 
       return;
     } catch (error) {
