@@ -1,18 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import logger from '../common/logger';
 import { Secrets } from '../common/secrets';
-import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@generated/client';
 
 @Injectable()
 export class DbService extends PrismaClient {
   private context = DbService.name;
 
   constructor() {
-    super({
-      datasources: {
-        db: { url: Secrets.DATABASE_URL }
-      }
-    })
+    const adapter = new PrismaPg({ connectionString: Secrets.DATABASE_URL });
+    super({ adapter});
   }
 
   async cleanDb() {

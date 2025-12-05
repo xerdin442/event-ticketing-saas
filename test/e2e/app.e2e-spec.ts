@@ -15,7 +15,7 @@ import path from 'path';
 import { CreateEventDTO, UpdateEventDTO } from '@src/events/dto';
 import { AddTicketTierDTO, CreateDiscountDTO, PurchaseTicketDTO } from '@src/tickets/dto';
 import { IoAdapter } from '@nestjs/platform-socket.io';
-import { Organizer } from '@prisma/client';
+import { Organizer } from '@generated/client';
 import { isArray } from 'class-validator';
 import { CreateOrganizerProfileDTO, UpdateOrganizerProfileDTO } from '@src/organizer/dto';
 

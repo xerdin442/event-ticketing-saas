@@ -27,7 +27,8 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from '../common/config/upload';
 import { GetUser } from '../custom/decorators/user.decorator';
-import { Event, EventCategory, User } from '@prisma/client';
+import { Event, User } from '@generated/client';
+import { EventCategory } from '@generated/enums';
 import logger from '../common/logger';
 import { TokenBlacklistGuard } from '../custom/guards/token.guard';
 import { EventCategoryPipe } from '@src/custom/pipes/event-category.pipe';

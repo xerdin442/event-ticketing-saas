@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { EventsService } from '@src/events/events.service';
 import { WhatsappService } from './whatsapp.service';
-import { Event, TicketTier } from '@prisma/client';
+import { Event, TicketTier } from '@generated/client';
 import logger from '@src/common/logger';
 import { WhatsappApiKeyGuard } from '@src/custom/guards/whatsapp.guard';
 import { EventFilterDTO } from './dto';

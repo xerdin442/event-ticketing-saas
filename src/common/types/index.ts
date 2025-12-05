@@ -1,5 +1,3 @@
-import { PrismaClient } from "@prisma/client"
-
 export interface BankData {
   id: number
   name: string
@@ -84,6 +82,3 @@ export interface CloudinaryResource {
   tags?: string[]
   next_cursor?: string
 }
-
-type ExcludedMethods = '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
-export type CustomPrismaTxClient = Omit<PrismaClient, ExcludedMethods>

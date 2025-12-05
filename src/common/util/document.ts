@@ -1,6 +1,6 @@
 import PDFDocument from 'pdfkit';
 import fs from 'fs';
-import { Event, Ticket } from '@prisma/client';
+import { Event, Ticket } from '@generated/client';
 import logger from '../logger';
 import { Attachment } from 'resend';
 import { formatDate } from './helper';

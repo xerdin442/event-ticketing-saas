@@ -15,11 +15,11 @@ import { RedisClientType } from 'redis';
 import { randomUUID } from 'crypto';
 import * as argon from 'argon2';
 import * as qrcode from "qrcode";
-import { CustomPrismaTxClient, TicketDetails, TicketLockInfo } from '@src/common/types';
+import { TicketDetails, TicketLockInfo } from '@src/common/types';
 import { REDIS_CLIENT } from '@src/redis/redis.module';
 import { Attachment } from 'resend';
 import { generateTicketPDF } from '@src/common/util/document';
-import { Listing, TicketTier } from '@prisma/client';
+import { Listing, TicketTier } from '@generated/client';
 
 @Injectable()
 export class TicketsService {
@@ -219,7 +219,7 @@ export class TicketsService {
 
           try {
             // Update number of tickets
-            await this.prisma.$transaction(async (tx: CustomPrismaTxClient) => {
+            await this.prisma.$transaction(async (tx) => {
               await tx.ticketTier.update({
                 where: { id: tier.id },
                 data: {

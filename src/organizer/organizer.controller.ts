@@ -11,7 +11,7 @@ import {
   UseInterceptors
 } from '@nestjs/common';
 import { OrganizerService } from './organizer.service';
-import { User, Organizer } from '@prisma/client';
+import { User, Organizer } from '@generated/client';
 import logger from '@src/common/logger';
 import { GetUser } from '@src/custom/decorators/user.decorator';
 import { CreateOrganizerProfileDTO, UpdateOrganizerProfileDTO } from './dto';

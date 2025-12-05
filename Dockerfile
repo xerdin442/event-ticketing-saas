@@ -6,13 +6,9 @@ COPY package.json ./
 
 COPY prisma ./prisma
 
-RUN mkdir -p prisma/generated
-
 RUN npm install
 
 COPY . .
-
-RUN cp -r node_modules/@prisma/client/.prisma ./prisma/generated/.prisma
 
 RUN npm run build
 
