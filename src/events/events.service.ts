@@ -77,68 +77,69 @@ export class EventsService {
         response = await fetchCoordinates(dto.address);
       }
 
-      if (response.status === 200) {
-        const event = await this.prisma.event.create({
-          data: {
-            ...dto,
-            organizerId: user.organizer.id,
-            poster,
-            revenue: 0
-          }
-        });
+      // Throw if geolocation provider cannot generate coordinates from either venue or address
+      if (!response.data[0]) {
+        throw new BadRequestException('Location search failed for event location. Please enter correct values for "venue" and "address"');
+      }
 
-        // Add coordinates to Redis geolocation store
-        const { lat, lon } = response.data[0];
-        await this.eventsQueue.add('geolocation-store', {
-          longitude: lon as string,
-          latitude: lat as string,
-          eventId: event.id
-        });
+      const event = await this.prisma.event.create({
+        data: {
+          ...dto,
+          organizerId: user.organizer.id,
+          poster,
+          revenue: 0
+        }
+      });
 
-        // Set automatic status updates 1.5 seconds after the start and end of the event
-        await this.eventsQueue.add(
-          'ongoing-status-update',
-          { eventId: event.id },
-          {
-            jobId: `event-${event.id}-ongoing`,
-            delay: Math.max(0, new Date(event.startTime).getTime() - new Date().getTime() + 1500)
-          }
-        );
-        await this.eventsQueue.add(
-          'completed-status-update',
-          { eventId: event.id },
-          {
-            jobId: `event-${event.id}-completed`,
-            delay: Math.max(0, new Date(event.endTime).getTime() - new Date().getTime() + 1500)
-          }
-        );
+      // Add coordinates to Redis geolocation store
+      const { lat, lon } = response.data[0];
+      await this.eventsQueue.add('geolocation-store', {
+        longitude: lon as string,
+        latitude: lat as string,
+        eventId: event.id
+      });
 
-        // Send alerts to users that are subscribed to this event category
-        const users = await this.prisma.user.findMany({
-          where: {
-            AND: [{
-              alertsSubscription: true,
-              preferences: {
-                has: event.category,
-              }
-            }]
-          }
-        });
-        await this.eventsQueue.add(
-          'event-alerts',
-          {
-            users,
-            eventId: event.id,
-          }
-        );
+      // Set automatic status updates 1.5 seconds after the start and end of the event
+      await this.eventsQueue.add(
+        'ongoing-status-update',
+        { eventId: event.id },
+        {
+          jobId: `event-${event.id}-ongoing`,
+          delay: Math.max(0, new Date(event.startTime).getTime() - new Date().getTime() + 1500)
+        }
+      );
+      await this.eventsQueue.add(
+        'completed-status-update',
+        { eventId: event.id },
+        {
+          jobId: `event-${event.id}-completed`,
+          delay: Math.max(0, new Date(event.endTime).getTime() - new Date().getTime() + 1500)
+        }
+      );
 
-        // Update metrics value
-        this.metrics.incrementCounter('total_events', ['created']);
+      // Send alerts to users that are subscribed to this event category
+      const users = await this.prisma.user.findMany({
+        where: {
+          AND: [{
+            alertsSubscription: true,
+            preferences: {
+              has: event.category,
+            }
+          }]
+        }
+      });
+      await this.eventsQueue.add(
+        'event-alerts',
+        {
+          users,
+          eventId: event.id,
+        }
+      );
 
-        return event;
-      };
+      // Update metrics value
+      this.metrics.incrementCounter('total_events', ['created']);
 
-      throw new BadRequestException('Failed to generate coordinates for the event location. Please enter correct values for "venue" and "address"');
+      return event;
     } catch (error) {
       throw error;
     }
