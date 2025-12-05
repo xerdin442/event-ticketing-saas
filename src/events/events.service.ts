@@ -6,7 +6,7 @@ import {
   UpdateEventDTO,
   ProcessTicketRefundDTO,
 } from './dto';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { Event } from '@generated/client';
 import { EventCategory } from '@generated/enums';
 import { InjectQueue } from '@nestjs/bull';
@@ -18,6 +18,7 @@ import { PaymentsService } from '@src/payments/payments.service';
 import { randomUUID } from 'crypto';
 import { TicketRefundInfo } from '@src/common/types';
 import { REDIS_CLIENT } from '@src/redis/redis.module';
+import { fetchCoordinates } from '@src/common/util/helper';
 
 @Injectable()
 export class EventsService {
@@ -68,16 +69,15 @@ export class EventsService {
         throw new BadRequestException('An Organizer profile is required to create an event')
       };
 
-      // Encode event location in URL format and generate coordinates
-      const location = `${dto.venue}+${dto.address}`.replace(/(,)/g, '').replace(/\s/g, '+');
-      const response = await axios.get(
-        `https://nominatim.openstreetmap.org/search?q=${location}&format=json`, {
-        headers: {
-          'User-Agent': `${Secrets.APP_NAME}-${Secrets.APP_EMAIL}`
-        }
-      });
+      let response: AxiosResponse;
+      // Generate coordinates of event venue
+      response = await fetchCoordinates(`${dto.venue}+${dto.address}`);
+      // If geolocation provider cannot find venue, generate coordinates from address
+      if (response.data.length === 0) {
+        response = await fetchCoordinates(dto.address);
+      }
 
-      if (response.status === 200 && response.data.length > 0) {
+      if (response.status === 200) {
         const event = await this.prisma.event.create({
           data: {
             ...dto,

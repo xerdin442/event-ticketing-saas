@@ -1,5 +1,6 @@
 import { ThrottlerModuleOptions, ThrottlerOptions } from "@nestjs/throttler";
 import { Secrets } from "../secrets";
+import axios, { AxiosResponse } from "axios";
 
 export const formatDate = (date: Date, output: 'date' | 'time'): string => {
   const options: Intl.DateTimeFormatOptions = {
@@ -32,3 +33,19 @@ export const applyThrottlerConfig = (): ThrottlerModuleOptions => {
 
   return Secrets.NODE_ENV !== 'test' ? throttles : [];
 };
+
+export const fetchCoordinates = async (location: string): Promise<AxiosResponse> => {
+  try {
+    const locationParam = location.replace(/(,)/g, '').replace(/\s/g, '+');
+    const response = await axios.get(
+      `https://nominatim.openstreetmap.org/search?q=${locationParam}&format=json`, {
+      headers: {
+        'User-Agent': `${Secrets.APP_NAME}-${Secrets.APP_EMAIL}`
+      }
+    });
+
+    return response;
+  } catch (error) {
+    throw error;
+  }
+}

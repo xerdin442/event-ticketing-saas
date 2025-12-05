@@ -10,7 +10,7 @@ export class DbService extends PrismaClient {
 
   constructor() {
     const adapter = new PrismaPg({ connectionString: Secrets.DATABASE_URL });
-    super({ adapter});
+    super({ adapter });
   }
 
   async cleanDb() {
@@ -23,7 +23,7 @@ export class DbService extends PrismaClient {
       this.organizer.deleteMany(),
       this.user.deleteMany()
     ])
-    .then(() => logger.info(`[${this.context}] Database cleaned up for tests.\n`))
-    .catch(error => logger.error(`[${this.context}] An error occurred while cleaning database. Error: ${error.message}.\n`));
+      .then(() => logger.info(`[${this.context}] Database cleaned up for tests.\n`))
+      .catch(error => logger.error(`[${this.context}] An error occurred while cleaning database. Error: ${error.message}.\n`));
   }
 }
