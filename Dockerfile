@@ -12,7 +12,7 @@ RUN npm install
 
 COPY . .
 
-RUN npx prisma generate
+RUN cp -r node_modules/@prisma/client/.prisma ./prisma/generated/.prisma
 
 RUN npm run build
 
