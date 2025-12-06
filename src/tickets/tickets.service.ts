@@ -56,6 +56,14 @@ export class TicketsService {
         }
       };
 
+      // Check if event capacity is less than total tickets
+      const currentTotal = event.ticketTiers.reduce((total, tier) => {
+        return total + tier.totalNumberOfTickets;
+      }, 0);
+      if ((currentTotal + dto.totalNumberOfTickets) > event.capacity) {
+        throw new BadRequestException('Number of tickets is higher than specified event capacity');
+      }
+
       const tier = await this.prisma.ticketTier.create({
         data: {
           ...dto,
