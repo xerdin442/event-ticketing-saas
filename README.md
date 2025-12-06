@@ -22,7 +22,7 @@ This API is a robust backend service designed to facilitate the creation and man
 ## Tech Stack
 
 - **Framework**: NestJS
-- **Database**: Postgres
+- **Database (ORM)**: Postgres (Prisma)
 - **Blob Storage**: Cloudinary
 - **Caching**: Redis
 - **Queues**: BullMQ
