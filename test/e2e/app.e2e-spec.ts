@@ -13,11 +13,12 @@ import { Secrets } from '@src/common/secrets';
 import request from 'supertest'
 import path from 'path';
 import { CreateEventDTO, UpdateEventDTO } from '@src/events/dto';
-import { AddTicketTierDTO, CreateDiscountDTO, PurchaseTicketDTO } from '@src/tickets/dto';
+import { AddTicketTierDTO, CreateDiscountDTO, CreateListingDTO, PurchaseTicketDTO } from '@src/tickets/dto';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { Organizer } from '@generated/client';
 import { isArray } from 'class-validator';
 import { CreateOrganizerProfileDTO, UpdateOrganizerProfileDTO } from '@src/organizer/dto';
+import { randomUUID } from 'crypto';
 
 describe('App e2e', () => {
   let app: INestApplication;
@@ -27,6 +28,13 @@ describe('App e2e', () => {
   let resetId: string;
   let organizer: Organizer;
   let tierId: number;
+  let ticketId: number;
+
+  const accountDetails = {
+    accountName: Secrets.ACCOUNT_NAME,
+    accountNumber: Secrets.ACCOUNT_NUMBER,
+    bankName: Secrets.BANK_NAME,
+  }
 
   beforeAll(async () => {
     jest.useRealTimers();
@@ -306,9 +314,7 @@ describe('App e2e', () => {
   describe('Organizer', () => {
     describe('Create Organizer Profile', () => {
       const dto: CreateOrganizerProfileDTO = {
-        accountName: Secrets.ACCOUNT_NAME,
-        accountNumber: Secrets.ACCOUNT_NUMBER,
-        bankName: Secrets.BANK_NAME,
+        ...accountDetails,
         email: 'organizer@example.com',
         name: 'Test Organizer',
         phone: '9876543210'
@@ -557,6 +563,61 @@ describe('App e2e', () => {
 
         expect(response.status).toEqual(200);
         expect(response.body.message).toEqual('Disocunt offer removed successfully');
+      });
+    });
+
+    describe('Ticket Resale', async () => {
+      const ticket = await prisma.ticket.create({
+        data: {
+          accessKey: randomUUID(),
+          attendee: 'jadawills3690@gmail.com',
+          price: 5000,
+          tier: 'VIP',
+          eventId,
+        },
+      });
+      ticketId = ticket.id;
+
+      it('should return all tickets listed for resale', async () => {
+        const response = await request(app.getHttpServer())
+          .get(`/events/${eventId}/tickets/marketplace`)
+
+        expect(response.status).toEqual(200);
+        expect(response.body).toHaveProperty('listings');
+        expect(Array.isArray(response.body.listings)).toBe(true);
+      });
+
+      it('should list a ticket for resale', async () => {
+        const dto: CreateListingDTO = {
+          accessKey: ticket.accessKey,
+          ...accountDetails,
+        }
+
+        const response = await request(app.getHttpServer())
+          .post(`/events/${eventId}/tickets/${ticketId}/listing`)
+          .set('Authorization', `Bearer ${accessToken}`)
+          .send(dto);
+
+        expect(response.status).toEqual(200);
+        expect(response.body.message).toEqual('Your ticket has been listed for resale');
+      });
+
+      it('should initiate purchase of a listed ticket', async () => {
+        const response = await request(app.getHttpServer())
+          .post(`/events/${eventId}/tickets/${ticketId}/listing/buy`)
+          .query({ email: 'xerdinludac@gmail.com' });
+
+        expect(response.status).toEqual(200);
+        expect(response.body).toHaveProperty('checkout');
+      });
+
+      it('should remove a listed ticket from resale marketplace', async () => {
+        const response = await request(app.getHttpServer())
+          .delete(`/events/${eventId}/tickets/${ticketId}/listing`)
+          .set('Authorization', `Bearer ${accessToken}`)
+
+        expect(response.status).toEqual(200);
+        expect(response.body.message).toEqual('Your ticket has been removed from resale marketplace');
       });
     });
   });

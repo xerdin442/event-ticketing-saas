@@ -457,13 +457,13 @@ export class TicketsService {
             price: ticket.discountPrice ? ticket.discountPrice : ticket.price,
             recipientCode
           }
-        })
+        });
 
         // Update status of ticket
         await this.prisma.ticket.update({
           where: { id: ticket.id },
           data: { status: 'PENDING_RESALE' }
-        })
+        });
 
         return;
       } else {
@@ -516,14 +516,16 @@ export class TicketsService {
     }
   }
 
-  async deleteListing(ticketId: number): Promise<void> {
+  async deleteListing(userId: number, ticketId: number): Promise<void> {
     try {
       const listing = await this.prisma.listing.findUnique({
         where: {
+          userId,
           ticketId,
           ticket: { status: 'PENDING_RESALE' },
         }
       });
+
       if (!listing) {
         throw new BadRequestException('No listing found for this ticket');
       }

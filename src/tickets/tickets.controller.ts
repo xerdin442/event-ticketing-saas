@@ -212,10 +212,11 @@ export class TicketsController {
   @Delete(':ticketId/listing')
   @UseGuards(TokenBlacklistGuard, AuthGuard('jwt'))
   async deleteListing(
+    @GetUser() user: User,
     @Param('ticketId', ParseIntPipe) ticketId: number,
   ): Promise<{ message: string }> { 
     try {
-      await this.ticketsService.deleteListing(ticketId);
+      await this.ticketsService.deleteListing(user.id, ticketId);
       return { message: 'Your ticket has been removed from resale marketplace' };
     } catch (error) {
       logger.error(`[${this.context}] An error occurred while removing ticket from resale marketplace. Error: ${error.message}\n`);
