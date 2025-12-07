@@ -61,7 +61,7 @@ export class TicketsService {
         return total + tier.totalNumberOfTickets;
       }, 0);
       if ((currentTotal + dto.totalNumberOfTickets) > event.capacity) {
-        throw new BadRequestException('Number of tickets is higher than specified event capacity');
+        throw new BadRequestException('Total number of tickets cannot exceed event capacity');
       }
 
       const tier = await this.prisma.ticketTier.create({
@@ -533,6 +533,7 @@ export class TicketsService {
         this.prisma.listing.delete({
           where: { ticketId }
         }),
+
         // Update ticket status
         this.prisma.ticket.update({
           where: { id: ticketId },

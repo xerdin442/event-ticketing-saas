@@ -341,28 +341,30 @@ export class PaymentsProcessor {
           })
         ]);
 
-        // Initiate transfer of resale amount to ticket owner
-        const transferReference = await this.payments.initiateTransfer(
-          ticket.listing.recipientCode,
-          ticket.listing.price,
-          'Ticket Resale',
-          {
-            email: ticketOwner,
-            eventId: ticket.eventId,
-          }
-        );
+        if (!Secrets.PAYSTACK_SECRET_KEY.includes('test')) {
+          // Initiate transfer of resale amount to ticket owner
+          const transferReference = await this.payments.initiateTransfer(
+            ticket.listing.recipientCode,
+            ticket.listing.price,
+            'Ticket Resale',
+            {
+              email: ticketOwner,
+              eventId: ticket.eventId,
+            }
+          );
 
-        // Record transfer details
-        await this.prisma.transaction.create({
-          data: {
-            email: ticketOwner,
-            amount: ticket.listing.price,
-            reference: transferReference,
-            source: "RESALE_TF",
-            status: "TRANSFER_PENDING",
-            eventId: ticket.eventId,
-          }
-        });
+          // Record transfer details
+          await this.prisma.transaction.create({
+            data: {
+              email: ticketOwner,
+              amount: ticket.listing.price,
+              reference: transferReference,
+              source: "RESALE_TF",
+              status: "TRANSFER_PENDING",
+              eventId: ticket.eventId,
+            }
+          });
+        }
 
         // Generate and send ticket document to new owner
         const ticketPDF = await generateTicketPDF(updatedTicket, qrcodeImage, ticket.event);
