@@ -602,7 +602,15 @@ describe('App e2e', () => {
         expect(response.body.message).toEqual('Your ticket has been listed for resale');
       });
 
-      it('should initiate purchase of a listed ticket', async () => {
+      it('should throw if email query parameter is missing in purchase of listed ticket', async () => {
+        const response = await request(app.getHttpServer())
+          .post(`/events/${eventId}/tickets/${ticketId}/listing/buy`)
+
+        expect(response.status).toEqual(400);
+        expect(response.body.message).toEqual('Missing required "email" parameter');
+      });
+
+      it('should initiate purchase of listed ticket', async () => {
         const response = await request(app.getHttpServer())
           .post(`/events/${eventId}/tickets/${ticketId}/listing/buy`)
           .query({ email: 'xerdinludac@gmail.com' });
